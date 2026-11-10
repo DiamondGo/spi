@@ -46,6 +46,17 @@ const server=http.createServer((req,res)=>{const data=routes.get(req.url);if(!da
     }
     await assert.rejects(api.extractZip(bad,rejected));assert.equal(fs.readdirSync(rejected).length,0)
   })
+  await check('ZIP and tar links stay contained when the destination parent has a canonical alias',async()=>{
+    if(process.platform==='win32')return
+    const real=path.join(tmp,'canonical-parent'),alias=path.join(tmp,'parent-alias');fs.mkdirSync(real);fs.symlinkSync(real,alias,'dir')
+    const zip=path.join(tmp,'alias.zip'),zipDest=path.join(alias,'zip');fs.mkdirSync(zipDest);await makeZip(zip);await api.extractZip(zip,zipDest)
+    assert.equal(fs.realpathSync(path.join(zipDest,'app/link')),path.join(fs.realpathSync(zipDest),'app/spi'))
+    const source=path.join(tmp,'alias-tar-source');fs.mkdirSync(path.join(source,'app'),{recursive:true});fs.writeFileSync(path.join(source,'app/spi'),'fixture');fs.symlinkSync('spi',path.join(source,'app/link'))
+    const archive=path.join(tmp,'alias.tar.gz'),tarDest=path.join(alias,'tar');fs.mkdirSync(tarDest);await tar.c({cwd:source,file:archive,gzip:true},['app']);await api.extractTar(archive,tarDest)
+    assert.equal(fs.readFileSync(path.join(tarDest,'app/link'),'utf8'),'fixture')
+    const bad=path.join(tmp,'alias-bad.zip'),badDest=path.join(alias,'rejected');fs.mkdirSync(badDest);await makeZip(bad,true)
+    await assert.rejects(api.extractZip(bad,badDest));assert.equal(fs.readdirSync(badDest).length,0)
+  })
   await check('tar escaping links are rejected before extraction',async()=>{
     if(process.platform==='win32')return
     const source=path.join(tmp,'bad-tar'),dest=path.join(tmp,'bad-tar-out');fs.mkdirSync(path.join(source,'app'),{recursive:true});fs.mkdirSync(dest)

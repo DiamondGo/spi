@@ -76,6 +76,12 @@ function validateEntries(entries) {
     }
   }
 }
+function checkExtractedLinks(entries,dest){
+  // macOS /var is normally an alias of /private/var. Compare both sides in
+  // the same canonical namespace, retaining the path-separator boundary.
+  const base=fs.realpathSync(dest)+path.sep
+  for(const e of entries)if(e.link&&!fs.realpathSync(path.join(dest,e.name)).startsWith(base))fail('Extracted link escapes destination')
+}
 async function extractTar(file, dest) {
   const entries=[]
   await tar.t({file,onReadEntry:e=>entries.push({name:e.path,size:e.size,type:({File:'file',Directory:'directory',SymbolicLink:'symlink',Link:'hardlink'})[e.type] || 'unsupported',link:e.linkpath})})
@@ -83,10 +89,7 @@ async function extractTar(file, dest) {
   await tar.x({file,cwd:dest,strict:true,preserveOwner:false,noChmod:true})
   // Strip setuid/setgid bits, retaining executable bits; never chmod through links.
   for (const e of entries) if (e.type==='file') { const f=path.join(dest,e.name); fs.chmodSync(f,fs.statSync(f).mode & 0o777) }
-  for (const e of entries) if (e.link) {
-    const resolved=fs.realpathSync(path.join(dest,e.name))
-    if (!resolved.startsWith(path.resolve(dest)+path.sep)) fail('Extracted link escapes destination')
-  }
+  checkExtractedLinks(entries,dest)
 }
 async function zipEntries(file) {
   return new Promise((resolve,reject)=>yauzl.open(file,{lazyEntries:true,strictFileNames:true,validateEntrySizes:true},(error,zip)=>{
@@ -130,7 +133,7 @@ async function extractZip(file,dest) {
     })
   }))
   for(const e of entries)if(e.type==='symlink') { const out=path.join(dest,e.name);fs.mkdirSync(path.dirname(out),{recursive:true});fs.symlinkSync(e.link,out) }
-  for(const e of entries)if(e.type==='symlink'&&!fs.realpathSync(path.join(dest,e.name)).startsWith(path.resolve(dest)+path.sep))fail('Extracted link escapes destination')
+  checkExtractedLinks(entries,dest)
 }
 function trustedURL(value) {
   const u=new URL(value)

@@ -28,12 +28,13 @@ async function testMainClose(language, confirmOnExit, answer) {
   app.getPath = () => home
   app.isPackaged = false
   app.setName = () => {}
+  app.setDesktopName = name => { app.desktopName = name }
   app.requestSingleInstanceLock = () => true
   app.whenReady = () => Promise.resolve()
   app.quit = () => { const e = { preventDefault() { this.prevented = true } }; app.emit('before-quit', e); if (!e.prevented) app.didQuit = true }
   const windows = []
   class Window extends EventEmitter {
-    constructor() { super(); this.webContents = { id: 1, send() {}, on() {}, isDestroyed: () => false }; windows.push(this) }
+    constructor(options) { super(); this.options = options; this.webContents = { id: 1, send() {}, on() {}, isDestroyed: () => false }; windows.push(this) }
     static getAllWindows() { return windows }
     static getFocusedWindow() { return windows[0] }
     setBackgroundColor(color) { this.background = color }
@@ -75,6 +76,8 @@ async function testMainClose(language, confirmOnExit, answer) {
   await handlers.get('settings:update')({}, { language, confirmOnExit, theme: 'light' })
   await handlers.get('session:open')({}, { cwd: '/test' })
   const win = windows[0]
+  if (process.platform === 'linux') assert.equal(app.desktopName, 'spi.desktop')
+  assert.ok(win.options.icon.endsWith(path.join('build', 'icons', 'icon.png')))
   assert.equal(win.overlay.color, themeChrome.light.color)
   assert.equal(win.background, themeChrome.light.background)
   const e = { preventDefault() { this.prevented = true } }

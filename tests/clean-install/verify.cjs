@@ -1,8 +1,8 @@
 // Only public registry/Release traffic. No host config, credentials, cache or app binaries are mounted.
 const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),assert=require('node:assert/strict')
 const {spawn,execFileSync}=require('node:child_process')
-const spec=process.env.SPI_VERIFY_PACKAGE||'spi-agent-gui@0.1.0'
-const expectedVersion=process.env.SPI_EXPECTED_VERSION||'0.1.0'
+const spec=process.env.SPI_VERIFY_PACKAGE||'spi-agent-gui@0.1.1'
+const expectedVersion=process.env.SPI_EXPECTED_VERSION||'0.1.1'
 function locate(name){return execFileSync('/bin/sh',['-c','command -v '+name],{encoding:'utf8'}).trim()}
 function run(command,args,options={}){return new Promise((resolve,reject)=>{
   const child=spawn(command,args,{stdio:'inherit',env:process.env,...options})
@@ -45,11 +45,21 @@ async function commands(pi){return new Promise((resolve,reject)=>{
   const doctor=JSON.parse(execFileSync(spi,['doctor'],{encoding:'utf8'}))
   assert.equal(doctor.platform,'linux-x64')
   console.log('PASS public pi install, user command location, version and doctor')
+  const desktop=path.join(process.env.XDG_DATA_HOME||path.join(os.homedir(),'.local/share'),'applications/spi.desktop')
+  const icon=path.join(path.dirname(doctor.current.entryPath),'resources/icon.png')
+  const text=fs.readFileSync(desktop,'utf8'),png=fs.readFileSync(icon)
+  assert.ok(text.includes('Icon='+icon));assert.ok(text.includes('StartupWMClass=spi'))
+  assert.equal(png.readUInt32BE(16),512);assert.equal(png.readUInt32BE(20),512)
+  const state=JSON.parse(fs.readFileSync(path.join(doctor.root,'install-state.json')))
+  assert.equal(state.desktop.path,desktop)
+  assert.equal(require('node:crypto').createHash('sha256').update(text).digest('hex'),state.desktop.sha256)
+  console.log('PASS owned Linux desktop entry and installed spy icon')
   await commands(pi)
   console.log('PASS published Pi extension commands; no automatic GUI launch')
   process.env.SPI_ASSERT_RENDERER_SANDBOX='1'
+  process.env.SPI_ASSERT_APP_ICON='1'
   await run(process.execPath,['/opt/spi-test/with-display.cjs','/opt/spi-test/portable-smoke.cjs',doctor.current.entryPath])
-  const report={package:spec,uid:process.getuid(),target:doctor.platform,version,sameBinDirectory:true,publicRegistry:true,hostConfigMounted:false,nativePty:true,gui:true,piRpc:true,singleInstance:true,rendererSandbox:true}
+  const report={package:spec,uid:process.getuid(),target:doctor.platform,version,sameBinDirectory:true,publicRegistry:true,hostConfigMounted:false,nativePty:true,gui:true,piRpc:true,singleInstance:true,rendererSandbox:true,customIcon:true,ownedDesktopEntry:true}
   fs.writeFileSync(path.join(os.homedir(),'clean-install-result.json'),JSON.stringify(report,null,2))
   console.log('CLEAN_INSTALL_RESULT '+JSON.stringify(report))
 })().catch(error=>{console.error(error.message);process.exitCode=1})

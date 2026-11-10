@@ -31,7 +31,10 @@ function descendants(pid){try{return fs.readFileSync('/proc/'+pid+'/task/'+pid+'
   await wait(()=>evaluate('!!document.querySelector(".titlebar")'),'real packaged UI')
   console.log('PASS isolated packaged GUI')
   if(process.env.SPI_ASSERT_APP_ICON==='1'){
-    assert.deepEqual(fs.readFileSync(path.join(resources,'icon.png')),fs.readFileSync(path.join(__dirname,'../build/icons/icon.png')))
+    const png=fs.readFileSync(path.join(resources,'icon.png')),reference=path.join(__dirname,'../build/icons/icon.png')
+    assert.equal(png.subarray(0,8).toString('hex'),'89504e470d0a1a0a')
+    assert.equal(png.readUInt32BE(16),512);assert.equal(png.readUInt32BE(20),512)
+    if(fs.existsSync(reference))assert.deepEqual(png,fs.readFileSync(reference))
     assert.ok(await evaluate('!!document.querySelector(\'link[rel="icon"][type="image/svg+xml"]\')'))
     if(process.platform==='linux'){
       let nativeIcon=''

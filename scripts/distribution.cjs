@@ -3,8 +3,9 @@ const {execFileSync}=require('node:child_process')
 const {build}=require('esbuild'), tar=require('tar'), asar=require('@electron/asar')
 const root=path.resolve(__dirname,'..'), pkg=require('../package.json')
 function config(){
+  const defaults=require('../release.config.json')
   const file=path.join(root,'release.config.local.json'), local=fs.existsSync(file)?JSON.parse(fs.readFileSync(file,'utf8')):{}
-  const result={version:pkg.version,repository:process.env.SPI_RELEASE_REPOSITORY||local.repository||'',packageName:process.env.SPI_NPM_PACKAGE||local.npmPackage||'@your-scope/spi'}
+  const result={version:pkg.version,repository:process.env.SPI_RELEASE_REPOSITORY||local.repository||defaults.repository,packageName:process.env.SPI_NPM_PACKAGE||local.npmPackage||defaults.npmPackage}
   if(result.repository&&!/^[\w.-]+\/[\w.-]+$/.test(result.repository))throw Error('Invalid repository')
   if(!/^(@[a-z0-9_.-]+\/)?[a-z0-9_.-]+$/.test(result.packageName))throw Error('Invalid npm package name')
   if(process.argv.includes('--production')&&(!result.repository||result.repository.includes('your-owner')||result.packageName.includes('your-scope')))throw Error('Configure real repository/npm package before publishing')
@@ -32,7 +33,7 @@ async function prepare(){
   fs.copyFileSync(path.join(out,'dist/spi.cjs'),path.join(release,'spi-installer.cjs'))
   fs.copyFileSync(path.join(out,'INSTALLER-NOTICES.txt'),path.join(release,'INSTALLER-NOTICES.txt'))
   // A release-specific bootstrap never follows a moving branch.
-  const bootstrap=fs.readFileSync(path.join(root,'install.sh'),'utf8').replace("SPI_DEFAULT_REPOSITORY=''","SPI_DEFAULT_REPOSITORY='"+cfg.repository+"'").replace("SPI_BOOTSTRAP_VERSION='latest'","SPI_BOOTSTRAP_VERSION='"+cfg.version+"'")
+  const bootstrap=fs.readFileSync(path.join(root,'install.sh'),'utf8').replace(/^SPI_DEFAULT_REPOSITORY='[^']*'$/m,"SPI_DEFAULT_REPOSITORY='"+cfg.repository+"'").replace("SPI_BOOTSTRAP_VERSION='latest'","SPI_BOOTSTRAP_VERSION='"+cfg.version+"'")
   fs.writeFileSync(path.join(release,'install.sh'),bootstrap,{mode:0o755})
   console.log('Prepared light npm package and bootstrap (no desktop binaries in npm)')
 }

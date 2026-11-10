@@ -14,7 +14,9 @@
 
 ## 发布状态与依赖
 
-当前仓库已准备发布流水线，**此次实施没有创建 GitHub Release 或发布 npm 包**。以下 `<owner>/<repo>`、`<published-package>` 是占位符，发布前不能直接照抄执行。
+源码仓库：[DiamondGo/spi](https://github.com/DiamondGo/spi)。计划发布的 npm 包名固定为 **`spi-agent-gui`**，可执行命令仍为 **`spi`**；公开默认值集中在 `release.config.json`。
+
+**目前尚未发布 npm 包和桌面 Release。** 下方命令在首次发布后才能使用；现在出现 npm 404 表示尚未发布，不需要用户寻找或替换包名。安装器还要求 GitHub Release 附件可公开下载（源码仓库当前为私有）。
 
 当前固定的 Electron/构建工具链仍有已知依赖安全告警，发布流水线会拦截 high/critical 问题；正式发布前须评估并升级。本轮没有擅自执行未经审核的大版本依赖升级。
 
@@ -27,7 +29,7 @@ Linux x64 为本机验收目标。Linux arm64、Windows x64、macOS arm64 提供
 ### Pi 插件，推荐
 
 ```bash
-pi install npm:<published-package>
+pi install npm:spi-agent-gui
 spi
 ```
 
@@ -36,7 +38,7 @@ spi
 项目级、临时或 CI 安装不自动创建用户全局入口。禁用了 npm 安装脚本时可手动补装：
 
 ```bash
-npx --package <published-package> spi install
+npx --package spi-agent-gui spi install
 ```
 
 遇到同名 spi 或 Pi 目录不可写，显式指定 `--bin-dir`。不会覆盖未知命令、请求 sudo 或改写 shell 配置/PATH。
@@ -51,7 +53,7 @@ bash install.sh --version 0.1.0
 bash install.sh --version 0.1.0 --install-dir /path/to/user-install --bin-dir /path/to/user-bin
 ```
 
-发行版脚本已绑定仓库/tag，先下载和核验独立安装器，再下载匹配的运行包。源码中的脚本需要本地准备好的安装器，或设置 `SPI_RELEASE_REPOSITORY=owner/repo`。Windows 通过 Pi 包/Node 安装器安装，不要求 Bash。
+发行版脚本已绑定仓库/tag，先下载和核验独立安装器，再下载匹配的运行包。源码脚本默认使用同一仓库，fork 可通过 `SPI_RELEASE_REPOSITORY` 覆盖。Windows 通过 Pi 包/Node 安装器安装，不要求 Bash。
 
 离线安装：
 
@@ -76,7 +78,7 @@ spi uninstall
 
 重复 spi 调用聚焦已有窗口；`--cwd` 激活该目录已有会话或新建独立会话，不重置草稿和审批。更新保留旧运行目录，重启 GUI 后生效，不强杀 agent；卸载前请关闭 GUI。偏好和 Pi 会话默认保留。
 
-`pi update npm:<published-package>` 管理插件升级；`pi remove npm:<published-package>` 仅移除插件，不自动删除独立安装的桌面程序。
+`pi update npm:spi-agent-gui` 管理插件升级；`pi remove npm:spi-agent-gui` 仅移除插件，不自动删除独立安装的桌面程序。
 
 旧 AppImage 不自动删除或盲目覆盖。可指定不同的 `--install-dir` / `--bin-dir`，或确认后手动移走旧入口；原 sPi userData 保持不变。
 

@@ -14,7 +14,9 @@ A desktop GUI for your existing **Pi coding agent**. sPi runs an independent Pi 
 
 ## Release status and requirements
 
-This repository prepares the release and npm publishing pipeline. **No GitHub Release or npm package has been published by this implementation.** Replace `<owner>/<repo>` and `<published-package>` below with your actual published identifiers; they are not currently executable installation instructions.
+Source: [DiamondGo/spi](https://github.com/DiamondGo/spi). The fixed, planned npm package name is **`spi-agent-gui`**; the executable is **`spi`**. These public defaults are stored in `release.config.json`.
+
+**The npm package and desktop Release have not been published yet.** The commands below become usable after the first publication; an npm 404 currently means the package has not been released, not that you need to substitute a package name. The installer also requires publicly downloadable GitHub Release assets (the source repository is currently private).
 
 The existing pinned Electron/build toolchain still has known dependency advisories. The release workflow blocks high/critical advisories; review and upgrade these before publishing. No unreviewed major dependency upgrade was made as part of this distribution change.
 
@@ -27,7 +29,7 @@ Install **Pi** first and configure authentication/models using Pi itself. The bo
 ### Pi package — recommended
 
 ```bash
-pi install npm:<published-package>
+pi install npm:spi-agent-gui
 spi
 ```
 
@@ -36,7 +38,7 @@ A verified personal install downloads the desktop release matching the npm packa
 Project-local/temporary/CI installs do not register a user-wide command automatically. If lifecycle scripts are disabled:
 
 ```bash
-npx --package <published-package> spi install
+npx --package spi-agent-gui spi install
 ```
 
 If another `spi` exists, or Pi's directory is read-only, explicitly choose `--bin-dir`. The installer does not overwrite unknown commands, request sudo or edit shell profiles/PATH.
@@ -51,7 +53,7 @@ bash install.sh --version 0.1.0
 bash install.sh --version 0.1.0 --install-dir /path/to/user-install --bin-dir /path/to/user-bin
 ```
 
-The published bootstrap contains the repository/tag; it downloads and checks the standalone installer, then the matching runtime. The source checkout's script requires prepared assets or `SPI_RELEASE_REPOSITORY=owner/repo`. Windows uses the Pi package/Node installer, not Bash.
+The published bootstrap contains the repository/tag; it downloads and checks the standalone installer, then the matching runtime. The source checkout uses the same repository by default; forks can override it with `SPI_RELEASE_REPOSITORY`. Windows uses the Pi package/Node installer, not Bash.
 
 For an offline install, prepare the installer first and supply a local archive and manifest:
 
@@ -74,7 +76,7 @@ spi rollback
 spi uninstall
 ```
 
-`spi` focuses the existing instance; `--cwd` activates an existing session in that directory or opens an independent one. Drafts and approvals are preserved. Updates keep old runtimes and take effect after restarting the GUI; they do not kill running agents. Close the GUI before uninstalling. User preferences and Pi sessions are preserved. `pi update npm:<published-package>` updates the plugin; `pi remove npm:<published-package>` removes the plugin but deliberately does not delete the independently installed desktop app.
+`spi` focuses the existing instance; `--cwd` activates an existing session in that directory or opens an independent one. Drafts and approvals are preserved. Updates keep old runtimes and take effect after restarting the GUI; they do not kill running agents. Close the GUI before uninstalling. User preferences and Pi sessions are preserved. `pi update npm:spi-agent-gui` updates the plugin; `pi remove npm:spi-agent-gui` removes the plugin but deliberately does not delete the independently installed desktop app.
 
 Old AppImage installs are not deleted or blindly overwritten. Use a separate `--install-dir`/`--bin-dir`, or review and move the old launcher yourself. Existing sPi userData is retained.
 

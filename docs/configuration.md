@@ -2,13 +2,15 @@
 
 ## Public metadata / 公开发布信息
 
-Copy `release.config.example.json` to **`release.config.local.json`** and replace `your-owner/sPi` with a repository you own and `@your-scope/spi` with a package namespace you control. Both are public release identifiers, not credentials. The local file is ignored. Alternatively set `SPI_RELEASE_REPOSITORY` and `SPI_NPM_PACKAGE`; CI takes these from `github.repository` and the `SPI_NPM_PACKAGE` repository variable.
+`release.config.json` contains the project's fixed public defaults: repository **`DiamondGo/spi`**, planned npm package **`spi-agent-gui`**. These identifiers are not credentials, and users do not need to find or substitute a package name. The npm package is not yet published; a real npm owner/publishing authorization and publicly downloadable Release assets are still required.
 
-复制 example 为被忽略的 local 文件，填写自己拥有的仓库/包名。环境变量优先；未填写时可以做本地 fixture 测试，但 `prepare --production` 会拒绝发布。`.env.example` 是变量说明，脚本**不会自动 source 任意 .env 文件**。
+Only for a fork or local override, copy `release.config.example.json` to **`release.config.local.json`** and set identifiers you control. The local file is ignored. Precedence is environment (`SPI_RELEASE_REPOSITORY` / `SPI_NPM_PACKAGE`), local override, then public defaults. CI uses `github.repository` and an optional `SPI_NPM_PACKAGE` repository variable.
+
+本项目默认仓库/包名已写死为上述公开值，无需为了安装填写配置。只有 fork 或覆盖时才复制 example 并修改 local 文件；真实凭据仍不得入库。`.env.example` 是变量说明，脚本**不会自动 source 任意 .env 文件**。
 
 ```bash
 cp release.config.example.json release.config.local.json
-# Edit the local file; never copy credentials into it.
+# Optional override only; edit for your fork. Never copy credentials into it.
 npm run dist:prepare
 node scripts/distribution.cjs prepare --production
 ```

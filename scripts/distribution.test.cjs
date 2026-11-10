@@ -14,6 +14,10 @@ function digest(file){return fs.existsSync(file)?crypto.createHash('sha256').upd
 const actualSettings=path.join(os.homedir(),'.pi/agent/settings.json'), before=digest(actualSettings)
 ;(async()=>{
   await run(process.execPath,[path.join(__dirname,'distribution.cjs'),'prepare'],{},root)
+  const configured=require('./distribution.cjs').config(), generated=JSON.parse(fs.readFileSync(path.join(root,'dist/npm-package/package.json')))
+  assert.equal(generated.name,configured.packageName)
+  assert.equal(generated.repository.url,'https://github.com/'+configured.repository+'.git')
+  assert.equal(fs.readFileSync(path.join(root,'dist/release/install.sh'),'utf8').includes("SPI_DEFAULT_REPOSITORY='"+configured.repository+"'"),true)
   const pack=JSON.parse(await run(process.execPath,[npmCLI,'pack','--ignore-scripts','--json','--pack-destination',tmp],{},path.join(root,'dist/npm-package')))[0]
   await check('npm tarball is light, explicit and contains no runtime, config or development files',()=>{
     assert.ok(pack.size<1024*1024)

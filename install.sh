@@ -2,7 +2,7 @@
 # sPi - Simple Pi Agent GUI. Downloads a verified native runtime; no AppImage or sudo.
 set -euo pipefail
 umask 077
-SPI_DEFAULT_REPOSITORY=''
+SPI_DEFAULT_REPOSITORY='DiamondGo/spi'
 SPI_BOOTSTRAP_VERSION='latest'
 if [[ "${1:-}" == '--help' || "${1:-}" == '-h' ]]; then
   printf '%s\n' 'Usage: bash install.sh [--version VERSION] [--install-dir DIR] [--bin-dir DIR]' 'Offline: --version VERSION --archive FILE --manifest FILE (from a prepared checkout)'

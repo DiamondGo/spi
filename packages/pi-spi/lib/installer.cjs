@@ -9,7 +9,9 @@ const { spawn } = require('node:child_process')
 const { pipeline } = require('node:stream/promises')
 const tar = require('tar')
 const yauzl = require('yauzl')
-const BUILD = typeof __SPI_RELEASE__ === 'undefined' ? { version: '0.1.0', repository: '', packageName: '@your-scope/spi' } : __SPI_RELEASE__
+const BUILD = typeof __SPI_RELEASE__ === 'undefined'
+  ? { version: require('../../../package.json').version, repository: require('../../../release.config.json').repository, packageName: require('../../../release.config.json').npmPackage }
+  : __SPI_RELEASE__
 const OWNER = 'sPi-installer-v1'
 const MAX_ARCHIVE = 700 * 1024 * 1024, MAX_EXPANDED = 1600 * 1024 * 1024, MAX_ENTRIES = 40000
 function fail(message) { throw new Error(message) }
@@ -303,7 +305,7 @@ function activeLaunches(root) {
 }
 async function uninstall(options) {
   const root=rootFor(options)
-  if(process.platform==='win32' && path.resolve(process.execPath).startsWith(root+path.sep))fail('Use an external Node.js runtime (or npx spi uninstall) to remove a running Windows Electron runtime')
+  if(process.platform==='win32' && path.resolve(process.execPath).startsWith(root+path.sep))fail('Use an external Node.js runtime (or npm exec --package '+BUILD.packageName+' -- spi uninstall) to remove a running Windows Electron runtime')
   await locked(root,async()=>{
     const state=readJSON(path.join(root,'install-state.json'))
     if(state.owner!==OWNER)fail('Install ownership mismatch')

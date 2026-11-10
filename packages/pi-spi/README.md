@@ -2,7 +2,7 @@
 
 Lightweight Pi package and desktop installer. Desktop binaries are downloaded from the matching GitHub Release, not included in this npm package. No AppImage, FUSE, native compilation or second copy of Pi is required.
 
-After a personal `pi install npm:<published-package-name>`, run `spi`. The package registers `/spi` and `/spi-install`; it never launches a GUI just because an extension was loaded. Project/temporary/CI installs and `SPI_SKIP_INSTALL=1` skip automatic system-wide side effects. If lifecycle scripts are disabled, use `/spi-install` or explicitly run `npx --package <published-package-name> spi install`.
+The fixed npm package name is `spi-agent-gui` (planned; not yet published). After a personal `pi install npm:spi-agent-gui`, run `spi`. The package registers `/spi` and `/spi-install`; it never launches a GUI just because an extension was loaded. Project/temporary/CI installs and `SPI_SKIP_INSTALL=1` skip automatic system-wide side effects. If lifecycle scripts are disabled, use `/spi-install` or explicitly run `npx --package spi-agent-gui spi install`.
 
 `spi --help`, `spi doctor`, `spi update`, `spi rollback`, `spi uninstall`. Use `--bin-dir` if Pi's PATH directory is not writable or another spi command exists. No shell profile is edited. User preferences and Pi sessions survive uninstall. `pi remove` removes this package, not the independently installed desktop runtime.
 

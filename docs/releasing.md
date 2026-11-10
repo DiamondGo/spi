@@ -7,8 +7,8 @@ Source hosting, Git commits/pushes and desktop/npm publication are separate oper
 ## Configure / 配置
 
 1. Review `.gitignore`, run privacy checks and manually inspect the candidate/staged source. Choose a project license; metadata remains `UNLICENSED` until a license is explicitly selected.
-2. Configure the actual `owner/repo` and npm package using the example/local configuration or environment. Public Release assets are required for this bootstrap; private Releases are not anonymously installable.
-3. Configure repository variable `SPI_NPM_PACKAGE`, a protected GitHub environment named `release`, and npm Trusted Publishing for `.github/workflows/release.yml`. No npm token belongs in the repository. Review workflow permissions and require approval for the release environment.
+2. The public defaults in `release.config.json` are `DiamondGo/spi` and `spi-agent-gui`. Verify npm publishing rights for that name; it is planned but not yet published/reserved by this repository. Forks can override the defaults using local configuration or environment. Public Release assets are required for this bootstrap; the currently private repository's assets are not anonymously installable.
+3. Optionally override repository variable `SPI_NPM_PACKAGE` (default `spi-agent-gui`), configure a protected GitHub environment named `release`, and npm Trusted Publishing for `.github/workflows/release.yml`. No npm token belongs in the repository. Review workflow permissions and require approval for the release environment.
 4. Run the **full** `npm audit`, not only `--omit=dev`. The pinned Electron/build toolchain currently has known high/critical advisories. Review/upgrade before releasing; the publish job deliberately blocks these, and the runtime Electron must not be dismissed as "dev-only". Major dependency upgrades require a separate compatibility pass.
 5. Update root `package.json`/lockfile version. A `v<version>` tag must match it. The generated npm package binds to that exact desktop version.
 
@@ -51,7 +51,7 @@ Linux x64 CI builds on Ubuntu 22.04; arm64 CI uses Ubuntu 24.04. Each archive re
 
 ## Maintenance / 维护
 
-- `pi update npm:<package>` installs the newly published package's exact desktop version. `spi update` explicitly requests the latest stable desktop release.
+- `pi update npm:spi-agent-gui` installs the newly published package's exact desktop version. `spi update` explicitly requests the latest stable desktop release.
 - Do not delete old GitHub assets still referenced by published npm versions. Assets are separate from Git history and can be managed deliberately.
 - Keep older local runtimes while the GUI may be using them. Close the app before uninstall; no process-name based killing is permitted.
 - For existing AppImage installs, inspect the old launcher before moving it or use a different install/bin directory. The new installer refuses unknown occupied roots/commands rather than deleting old installations.

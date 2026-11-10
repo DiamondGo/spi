@@ -41,7 +41,9 @@ export class MessageQueue {
     if (s.items.length >= 50 || this.size(s.items) + this.size([value]) > MAX_BYTES) throw new Error('待发送队列已满')
     if (!s.items.length) s.paused = false
     const item: PendingMessage = { ...value, id: randomUUID(), revision: 1, priority: !!submission.priority, status: 'pending' }
-    const at = item.priority ? s.items.findIndex(x => !x.priority && x.status !== 'dispatching') : -1
+    // Follow up appends; each new steer jumps to the front of the buffer.
+    // The one message already being handed to Pi is never displaced.
+    const at = item.priority ? (s.items[0]?.status === 'dispatching' ? 1 : 0) : -1
     if (at < 0) s.items.push(item); else s.items.splice(at, 0, item)
     s.receipts.set(submission.clientId, { id: item.id, hash })
     if (s.receipts.size > 1024) s.receipts.delete(s.receipts.keys().next().value!)

@@ -9,7 +9,7 @@ function Row({ item, sessionId }: { item: PendingMessage; sessionId: string }) {
   async function run(action: () => Promise<void>) { setBusy(true); setError(''); try { await action() } catch (e) { setError(String(e)) } finally { setBusy(false) } }
   const locked = item.status === 'dispatching'
   return <div className="pending-message" data-message-id={item.id} data-status={item.status}>
-    <div className="pending-message-heading"><span>{t(item.status === 'editing' ? '编辑待发送消息' : locked ? '正在交付 Pi…' : item.status === 'failed' ? '交付未确认' : '待执行')}{item.priority ? ' · ' + t('优先') : ''}</span>
+    <div className="pending-message-heading"><span>{t(item.status === 'editing' ? '编辑待发送消息' : locked ? '正在交付 Pi…' : item.status === 'failed' ? '交付未确认' : '待执行')}{' · ' + t(item.priority ? '插队（steer）' : '排队（follow up）')}</span>
       <div className="pending-message-actions">
         {item.status !== 'editing' && <button type="button" disabled={locked || busy} onClick={() => { setText(item.text); setImages(item.images); setEditingRevision(item.revision + 1); void run(() => window.spi.editPendingMessage(sessionId, item.id, item.revision)) }}>{t('修改')}</button>}
         <button type="button" disabled={locked || busy} onClick={() => void run(() => window.spi.cancelPendingMessage(sessionId, item.id, item.status === 'editing' ? editingRevision : item.revision))}>{t('取消')}</button>

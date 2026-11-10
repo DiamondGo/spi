@@ -13,7 +13,7 @@
 - Embedded real PTY terminal per session, dark/light/high-contrast themes and English/Chinese UI.
 - Native precompiled desktop archives: **no AppImage, FUSE, or end-user C++ build**.
 
-**Unreleased workspace improvements:** [resizable sidebar split, active-session highlighting, `~` path labels and an editable/cancellable outbox](docs/workspace-ui.md). Busy Send now queues messages in a fixed composer overlay; priority messages wait for the current task to finish rather than interrupting it.
+**Unreleased workspace improvements:** [resizable sidebar split, active-session highlighting, `~` path labels and an editable/cancellable outbox](docs/workspace-ui.md). Busy Send queues messages in a fixed composer overlay: follow up appends to its tail, while every new steer inserts at the front of the unexecuted buffer. Already handed-off work is not rolled back.
 
 ## Release status and requirements
 

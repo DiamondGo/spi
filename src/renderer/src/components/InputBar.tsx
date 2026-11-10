@@ -190,10 +190,10 @@ export function InputBar({ session }: Props) {
       )}
       <div className="input-bar">
         <div className="input-options" aria-label={t('当前会话设置')}>
-        <IconSelect label={t('发送方式')} detail={t({ normal: '空闲发送，忙时排队', steer: '优先排队（不打断当前任务）', followUp: '追加待办' }[mode])} icon={mode === 'normal' ? 'send' : mode === 'steer' ? 'steer' : 'queue'} value={mode} onChange={(e) => setSendMode(session.id, e.target.value as SendMode)}>
+        <IconSelect label={t('发送方式')} detail={t({ normal: '空闲发送，忙时追加缓冲区', steer: 'Steer：插入未执行缓冲区最前面', followUp: 'Follow up：追加缓冲区末尾，可修改或取消' }[mode])} icon={mode === 'normal' ? 'send' : mode === 'steer' ? 'steer' : 'queue'} value={mode} onChange={(e) => setSendMode(session.id, e.target.value as SendMode)}>
           <option value="normal">{t('普通发送')}</option>
-          <option value="steer">{t('优先排队')}</option>
-          <option value="followUp">{t('排队')}</option>
+          <option value="steer">{t('插队（steer）')}</option>
+          <option value="followUp">{t('排队（follow up）')}</option>
         </IconSelect>
         <IconControl tooltip={terminals.opening[session.id] ? t('正在打开终端…') : terminalOpen ? t('聚焦当前会话终端') : t('使用默认 shell 在 {cwd} 打开终端', { cwd: formatPath(session.cwd) })}>
           <button type="button" className={`terminal-toggle icon-button${terminalOpen ? ' active' : ''}`} aria-label={t('打开当前会话终端')} aria-pressed={terminalOpen} disabled={terminals.opening[session.id]} onClick={() => void openSessionTerminal(session.id)}><Icon name="terminal" /></button>

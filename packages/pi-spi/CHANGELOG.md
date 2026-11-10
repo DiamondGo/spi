@@ -3,7 +3,7 @@
 ## Unreleased
 
 - User-resizable persisted sidebar split, active directory/recent session highlighting and display-only home-path abbreviation.
-- Main-process editable/cancellable outbox with fixed composer overlay, images, priority/FIFO dispatch after settlement, Stop pause/resume and single-use submission/revision protection.
+- Main-process editable/cancellable outbox with fixed composer overlay, images, follow-up tail appends / newest-steer head insertion, Stop pause/resume and single-use submission/revision protection.
 - Replace sPi permission modes/rule editor with a session-local YOLO checkbox: on automatically replies Allow once to compatible Pi tool approvals; off delegates to Pi without another sPi prompt. Legacy sPi permission files are preserved but no longer applied. Generic dialogs/direct blocks and Stop/close guards remain effective.
 - Native macOS Apple Silicon/Intel ZIP candidates, with safe framework links, canonical extraction containment, preserved PTY helper modes, source-path cleanup and signed ASAR hash verification.
 - macOS secondary processes exit before readiness; owning-window app quit uses the same confirmation/cleanup controller and defers native termination until cancelled events unwind.

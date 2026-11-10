@@ -10,9 +10,9 @@ const path = require('node:path')
 const repo = path.resolve(__dirname, '..')
 const artifacts = fs.mkdtempSync(path.join(os.tmpdir(), 'spi-smoke-'))
 const profile = path.join(artifacts, 'profile')
-const workspace = path.join(artifacts, 'workspace')
+const workspace = process.argv.includes('--workspace-ui') ? path.join(artifacts, 'home/source/sPi') : path.join(artifacts, 'workspace')
 fs.mkdirSync(profile)
-fs.mkdirSync(workspace)
+fs.mkdirSync(workspace, { recursive: true })
 // Legacy regression assertions use Chinese; settings tests deliberately exercise real English defaults.
 if (!process.argv.includes('--settings')) fs.writeFileSync(path.join(profile, 'spi-settings.json'), JSON.stringify({ language: 'zh' }))
 fs.writeFileSync(path.join(workspace, 'smoke.txt'), 'sPi smoke fixture\n')
@@ -75,7 +75,7 @@ async function launch() {
   delete env.ELECTRON_RUN_AS_NODE
   delete env.ELECTRON_VITE_DEV_SERVER_URL
   if (process.argv.includes('--terminal')) env.HISTFILE = path.join(artifacts, 'terminal-shell-history')
-  if (['--yolo','--settings','--terminal','--extension-ui'].some(flag => process.argv.includes(flag))) {
+  if (['--yolo','--settings','--terminal','--extension-ui','--workspace-ui'].some(flag => process.argv.includes(flag))) {
     env.PI_CODING_AGENT_DIR = path.join(artifacts, 'agent')
     env.HOME = path.join(artifacts, 'home')
     env.XDG_CONFIG_HOME = path.join(artifacts, 'xdg-config')
@@ -162,7 +162,7 @@ const text = (app, selector) => app.eval(`document.querySelector(${JSON.stringif
 
 async function main() {
   console.log('ARTIFACTS', artifacts)
-  if (process.argv.includes('--yolo') || process.argv.includes('--settings') || process.argv.includes('--terminal') || process.argv.includes('--extension-ui')) {
+  if (process.argv.includes('--yolo') || process.argv.includes('--settings') || process.argv.includes('--terminal') || process.argv.includes('--extension-ui') || process.argv.includes('--workspace-ui')) {
     await require('./gui-fixture-smoke.cjs')({ launch, stop, waitFor, pass, fill, text, results, workspace, profile, repo, artifacts, descendants })
     return
   }
@@ -269,7 +269,7 @@ async function main() {
   pass('no renderer exceptions / error-level browser logs')
 }
 
-const watchdog = setTimeout(() => { console.error('SMOKE global timeout'); finish(1) }, process.argv.includes('--advanced') || process.argv.includes('--yolo') || process.argv.includes('--settings') || process.argv.includes('--terminal') || process.argv.includes('--extension-ui') ? 300000 : 210000)
+const watchdog = setTimeout(() => { console.error('SMOKE global timeout'); finish(1) }, process.argv.includes('--advanced') || process.argv.includes('--yolo') || process.argv.includes('--settings') || process.argv.includes('--terminal') || process.argv.includes('--extension-ui') || process.argv.includes('--workspace-ui') ? 300000 : 210000)
 let finishing = false
 async function finish(code) {
   if (finishing) return

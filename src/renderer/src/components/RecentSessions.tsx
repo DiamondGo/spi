@@ -2,13 +2,18 @@ import { useCallback, useEffect, useState } from 'react'
 import type { SessionMeta } from '../../../shared/types'
 import { Icon, IconControl } from './IconControl'
 import { useT } from '../preferences'
+import { setActive, useStore } from '../store'
+import { sessionRows, type SessionRow } from '../sessionRows'
+import { usePathFormatter } from '../homePath'
 
 interface Props {
   onOpen: (m: SessionMeta) => void
 }
 
 export function RecentSessions({ onOpen }: Props) {
-  const t = useT()
+  const t = useT(), formatPath = usePathFormatter()
+  const { sessions, activeId } = useStore()
+  const openKey = Object.values(sessions).map(s => s.id + ':' + s.state?.sessionFile).join(',')
   const [recent, setRecent] = useState<SessionMeta[]>([])
   const [pinned, setPinned] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -26,7 +31,7 @@ export function RecentSessions({ onOpen }: Props) {
 
   useEffect(() => {
     refresh()
-  }, [refresh])
+  }, [refresh, openKey])
 
   async function togglePin(m: SessionMeta): Promise<void> {
     const next = await window.spi.togglePin(m.path)
@@ -34,13 +39,14 @@ export function RecentSessions({ onOpen }: Props) {
   }
 
   // pin 的放顶部（保持 recent 的时间顺序），其余按时间
-  const pinnedMetas = recent.filter((m) => pinned.includes(m.path))
-  const others = recent.filter((m) => !pinned.includes(m.path))
+  const rows = sessionRows(recent, sessions)
+  const pinnedMetas = rows.filter((m) => pinned.includes(m.path))
+  const others = rows.filter((m) => !pinned.includes(m.path))
 
-  function renderItem(m: SessionMeta): React.ReactNode {
+  function renderItem(m: SessionRow): React.ReactNode {
     const isPinned = pinned.includes(m.path)
     return (
-      <div key={m.path} className="session-item" data-session-path={m.path} title={m.cwd} onClick={() => onOpen(m)}>
+      <div key={m.path} className={`session-item${m.liveId === activeId ? ' active' : ''}`} aria-current={m.liveId === activeId ? 'true' : undefined} data-session-path={m.path} title={formatPath(m.cwd)} tabIndex={0} onClick={() => m.liveId ? setActive(m.liveId) : onOpen(m)} onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); if (m.liveId) setActive(m.liveId); else onOpen(m) } }}>
         <div className="session-item-row">
           <IconControl tooltip={t(isPinned ? '取消置顶' : '置顶会话')}>
             <button
@@ -59,7 +65,7 @@ export function RecentSessions({ onOpen }: Props) {
           <div className="session-item-title">{m.name || m.title || t('(无标题)')}</div>
         </div>
         <div className="session-item-meta">
-          {m.cwd} · {new Date(m.mtime).toLocaleString(document.documentElement.lang)}
+          {formatPath(m.cwd)} · {new Date(m.mtime).toLocaleString(document.documentElement.lang)}
         </div>
       </div>
     )
@@ -78,7 +84,7 @@ export function RecentSessions({ onOpen }: Props) {
         <IconControl tooltip={t('近期会话')}><span tabIndex={0}><Icon name="history" /></span></IconControl>
       </div>
       {others.map(renderItem)}
-      {recent.length === 0 && <div className="placeholder">{t('没有近期会话')}</div>}
+      {rows.length === 0 && <div className="placeholder">{t('没有近期会话')}</div>}
     </div>
   )
 }

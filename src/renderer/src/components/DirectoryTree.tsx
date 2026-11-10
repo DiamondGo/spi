@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { SessionMeta } from '../../../shared/types'
 import { Icon, IconControl } from './IconControl'
 import { useT } from '../preferences'
+import { shortenHome } from '../pathFormat'
 
 interface Props {
   homeDir: string
@@ -59,7 +60,7 @@ export function DirectoryTree({ homeDir, selected, onSelect, sessionsByDir }: Pr
               <div
                 className={`tree-node ${selected === childPath ? 'selected' : ''}`}
                 style={{ paddingLeft: 8 + depth * 14 }}
-                title={childPath}
+                title={shortenHome(childPath, homeDir)}
                 onClick={() => onSelect(childPath)}
               >
                 <IconControl tooltip={t(loading[childPath] ? '正在加载 {name}' : expanded[childPath] ? '收起 {name}' : '展开 {name}', { name })}>
@@ -83,7 +84,7 @@ export function DirectoryTree({ homeDir, selected, onSelect, sessionsByDir }: Pr
       <div
         className={`tree-node ${selected === homeDir ? 'selected' : ''}`}
         style={{ paddingLeft: 8 }}
-        title={homeDir}
+        title={shortenHome(homeDir, homeDir)}
         onClick={() => onSelect(homeDir)}
       >
         <IconControl tooltip={t(loading[homeDir] ? '正在加载主目录' : expanded[homeDir] ? '收起主目录' : '展开主目录')}>

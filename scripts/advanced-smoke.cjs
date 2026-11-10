@@ -1,4 +1,5 @@
-// Run via: node scripts/smoke.cjs --advanced (uses the same isolated Electron harness).
+// Opt-in real-model/native-RPC delivery regressions. GUI editable outbox behavior
+// is covered separately by workspace-ui-smoke; its priority queue is not SDK steer.
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
@@ -19,8 +20,10 @@ module.exports = async function ({ app, waitFor, pass, fill, text, results, arti
     await waitFor(() => evaluate(`document.querySelectorAll('.session-tab')[${index}].classList.contains('active')`), 'active tab '+index)
   }
   const enter = async message => {
-    await fill(app, message)
-    await evaluate(`document.querySelector('textarea').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}))`)
+    const target = await evaluate(`({id:document.querySelector('.session-tab.active').dataset.sessionId,mode:document.querySelector('select[title="发送方式"]').value,images:[...document.querySelectorAll('.image-preview img')].map(e=>{const m=e.src.match(/^data:([^;]+);base64,(.*)$/);return {mimeType:m[1],data:m[2]}})})`)
+    await evaluate(`window.spi.sendPrompt(${JSON.stringify(target.id)},${JSON.stringify(message)},${JSON.stringify(target.mode)},${JSON.stringify(target.images)})`)
+    await fill(app, '')
+    await evaluate(`document.querySelectorAll('.image-preview-remove').forEach(e=>e.click())`)
   }
   const events = () => evaluate('window.__smokeEvents')
   const eventAfter = async (start, type, id, predicate = 'true', timeout = 60000) => waitFor(async () => {

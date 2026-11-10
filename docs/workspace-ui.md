@@ -1,0 +1,34 @@
+# Sidebar and editable outbox / 侧栏与待执行消息
+
+**Source-only, not published.** Public v0.1.1 and macOS build-8 artifacts are unchanged.
+
+## Sidebar
+
+Directory mode has a draggable horizontal separator between directory and session panes. Content never changes its ratio; each pane scrolls independently. Drag with the mouse, use Arrow Up/Down (Shift for larger steps), double-click or press Home to restore half/half. Small fixed minimums protect the session header when resizing the window. The ratio is debounced into the app's existing layout file and restored; recent view keeps the full sidebar height.
+
+The active session is highlighted in both directory and recent lists, including pinned rows and newly opened sessions not yet written to disk. Live rows identify the actual session file/native session ID, not just cwd: independent sessions in the same directory remain separate. Clicking an existing live row activates it without resetting draft, output, YOLO, terminal or outbox.
+
+App-owned path labels/tooltips abbreviate the exact home prefix: `/home/demo/source/app` → `~/source/app`. Prefix boundaries and Windows drive/case/separators are handled; `/home/demo2` is not inside `/home/demo`. Real paths in IPC, layout, launch, cwd, tools, user messages, code and queued payloads are not rewritten.
+
+## Editable outbox
+
+The composer keeps both **Send** and **Stop** available during work. Sending from the GUI uses a main-process-owned outbox, not a native Pi follow-up queue:
+
+- Idle: the next message is handed to Pi automatically.
+- Busy/compacting: new text/images stay in the outbox, separately for each session. The floating panel is anchored immediately above the composer, outside chat scrolling, with its own bounded scroll area.
+- Pending messages can be edited or cancelled. Opening an editor acquires an editing state so a message cannot execute its old content if the current task finishes while typing. Save releases that state; discard retains the original queued content. Removing an image during editing does not affect other attachments/drafts.
+- Normal/append messages run FIFO after the current session-level run settles. **Priority queue** (the former interruption option in the composer) moves work ahead of ordinary pending items; it does not interrupt the current task. The raw Pi RPC steer/follow-up APIs remain available internally, but GUI queued messages are not pre-submitted into those uneditable queues.
+- At the atomic handoff to Pi the row becomes non-editable, then disappears after acceptance. Already handed-off content cannot be individually retracted; stop the active session instead. An extension may consume a slash command without starting an agent run, which does not stall subsequent items.
+- Stop pauses the remaining outbox before clearing/aborting Pi. Settlement does not silently restart it; choose **Resume queue**. Empty stopped queues allow a new explicit submission to start fresh.
+
+Requests use per-submission IDs and per-item revisions. Repeated IPC submission/retries of the same ID do not create duplicate work; stale edits/cancels fail rather than pretending to retract an executing item. Draft acknowledgement clears only the captured draft/images, preserving text or attachments entered while submitting. There is no automatic resend fallback.
+
+On uncertain delivery failure the item is retained, marked unconfirmed and the queue pauses. Check the conversation before editing/resuming: a lost acknowledgement does not prove Pi rejected the message, and removal cannot undo an already accepted action. Failed messages are never retried automatically.
+
+Queues are **memory-only** (up to 50 items / 32 MiB per session), not saved into app configuration or Pi history before delivery. Cancelling a pending item does not execute it. Closing a tab with pending items asks before discarding them; normal app quit confirmation warns about pending messages. With quit confirmation explicitly disabled, closing/exiting still discards the in-memory queue. New/reopened sessions do not restore undelivered text. No queue contents or images are logged to public diagnostics.
+
+## Verification
+
+`npm run test:workspace-ui` covers FIFO/priority, edit holds, revision conflicts, cancellation/handoff races, pause/resume, session isolation, idempotent submission, uncertain failures, stale state replies, handled slash commands, compaction vs real settlement, payload limits, draft preservation and display-only path/split/session-row helpers.
+
+`npm run test:workspace-ui-smoke` uses real Electron, real Pi RPC and a deterministic loopback model. A file-controlled owned tool holds the active task while messages are queued, cancelled and edited. It verifies the unedited/cancelled payloads never execute, the edited revision executes after release, the panel stays fixed during actual chat scroll, active rows/abbreviated paths and tab isolation, native divider dragging/content independence and restored ratios. All HOME/XDG/agent/workspace/profile data and display/PIDs are private to the test.

@@ -40,7 +40,7 @@ class FakePiSession {
   close() { this.exit() }
   kill() { this.exit() }
 }
-const { PiManager } = load('src/main/pi/piManager.ts', {'./piSession':{PiSession:FakePiSession},'./extensionUi':load('src/main/pi/extensionUi.ts')})
+const { PiManager } = load('src/main/pi/piManager.ts', {'./piSession':{PiSession:FakePiSession},'./extensionUi':load('src/main/pi/extensionUi.ts'),'./messageQueue':load('src/main/pi/messageQueue.ts')})
 const { YoloPolicy } = load('src/main/pi/yolo.ts')
 const extension = path.join(tmp, 'gate.mjs'), file = path.join(tmp, 'history.jsonl')
 fs.writeFileSync(extension,'// fixture'); fs.writeFileSync(file,'{}\n')

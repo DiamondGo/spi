@@ -53,6 +53,7 @@ export function togglePinned(p: string): string[] {
 export interface LayoutState {
   viewMode?: string
   selectedDir?: string | null
+  sidebarSplit?: number
   sessions?: Array<{ cwd: string; sessionPath?: string }>
 }
 

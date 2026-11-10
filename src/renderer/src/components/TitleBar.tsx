@@ -6,9 +6,10 @@ import { usePreferences, useT } from '../preferences'
 import { TitleSelect } from './TitleSelect'
 import { Icon, IconControl } from './IconControl'
 import { AppSettingsPanel } from './AppSettingsPanel'
+import { usePathFormatter } from '../homePath'
 
 export function TitleBar({ sidebarOpen, onToggleSidebar }: { sidebarOpen: boolean; onToggleSidebar: () => void }): React.JSX.Element {
-  const t = useT()
+  const t = useT(), formatPath = usePathFormatter()
   const { settings: appSettings } = usePreferences()
   const { sessions, activeId } = useStore()
   const { state: yolo, error: yoloError } = useYoloSnapshot()
@@ -47,7 +48,7 @@ export function TitleBar({ sidebarOpen, onToggleSidebar }: { sidebarOpen: boolea
       </IconControl>
       <span className="tb-brand">sPi</span>
       <div className="tb-center">
-        {active ? <span className="tb-name" title={t('会话：{name}\n工作目录：{cwd}', { name, cwd: active.cwd })}>{name}</span> : <span className="tb-name dim">{t('未打开会话')}</span>}
+        {active ? <span className="tb-name" title={t('会话：{name}\n工作目录：{cwd}', { name, cwd: formatPath(active.cwd) })}>{name}</span> : <span className="tb-name dim">{t('未打开会话')}</span>}
       </div>
       {active && <div className="tb-details">
         <TitleSelect label={t('模型')} text={t('模型：{name}', { name: model?.name || model?.id || t('未选择') })} detail={model ? `${model.name} · ${model.provider}/${model.id}` : undefined} className="tb-model" value={model ? `${model.provider}/${model.id}` : ''} disabled={settings.busy || !settings.models.length} onChange={e => void settings.changeModel(e.target.value)}>
@@ -64,7 +65,7 @@ export function TitleBar({ sidebarOpen, onToggleSidebar }: { sidebarOpen: boolea
         </TitleSelect>
         <span className={`tb-field tb-status${waiting ? ' waiting' : active.streaming ? ' running' : ''}`} title={error || undefined}>{t(error ? '设置失败' : waiting ? '等待审批' : active.streaming ? '运行中' : '空闲')}</span>
       </div>}
-      {active && <button className="tb-btn tb-close-session" title={t('关闭当前会话')} onClick={() => window.spi.closeSession(active.id)}>{t('关闭')}</button>}
+      {active && <button className="tb-btn tb-close-session" title={t('关闭当前会话')} onClick={() => { if (!active.pendingQueue.items.length || window.confirm(t('关闭会话将丢弃 {count} 条待执行消息，确定关闭？', { count: active.pendingQueue.items.length }))) void window.spi.closeSession(active.id) }}>{t('关闭')}</button>}
       <IconControl tooltip={t('设置')}>
         <button type="button" className="tb-btn tb-icon-button app-settings-button" aria-label={t('设置')} aria-haspopup="dialog" aria-expanded={settingsOpen} onClick={() => setSettingsOpen(true)}><Icon name="settings" /></button>
       </IconControl>

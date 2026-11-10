@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import type { ImageRef, PiState } from '../../shared/types'
+import type { ImageRef, PendingMessagesSnapshot, PiState } from '../../shared/types'
 import type { TextParams } from '../../shared/i18n'
 
 // ---- 展示项 ----
@@ -48,7 +48,11 @@ export interface SessionUI {
   state: PiState | null
   items: Item[]
   streaming: boolean
+  openedAt: number
+  pendingQueue: PendingMessagesSnapshot
+  submitting: boolean
   draft: string
+  draftRevision: number
   sendMode: SendMode
   pendingImages: ImageRef[]
   error?: string
@@ -100,7 +104,7 @@ export function addSession(id: string, cwd: string, state: PiState): boolean {
   setStore({
     sessions: {
       ...store.sessions,
-      [id]: { id, cwd, state, items: [], streaming: false, draft: '', sendMode: 'normal', pendingImages: [] }
+      [id]: { id, cwd, state, items: [], streaming: state.isStreaming, openedAt: Date.now(), pendingQueue: { sessionId: id, version: 0, paused: false, items: [] }, submitting: false, draft: '', draftRevision: 0, sendMode: 'normal', pendingImages: [] }
     },
     activeId: id
   })
@@ -128,6 +132,7 @@ export function openSession(cwd: string, sessionPath?: string): Promise<string> 
     const { sessionId, state } = await window.spi.openSession({ cwd, sessionPath })
     if (addSession(sessionId, cwd, state)) {
       try { loadHistory(sessionId, messagesToItems(await window.spi.getMessages(sessionId))) } catch {}
+      if (window.spi.getPendingMessages) { try { updatePendingMessages(await window.spi.getPendingMessages(sessionId)) } catch {} }
     }
     return sessionId
   })()
@@ -152,6 +157,7 @@ export function openDirectory(cwd: string): Promise<string> {
 }
 
 export function removeSession(id: string): void {
+  submissions.delete(id); nonces.delete(id)
   const sessions = { ...store.sessions }
   delete sessions[id]
   setStore({ sessions, activeId: store.activeId === id ? null : store.activeId })
@@ -161,8 +167,37 @@ export function setActive(id: string | null): void {
   setStore({ activeId: id })
 }
 
+const submissions = new Map<string, Promise<void>>()
+const nonces = new Map<string, { text: string; images: ImageRef[]; priority: boolean; id: string; body: string }>()
+export function updatePendingMessages(snapshot: PendingMessagesSnapshot): void {
+  patchSession(snapshot.sessionId, s => snapshot.version < s.pendingQueue.version ? s : { ...s, pendingQueue: snapshot })
+}
+export function submitDraft(id: string, imageLabel: string): Promise<void> {
+  const pending = submissions.get(id)
+  if (pending) return pending
+  const session = store.sessions[id]
+  if (!session || (!session.draft.trim() && !session.pendingImages.length)) return Promise.resolve()
+  const draftRevision = session.draftRevision
+  const text = session.draft, images = session.pendingImages, priority = session.sendMode === 'steer'
+  const previous = nonces.get(id)
+  const reuse = previous && previous.text === text && previous.images === images && previous.priority === priority
+  const nonce = reuse ? previous.id : crypto.randomUUID()
+  const body = reuse ? previous.body : text.trim() || imageLabel
+  nonces.set(id, { text, images, priority, id: nonce, body })
+  patchSession(id, s => ({ ...s, submitting: true, error: undefined }))
+  const request = (async () => window.spi.submitMessage(id, { clientId: nonce, text: body, images, priority }))().then(() => {
+    const sent = new Set(images)
+    patchSession(id, s => ({ ...s, draft: s.draftRevision === draftRevision ? '' : s.draft, draftRevision: s.draftRevision + 1, pendingImages: s.pendingImages.filter(image => !sent.has(image)) }))
+    nonces.delete(id)
+  }).catch(error => { setSessionError(id, String(error)); throw error }).finally(() => {
+    submissions.delete(id); patchSession(id, s => ({ ...s, submitting: false }))
+  })
+  submissions.set(id, request)
+  return request
+}
+
 export function setDraft(id: string, draft: string): void {
-  patchSession(id, (s) => ({ ...s, draft }))
+  patchSession(id, (s) => ({ ...s, draft, draftRevision: s.draftRevision + 1 }))
 }
 
 export function setPiPath(p: string | null): void {
@@ -176,7 +211,7 @@ export function setSessionState(id: string, state: PiState): void {
 export function restoreQueuedMessages(id: string, messages: string[]): void {
   if (!messages.length) return
   // Read the latest draft, not the snapshot captured when abort was requested.
-  patchSession(id, (s) => ({ ...s, draft: [s.draft, ...messages].filter(Boolean).join('\n\n') }))
+  patchSession(id, (s) => ({ ...s, draft: [s.draft, ...messages].filter(Boolean).join('\n\n'), draftRevision: s.draftRevision + 1 }))
 }
 
 export function setSendMode(id: string, sendMode: SendMode): void {
@@ -286,6 +321,10 @@ interface StreamEvent {
 export function applyEvent(id: string, event: Record<string, unknown>): void {
   const t = event.type
 
+  if (t === 'spi_pending_messages') {
+    updatePendingMessages(event as unknown as PendingMessagesSnapshot)
+    return
+  }
   if (t === 'agent_start') {
     setStreaming(id, true)
     return

@@ -53,9 +53,22 @@ export interface PiQueue {
   followUp: string[]
 }
 
+export interface PendingMessage {
+  id: string
+  revision: number
+  text: string
+  images: ImageRef[]
+  priority: boolean
+  status: 'pending' | 'editing' | 'dispatching' | 'failed'
+  error?: string
+}
+export interface PendingMessagesSnapshot { sessionId: string; version: number; paused: boolean; items: PendingMessage[] }
+export interface MessageSubmission { clientId: string; text: string; images?: ImageRef[]; priority?: boolean }
+
 export interface LayoutState {
   viewMode?: string
   selectedDir?: string | null
+  sidebarSplit?: number
   sessions?: Array<{ cwd: string; sessionPath?: string }>
 }
 
@@ -121,6 +134,13 @@ export interface IpcApi {
   openSession(opts: { cwd: string; sessionPath?: string }): Promise<{ sessionId: string; state: PiState }>
   closeSession(sessionId: string): Promise<void>
   sendPrompt(sessionId: string, text: string, mode: 'normal' | 'steer' | 'followUp', images?: ImageRef[]): Promise<void>
+  submitMessage(sessionId: string, message: MessageSubmission): Promise<{ id: string }>
+  getPendingMessages(sessionId: string): Promise<PendingMessagesSnapshot>
+  editPendingMessage(sessionId: string, id: string, revision: number): Promise<void>
+  updatePendingMessage(sessionId: string, id: string, revision: number, text: string, images: ImageRef[]): Promise<void>
+  finishEditingMessage(sessionId: string, id: string, revision: number): Promise<void>
+  cancelPendingMessage(sessionId: string, id: string, revision: number): Promise<void>
+  resumePendingMessages(sessionId: string): Promise<void>
   abortSession(sessionId: string): Promise<PiQueue>
   getState(sessionId: string): Promise<PiState>
   getMessages(sessionId: string): Promise<unknown[]>

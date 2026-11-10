@@ -35,6 +35,8 @@
     "test:settings-smoke": "electron-vite build && node scripts/with-display.cjs scripts/smoke.cjs --settings",
     "test:yolo": "node scripts/yolo.test.cjs && node scripts/session-bridge.test.cjs",
     "test:extension-ui": "node scripts/extension-ui.test.cjs",
+    "test:workspace-ui": "node scripts/workspace-ui.test.cjs",
+    "test:workspace-ui-smoke": "electron-vite build && node scripts/with-display.cjs scripts/smoke.cjs --workspace-ui",
     "test:extension-ui-smoke": "electron-vite build && node scripts/with-display.cjs scripts/smoke.cjs --extension-ui",
     "test:yolo-smoke": "electron-vite build && node scripts/with-display.cjs scripts/smoke.cjs --yolo",
     "test:smoke": "electron-vite build && node scripts/with-display.cjs scripts/smoke.cjs",

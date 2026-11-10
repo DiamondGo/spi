@@ -1,11 +1,13 @@
 import { useRef, useState } from 'react'
 import type { SessionUI } from '../store'
-import { setDraft, setSendMode, setPendingImages, restoreQueuedMessages, type SendMode } from '../store'
+import { setDraft, setSendMode, setPendingImages, restoreQueuedMessages, submitDraft, type SendMode } from '../store'
 import type { ImageRef } from '../../../shared/types'
 import { useAutoHeightTextarea } from '../useAutoHeightTextarea'
 import { Icon, IconControl, IconSelect } from './IconControl'
 import { useT } from '../preferences'
 import { openSessionTerminal, useTerminals } from '../terminals'
+import { PendingMessages } from './PendingMessages'
+import { usePathFormatter } from '../homePath'
 
 interface Props {
   session: SessionUI
@@ -21,7 +23,7 @@ interface Completion {
 export function InputBar({ session }: Props) {
   const t = useT()
   const { sendMode: mode, pendingImages } = session
-  const [sending, setSending] = useState(false)
+  const formatPath = usePathFormatter()
   const terminals = useTerminals()
   const terminalOpen = Boolean(terminals.terminals[session.id])
   const [completion, setCompletion] = useState<Completion | null>(null)
@@ -155,26 +157,7 @@ export function InputBar({ session }: Props) {
   }
 
   async function send(): Promise<void> {
-    const text = session.draft.trim()
-    if ((!text && pendingImages.length === 0) || sending) return
-    setSending(true)
-    try {
-      await window.spi.sendPrompt(session.id, text || t('(图片)'), mode, pendingImages.length ? pendingImages : undefined)
-      setDraft(session.id, '')
-      setPendingImages(session.id, [])
-      setCompletion(null)
-    } catch {
-      if (mode !== 'normal') {
-        try {
-          await window.spi.sendPrompt(session.id, text || t('(图片)'), 'normal', pendingImages.length ? pendingImages : undefined)
-          setDraft(session.id, '')
-          setPendingImages(session.id, [])
-          setCompletion(null)
-        } catch {}
-      }
-    } finally {
-      setSending(false)
-    }
+    try { await submitDraft(session.id, t('(图片)')); setCompletion(null) } catch {}
   }
 
   async function stop(): Promise<void> {
@@ -186,6 +169,7 @@ export function InputBar({ session }: Props) {
 
   return (
     <div className="input-bar-wrap" data-session-id={session.id}>
+      <PendingMessages key={session.id} snapshot={session.pendingQueue} />
       {completion && completion.matches.length > 0 && (
         <div className="completion-popup">
           {completion.matches.map((m, i) => (
@@ -206,12 +190,12 @@ export function InputBar({ session }: Props) {
       )}
       <div className="input-bar">
         <div className="input-options" aria-label={t('当前会话设置')}>
-        <IconSelect label={t('发送方式')} detail={t({ normal: '普通发送', steer: '中途插话', followUp: '排队' }[mode])} icon={mode === 'normal' ? 'send' : mode === 'steer' ? 'steer' : 'queue'} value={mode} onChange={(e) => setSendMode(session.id, e.target.value as SendMode)}>
+        <IconSelect label={t('发送方式')} detail={t({ normal: '空闲发送，忙时排队', steer: '优先排队（不打断当前任务）', followUp: '追加待办' }[mode])} icon={mode === 'normal' ? 'send' : mode === 'steer' ? 'steer' : 'queue'} value={mode} onChange={(e) => setSendMode(session.id, e.target.value as SendMode)}>
           <option value="normal">{t('普通发送')}</option>
-          <option value="steer">{t('中途插话')}</option>
+          <option value="steer">{t('优先排队')}</option>
           <option value="followUp">{t('排队')}</option>
         </IconSelect>
-        <IconControl tooltip={terminals.opening[session.id] ? t('正在打开终端…') : terminalOpen ? t('聚焦当前会话终端') : t('使用默认 shell 在 {cwd} 打开终端', { cwd: session.cwd })}>
+        <IconControl tooltip={terminals.opening[session.id] ? t('正在打开终端…') : terminalOpen ? t('聚焦当前会话终端') : t('使用默认 shell 在 {cwd} 打开终端', { cwd: formatPath(session.cwd) })}>
           <button type="button" className={`terminal-toggle icon-button${terminalOpen ? ' active' : ''}`} aria-label={t('打开当前会话终端')} aria-pressed={terminalOpen} disabled={terminals.opening[session.id]} onClick={() => void openSessionTerminal(session.id)}><Icon name="terminal" /></button>
         </IconControl>
         </div>
@@ -229,13 +213,12 @@ export function InputBar({ session }: Props) {
           onKeyDown={onKeyDown}
           onPaste={onPaste}
         />
-        {session.streaming ? (
+        <IconControl tooltip={t(session.streaming ? '加入待执行队列 · Enter' : '发送消息 · Enter 发送，Shift+Enter 换行')}>
+          <button className="btn-send icon-button" aria-label={t(session.streaming ? '加入待执行队列' : '发送消息')} onClick={send} disabled={(!session.draft.trim() && pendingImages.length === 0) || session.submitting}><Icon name="send" /></button>
+        </IconControl>
+        {session.streaming && (
           <IconControl tooltip={t('停止当前会话（保留未发送及排队文字）')}>
             <button className="btn-stop icon-button" aria-label={t('停止当前会话')} onClick={stop}><Icon name="stop" /></button>
-          </IconControl>
-        ) : (
-          <IconControl tooltip={t('发送消息 · Enter 发送，Shift+Enter 换行')}>
-            <button className="btn-send icon-button" aria-label={t('发送消息')} onClick={send} disabled={!session.draft.trim() && pendingImages.length === 0 || sending}><Icon name="send" /></button>
           </IconControl>
         )}
         </div>

@@ -12,6 +12,9 @@ import { Icon, IconControl } from './components/IconControl'
 import { applyEvent, getStore, openDirectory, openSession, removeSession, setActive, setPiPath, useStore } from './store'
 import type { SessionMeta } from '../../shared/types'
 import { useT } from './preferences'
+import { HomeDirectory } from './homePath'
+import { sidebarSplit } from './pathFormat'
+import { SidebarSplit } from './components/SidebarSplit'
 
 type ViewMode = 'dir' | 'recent'
 
@@ -20,7 +23,8 @@ export default function App() {
   const { sessions, activeId, piPath } = useStore()
   const [viewMode, setViewMode] = useState<ViewMode>('dir')
   const [selectedDir, setSelectedDir] = useState<string | null>(null)
-  const [homeDir, setHomeDir] = useState<string>('/')
+  const [homeDir, setHomeDir] = useState<string>('')
+  const [split, setSplit] = useState(.5)
   const [metaCache, setMetaCache] = useState<Record<string, SessionMeta[]>>({})
   const [manualPath, setManualPath] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -34,6 +38,7 @@ export default function App() {
     const layout = {
       viewMode,
       selectedDir,
+      sidebarSplit: split,
       sessions: Object.values(s.sessions).map((x) => ({
         cwd: x.cwd,
         sessionPath: x.state?.sessionFile
@@ -78,6 +83,7 @@ export default function App() {
       if (cancelled) return
       if (layout.viewMode === 'dir' || layout.viewMode === 'recent') setViewMode(layout.viewMode)
       if (layout.selectedDir) setSelectedDir(layout.selectedDir)
+      setSplit(sidebarSplit(layout.sidebarSplit))
       // 重开上次的会话
       for (const s of layout.sessions ?? []) {
         if (cancelled) break
@@ -97,9 +103,10 @@ export default function App() {
   // 布局/会话变化时持久化（依赖会话 ID 列表，避免每次事件都写文件）
   const sessionIds = Object.keys(sessions).join(',')
   useEffect(() => {
-    persist()
+    const timer = setTimeout(persist, 150)
+    return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewMode, selectedDir, sessionIds, restored])
+  }, [viewMode, selectedDir, sessionIds, split, restored])
 
   useEffect(() => {
     if (!restored) return
@@ -160,7 +167,7 @@ export default function App() {
   }
 
   return (
-    <div className="app-root">
+    <HomeDirectory.Provider value={homeDir}><div className="app-root">
       <TitleBar sidebarOpen={sidebarOpen} onToggleSidebar={() => setSidebarOpen((o) => !o)} />
       {openError && <div className="session-error" role="alert">{openError} <button onClick={() => setOpenError('')}>{t('关闭提示')}</button></div>}
       <div className="layout">
@@ -179,7 +186,7 @@ export default function App() {
           </IconControl>
         </div>
         {viewMode === 'dir' ? (
-          <>
+          <SidebarSplit value={split} onChange={setSplit}>
             <div className="sidebar-section">
               <DirectoryTree
                 homeDir={homeDir}
@@ -191,7 +198,7 @@ export default function App() {
             <div className="sidebar-section session-pane">
               <SessionList dir={selectedDir} onOpen={openSessionMeta} />
             </div>
-          </>
+          </SidebarSplit>
         ) : (
           <div className="sidebar-section">
             <RecentSessions onOpen={openSessionMeta} />
@@ -228,7 +235,7 @@ export default function App() {
               <>
                 <ChatView session={active} />
                 <TerminalDock activeId={activeId} />
-                <InputBar session={active} />
+                <InputBar key={active.id} session={active} />
               </>
             ) : (
               <div className="chat-messages">
@@ -241,6 +248,6 @@ export default function App() {
         )}
       </main>
       </div>
-    </div>
+    </div></HomeDirectory.Provider>
   )
 }

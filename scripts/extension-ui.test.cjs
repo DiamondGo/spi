@@ -9,7 +9,7 @@ class FakePi {
   close(){if(!this.exited){this.exited=true;this.child.stdin.writable=false;this.onExit(0)}}
   kill(){this.close()}
 }
-const {PiManager}=load('src/main/pi/piManager.ts',{'./piSession':{PiSession:FakePi},'./extensionUi':ui})
+const {PiManager}=load('src/main/pi/piManager.ts',{'./piSession':{PiSession:FakePi},'./extensionUi':ui,'./messageQueue':load('src/main/pi/messageQueue.ts')})
 const extension=path.join(tmp,'bridge.mjs');fs.writeFileSync(extension,'// fixture')
 async function setup(hasUi=true){const events=[],state={hasUi},p=new YoloPolicy(()=>{}),m=new PiManager('fixture',p,extension,e=>events.push(e),()=>{},()=>state.hasUi);managers.push(m);const a=await m.open(tmp);return{m,p,events,state,id:a.sessionId,pi:instances.at(-1)}}
 const options=['Allow','Allow always (this project)','Allow always (global)','Block']

@@ -6,7 +6,7 @@ import { findPi, saveManualPiPath, loadPinned, togglePinned, loadLayout, saveLay
 import { scanSessions, scanRecent } from './pi/sessionScanner'
 import { PiManager } from './pi/piManager'
 import { YoloPolicy } from './pi/yolo'
-import type { AppSettings } from '../shared/types'
+import type { AppSettings, ImageRef, MessageSubmission } from '../shared/types'
 import { SettingsStore, themeChrome } from './settings'
 import { QuitController } from './quitController'
 import { translate } from '../shared/i18n'
@@ -79,6 +79,7 @@ const quitting = new QuitController(
       detail: manager?.size ? t('还有 {count} 个已打开的会话。退出将中止这些会话，已产生的内容会保存在会话文件中。', { count: manager.size }) : t('应用程序将关闭。'),
       buttons: [t('退出'), t('取消')], defaultId: 1, cancelId: 1, noLink: true
     }
+    if (manager?.pendingMessageCount) options.detail += '\n' + t('另有 {count} 条未交付消息仅缓存在内存中，退出将丢失。', { count: manager.pendingMessageCount })
     const owner = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0]
     const result = owner ? await dialog.showMessageBox(owner, options) : await dialog.showMessageBox(options)
     return result.response === 0
@@ -244,6 +245,13 @@ ipcMain.handle('session:set-thinking', (_e, id: string, level: string) =>
   manager?.setThinkingLevel(id, level)
 )
 ipcMain.handle('session:commands', (_e, id: string) => manager?.getCommands(id))
+ipcMain.handle('messages:submit', async (_e, id: string, message: MessageSubmission) => (await getManager()).submitMessage(id, message))
+ipcMain.handle('messages:get', async (_e, id: string) => (await getManager()).getPendingMessages(id))
+ipcMain.handle('messages:edit', async (_e, id: string, messageId: string, revision: number) => (await getManager()).editPendingMessage(id, messageId, revision))
+ipcMain.handle('messages:update', async (_e, id: string, messageId: string, revision: number, text: string, images: ImageRef[]) => (await getManager()).updatePendingMessage(id, messageId, revision, text, images))
+ipcMain.handle('messages:finish-edit', async (_e, id: string, messageId: string, revision: number) => (await getManager()).finishEditingMessage(id, messageId, revision))
+ipcMain.handle('messages:cancel', async (_e, id: string, messageId: string, revision: number) => (await getManager()).cancelPendingMessage(id, messageId, revision))
+ipcMain.handle('messages:resume', async (_e, id: string) => (await getManager()).resumePendingMessages(id))
 
 app.whenReady().then(() => {
   if (!ownsInstance) return

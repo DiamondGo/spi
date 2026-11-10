@@ -6,6 +6,7 @@ import type { TerminalEvent, TerminalInfo } from '../../../shared/types'
 import { usePreferences, useT } from '../preferences'
 import { closeSessionTerminal } from '../terminals'
 import { Icon, IconControl } from './IconControl'
+import { usePathFormatter } from '../homePath'
 
 function terminalTheme(): ITheme {
   const css = getComputedStyle(document.documentElement)
@@ -25,7 +26,7 @@ function terminalTheme(): ITheme {
 }
 
 export default function TerminalPanel({ info, visible, error }: { info: TerminalInfo & { focusRequest: number }; visible: boolean; error?: string }): React.JSX.Element {
-  const t = useT()
+  const t = useT(), formatPath = usePathFormatter()
   const { settings } = usePreferences()
   const host = useRef<HTMLDivElement>(null)
   const terminal = useRef<Terminal | null>(null)
@@ -126,11 +127,11 @@ export default function TerminalPanel({ info, visible, error }: { info: Terminal
   useEffect(() => { if (terminal.current) terminal.current.options.theme = terminalTheme() }, [settings.theme])
 
   return (
-    <section className="terminal-panel" hidden={!visible} data-session-id={info.sessionId} data-terminal-id={info.terminalId} aria-label={t('终端：{cwd}', { cwd: info.cwd })}>
+    <section className="terminal-panel" hidden={!visible} data-session-id={info.sessionId} data-terminal-id={info.terminalId} aria-label={t('终端：{cwd}', { cwd: formatPath(info.cwd) })}>
       <header className="terminal-header">
         <strong>{t('终端')}</strong>
-        <span className="terminal-shell" title={info.shell}>{info.shell.split(/[/\\]/).pop()}</span>
-        <span className="terminal-cwd" title={info.cwd}>{info.cwd}</span>
+        <span className="terminal-shell" title={formatPath(info.shell)}>{info.shell.split(/[/\\]/).pop()}</span>
+        <span className="terminal-cwd" title={formatPath(info.cwd)}>{formatPath(info.cwd)}</span>
         <IconControl tooltip={t('关闭终端')}><button type="button" className="terminal-close" aria-label={t('关闭终端')} onClick={() => void closeSessionTerminal(info.sessionId, info.terminalId)}><Icon name="close" /></button></IconControl>
       </header>
       {(error || localError) && <div role="alert" className="terminal-error">{error || localError}</div>}

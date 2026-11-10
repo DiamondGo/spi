@@ -13,6 +13,8 @@
 - Embedded real PTY terminal per session, dark/light/high-contrast themes and English/Chinese UI.
 - Native precompiled desktop archives: **no AppImage, FUSE, or end-user C++ build**.
 
+**Unreleased workspace improvements:** [resizable sidebar split, active-session highlighting, `~` path labels and an editable/cancellable outbox](docs/workspace-ui.md). Busy Send now queues messages in a fixed composer overlay; priority messages wait for the current task to finish rather than interrupting it.
+
 ## Release status and requirements
 
 Source: [DiamondGo/spi](https://github.com/DiamondGo/spi). The npm package is **[`spi-agent-gui`](https://www.npmjs.com/package/spi-agent-gui)**; the executable is **`spi`**. These public defaults are stored in `release.config.json`.

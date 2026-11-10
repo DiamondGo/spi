@@ -36,7 +36,7 @@ module.exports=async function(context){
   let app
   try{
     app=await launch()
-    const suite=process.argv.includes('--terminal')?'terminal-smoke.cjs':process.argv.includes('--settings')?'settings-smoke.cjs':process.argv.includes('--extension-ui')?'extension-ui-smoke.cjs':'yolo-smoke.cjs'
+    const suite=process.argv.includes('--terminal')?'terminal-smoke.cjs':process.argv.includes('--settings')?'settings-smoke.cjs':process.argv.includes('--extension-ui')?'extension-ui-smoke.cjs':process.argv.includes('--workspace-ui')?'workspace-ui-smoke.cjs':'yolo-smoke.cjs'
     await require('./'+suite)({...context,app,hashes,before})
     assert.deepEqual(hashes(),before);assert.deepEqual(errors,[])
   }catch(error){if(app&&!app.exited){try{fs.writeFileSync(path.join(artifacts,'gui-failure.json'),JSON.stringify(await app.eval('(async()=>({yolo:await window.spi.getYoloState(),events:window.__smokeEvents,body:document.body.innerText}))()')))}catch{}}throw error}

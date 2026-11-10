@@ -1,10 +1,11 @@
 import { randomUUID } from 'crypto'
 import { existsSync, realpathSync } from 'fs'
 import { resolve } from 'path'
-import type { PiEventPayload, PiQueue, PiState } from '../../shared/types'
+import type { ImageRef, MessageSubmission, PiEventPayload, PiQueue, PiState } from '../../shared/types'
 import { PiSession } from './piSession'
 import { YoloPolicy } from './yolo'
 import { ExtensionUi } from './extensionUi'
+import { MessageQueue } from './messageQueue'
 
 function sessionFileKey(cwd: string, file: string): string {
   const absolute = resolve(cwd, file)
@@ -18,6 +19,7 @@ export class PiManager {
   private sessionFiles = new Map<string, string>()
   private opening = new Map<string, Promise<{ sessionId: string; state: PiState }>>()
   private extensionUi: ExtensionUi
+  private messages: MessageQueue
 
   constructor(
     private piPath: string,
@@ -42,6 +44,15 @@ export class PiManager {
       publish: (sessionId, event) => this.emitEvent({ sessionId, event })
     })
     this.yolo.subscribe(() => this.extensionUi.refresh())
+    this.messages = new MessageQueue({
+      state: id => this.getState(id),
+      deliver: (id, message) => {
+        const session = this.sessions.get(id)
+        if (!session || this.closing.has(id) || !this.uiAvailable()) throw new Error('session unavailable')
+        return session.sendCommand('prompt', { message: message.text, ...(message.images.length ? { images: message.images.map(image => ({ type: 'image', ...image })) } : {}) })
+      },
+      changed: snapshot => this.emitEvent({ sessionId: snapshot.sessionId, event: { type: 'spi_pending_messages', ...snapshot } })
+    })
   }
 
   private uiAvailable(): boolean { try { return this.hasUi() } catch { return false } }
@@ -73,9 +84,10 @@ export class PiManager {
     const id = randomUUID()
     const token = randomUUID()
     this.yolo.open(id)
+    this.messages.open(id)
     let s: PiSession
     try { s = new PiSession(id, cwd, sessionPath, this.piPath, this.extensionPath, token) }
-    catch (error) { this.yolo.close(id); throw error }
+    catch (error) { this.yolo.close(id); this.messages.close(id); throw error }
     let resolveReady!: () => void
     let rejectReady!: (error: Error) => void
     const ready = new Promise<void>((resolve, reject) => { resolveReady = resolve; rejectReady = reject })
@@ -103,10 +115,12 @@ export class PiManager {
           return
         }
       }
-      if (e.type === 'agent_start') this.yolo.begin(id)
-      if (e.type === 'agent_settled') this.extensionUi.cancel(id)
+      if (e.type === 'agent_start') { this.yolo.begin(id); this.messages.activity(id, true) }
+      if (e.type === 'agent_settled') { this.extensionUi.cancel(id); this.messages.activity(id, false) }
+      if (e.type === 'compaction_start') this.messages.block(id)
+      if (e.type === 'compaction_end') this.messages.wake(id)
       // Internal approval results must never be forgeable through regular pi records.
-      if (String(e.type).startsWith('spi_permission') || String(e.type).startsWith('spi_extension')) return
+      if (String(e.type).startsWith('spi_permission') || String(e.type).startsWith('spi_extension') || String(e.type).startsWith('spi_pending')) return
       if (this.extensionUi.receive(id, e)) return
       this.emitEvent({ sessionId: id, event: e })
     }
@@ -116,6 +130,7 @@ export class PiManager {
       this.closing.add(id)
       this.extensionUi.cancel(id)
       this.extensionUi.forget(id)
+      this.messages.close(id)
       this.yolo.close(id)
       this.sessions.delete(id)
       this.sessionFiles.delete(id)
@@ -134,6 +149,7 @@ export class PiManager {
       this.closing.add(id)
       this.extensionUi.cancel(id)
       this.extensionUi.forget(id)
+      this.messages.close(id)
       this.yolo.close(id)
       this.sessions.delete(id)
       this.sessionFiles.delete(id)
@@ -149,6 +165,7 @@ export class PiManager {
     const s = this.sessions.get(sessionId)
     if (!s) return
     this.closing.add(sessionId)
+    this.messages.close(sessionId)
     this.yolo.stop(sessionId)
     this.extensionUi.cancel(sessionId)
     try {
@@ -160,7 +177,7 @@ export class PiManager {
   closeAll(): void {
     // Freeze every session before any permission observer can run during shutdown.
     for (const id of this.sessions.keys()) { this.closing.add(id); this.yolo.hold(id) }
-    for (const [id, s] of this.sessions) { this.yolo.stop(id); this.extensionUi.cancel(id); s.close() }
+    for (const [id, s] of this.sessions) { this.messages.close(id); this.yolo.stop(id); this.extensionUi.cancel(id); s.close() }
   }
 
   async sendPrompt(sessionId: string, text: string, mode: 'normal' | 'steer' | 'followUp', images?: Array<{ data: string; mimeType: string }>): Promise<void> {
@@ -184,6 +201,7 @@ export class PiManager {
     let queue: PiQueue = { steering: [], followUp: [] }
     if (!s) return queue
     // Freeze approvals first, but don't resolve the dialog until queued messages have been removed.
+    this.messages.pause(sessionId)
     this.suspending.set(sessionId, (this.suspending.get(sessionId) ?? 0) + 1)
     this.yolo.hold(sessionId)
     // Esc 行为：先清队列再中止，将尚未执行的文本返回给渲染进程恢复草稿。
@@ -198,6 +216,18 @@ export class PiManager {
       else this.suspending.delete(sessionId)
     }
   }
+
+  submitMessage(id: string, message: MessageSubmission): { id: string } {
+    this.getCwd(id)
+    if (!this.yolo.isReady(id) || !this.uiAvailable()) throw new Error('会话尚未就绪')
+    return this.messages.submit(id, message)
+  }
+  getPendingMessages(id: string) { return this.messages.snapshot(id) }
+  editPendingMessage(id: string, messageId: string, revision: number): void { this.messages.edit(id, messageId, revision) }
+  updatePendingMessage(id: string, messageId: string, revision: number, text: string, images: ImageRef[]): void { this.messages.update(id, messageId, revision, text, images) }
+  finishEditingMessage(id: string, messageId: string, revision: number): void { this.messages.finishEditing(id, messageId, revision) }
+  cancelPendingMessage(id: string, messageId: string, revision: number): void { this.messages.cancel(id, messageId, revision) }
+  resumePendingMessages(id: string): void { this.messages.resume(id) }
 
   getCwd(sessionId: string): string {
     const session = this.sessions.get(sessionId)
@@ -263,6 +293,8 @@ export class PiManager {
     const data = (await s.sendCommand('get_commands')) as { commands: Array<{ name: string; description?: string; source: string }> }
     return data.commands
   }
+
+  get pendingMessageCount(): number { return this.messages.pendingCount }
 
   get size(): number {
     return this.sessions.size

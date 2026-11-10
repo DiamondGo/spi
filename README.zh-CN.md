@@ -14,6 +14,8 @@
 
 **源码新增，尚未发布：** 顶栏改为单一 [YOLO 开关](docs/extension-approvals.md)。选中时自动回复兼容 Pi 工具审批的单次 Allow；未选中时遵循 Pi 自己的会话设置，不再增加 sPi 审批。旧 sPi 权限模式/白名单面板已移除。已发布的 v0.1.1 和 Mac build-8 候选包尚不包含此改动。
 
+**源码新增，尚未发布：** [侧栏分隔线可拖动并保存、当前会话高亮、主目录显示为 `~`、忙时消息缓存且可编辑/取消](docs/workspace-ui.md)。待执行区固定在输入框上方，不随聊天滚动；优先排队只调整待办顺序，不打断当前任务。
+
 ## 发布状态与依赖
 
 源码仓库：[DiamondGo/spi](https://github.com/DiamondGo/spi)。npm 包为 **[`spi-agent-gui`](https://www.npmjs.com/package/spi-agent-gui)**，可执行命令仍为 **`spi`**；公开默认值集中在 `release.config.json`。

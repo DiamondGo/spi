@@ -61,6 +61,7 @@ html, body, #root { background: var(--bg); color: var(--fg); }
 }
 .sidebar-mode-toggle button.active { border-color: var(--accent); }
 .tree-node:hover, .session-item:hover, .session-tab:hover { background: var(--raised); }
+.session-item.active, .session-item.active:hover { background: var(--selected); box-shadow: inset 3px 0 0 var(--accent); }
 .tree-node.selected, .session-tab.active { background: var(--selected); border-color: var(--accent-fg); color: var(--fg); }
 .tree-badge { background: var(--selected); color: var(--accent-fg); }
 .session-tab-close, .pin-btn { color: var(--dim); }

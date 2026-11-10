@@ -217,7 +217,11 @@ body,
   border-color: #3b82f6;
 }
 
-/* Equal, content-independent shares below the mode switch; each pane owns its scroll. */
+/* User-sized, content-independent tracks; each pane owns its scroll. */
+.sidebar-split { flex: 1; min-height: 0; display: grid; overflow: hidden; }
+.sidebar-resizer { cursor: row-resize; touch-action: none; background: var(--subtle, #333); position: relative; outline-offset: -2px; }
+.sidebar-resizer:hover, .sidebar-resizer:focus-visible { background: var(--accent, #3b82f6); }
+.sidebar-resizer::after { content: ''; display: block; width: 36px; height: 1px; background: var(--muted, #aaa); margin: 3px auto; }
 .sidebar-section {
   flex: 1 1 0;
   min-height: 0;
@@ -329,6 +333,10 @@ body,
 .session-item:hover {
   background: #2a2a2a;
 }
+
+.session-item.active { background: var(--selected, #263552); box-shadow: inset 3px 0 0 var(--accent, #3b82f6); }
+.session-item.active .session-item-title { color: var(--accent-fg, #9bc3ff); }
+.session-item:focus-visible { outline: 2px solid var(--focus, #6da7ff); outline-offset: -2px; }
 
 .session-item-title {
   overflow: hidden;
@@ -781,6 +789,23 @@ body,
   flex-shrink: 0;
   min-width: 0;
 }
+
+/* Client-owned outbox, anchored to the composer rather than the chat scroll. */
+.pending-messages { position: absolute; bottom: calc(100% + 6px); left: 12px; right: 12px; z-index: 8; max-height: min(32vh, 240px); display: flex; flex-direction: column; background: var(--panel, #23252a); color: var(--fg, #ddd); border: 1px solid var(--border, #515767); border-radius: 8px; box-shadow: 0 5px 22px #0005; font-size: 12px; }
+.pending-messages-header { padding: 7px 10px; display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-shrink: 0; border-bottom: 1px solid var(--subtle, #333); }
+.pending-message-list { min-height: 0; overflow-y: auto; }
+.pending-message { padding: 8px 10px; border-bottom: 1px solid var(--subtle, #333); }
+.pending-message:last-child { border-bottom: 0; }
+.pending-message-heading, .pending-message-actions { display: flex; align-items: center; gap: 6px; }
+.pending-message-heading { justify-content: space-between; color: var(--dim, #aaa); }
+.pending-message-preview { white-space: pre-wrap; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; margin-top: 4px; }
+.pending-messages button { background: var(--raised, #30343e); color: var(--fg, #ddd); border: 1px solid var(--border, #515767); border-radius: 4px; padding: 3px 7px; cursor: pointer; }
+.pending-messages button:disabled { opacity: .5; cursor: default; }
+.pending-messages button:focus-visible, .pending-editor textarea:focus-visible { outline: 2px solid var(--focus, #6da7ff); }
+.pending-editor textarea { display: block; width: 100%; min-height: 60px; max-height: 100px; resize: vertical; background: var(--code, #191c22); color: var(--fg, #ddd); border: 1px solid var(--border, #515767); border-radius: 4px; margin: 6px 0; padding: 6px; font: inherit; }
+.pending-message-error { color: var(--danger, #ff9c9c); overflow-wrap: anywhere; margin-top: 4px; }
+.pending-images { display: flex; gap: 4px; margin: 4px 0; }
+.pending-images img { width: 38px; height: 38px; object-fit: cover; }
 
 /* ---- 粘贴图片预览 ---- */
 

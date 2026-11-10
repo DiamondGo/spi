@@ -1,5 +1,11 @@
 # Distribution verification / 分发验收
 
+## Unreleased sidebar/outbox improvements
+
+- `test:workspace-ui` passes 19 unit checks for client-owned FIFO/priority queues, editing leases, stale revisions, cancel/handoff races, pause/resume, session isolation, nonce idempotency, uncertain delivery failures, stale state replies, slash-command handling, compaction vs settlement, payload bounds, draft/image preservation, snapshot ordering, home shortening and session-row identity.
+- A real Electron/Pi RPC `test:workspace-ui-smoke` passed 7 checks using a file-controlled tool and loopback model: home-label shortening without changing actual cwd, native separator drag and content-independent tracks, queued busy sends, active directory/recent rows and isolated tab outboxes, cancelled payload never executing, editing surviving task completion, only the saved revision executing, actual scroll-independent composer anchoring, and restored ratios. Private HOME/XDG/agent/profile/workspace and unchanged configuration hashes were verified.
+- No queue body/image is persisted before handoff; closing with pending work warns, and accepted/in-flight work is not advertised as cancellable. See [workspace semantics and limits](workspace-ui.md). Source only; published v0.1.1 and Mac build-8 were not replaced.
+
 ## Unreleased YOLO switch (supersedes the separate sPi permission layer)
 
 - Source-only change; published v0.1.1 and macOS build-8 remain unchanged. The header is now a two-state YOLO checkbox, not a Permissions selector. Off follows Pi's session policy without adding sPi approval; on auto-replies Allow once to compatible Pi tool dialogs.

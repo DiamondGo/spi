@@ -3,6 +3,19 @@ on:
   push:
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      publish_only:
+        description: Recover publication from an already verified tag build
+        type: boolean
+        default: false
+      release_tag:
+        description: Existing release tag (recovery only)
+        type: string
+        default: ''
+      source_run:
+        description: Verified tag build run ID (recovery only)
+        type: string
+        default: ''
 permissions:
   contents: read
 env:
@@ -10,6 +23,7 @@ env:
   SPI_NPM_PACKAGE: ${{ vars.SPI_NPM_PACKAGE }}
 jobs:
   native:
+    if: ${{ !inputs.publish_only }}
     strategy:
       fail-fast: false
       matrix:
@@ -68,14 +82,29 @@ jobs:
           if-no-files-found: error
   publish:
     needs: native
-    if: github.ref_type == 'tag'
+    if: always() && ((github.ref_type == 'tag' && needs.native.result == 'success') || (github.event_name == 'workflow_dispatch' && inputs.publish_only))
     runs-on: ubuntu-22.04
     permissions:
       contents: write
+      actions: read
       id-token: write
     environment: release
+    env:
+      RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
+      SOURCE_RUN: ${{ inputs.source_run || github.run_id }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify artifact provenance against the immutable tag
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node -e "if(process.env.RELEASE_TAG!=='v'+require('./package.json').version)process.exit(1)"
+          [[ "$SOURCE_RUN" =~ ^[0-9]+$ ]]
+          source_sha="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN" --jq .head_sha)"
+          test "$source_sha" = "$(git rev-parse "$RELEASE_TAG^{commit}")"
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -85,21 +114,27 @@ jobs:
         run: npm audit --audit-level=high
       - uses: actions/download-artifact@v4
         with:
-          pattern: native-*
+          pattern: native-linux-*
           merge-multiple: true
           path: dist/release
+          run-id: ${{ env.SOURCE_RUN }}
+          github-token: ${{ github.token }}
       - run: node scripts/distribution.cjs prepare --production && node scripts/distribution.cjs manifest
       - name: Create draft, upload assets, then make Release visible
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" --draft --title "sPi $GITHUB_REF_NAME" --generate-notes
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = true
+          else
+            gh release create "$RELEASE_TAG" --draft --title "sPi $RELEASE_TAG (Linux)" --generate-notes
+          fi
           shopt -s nullglob
-          runtime_assets=(dist/release/spi-*.tar.gz dist/release/spi-*.zip)
-          test "${#runtime_assets[@]}" -gt 0
-          gh release upload "$GITHUB_REF_NAME" "${runtime_assets[@]}" dist/release/release-manifest.json dist/release/SHA256SUMS dist/release/spi-installer.cjs dist/release/install.sh dist/release/INSTALLER-NOTICES.txt
-          gh release edit "$GITHUB_REF_NAME" --draft=false
+          runtime_assets=(dist/release/spi-*.tar.gz)
+          test "${#runtime_assets[@]}" -eq 2
+          gh release upload "$RELEASE_TAG" --clobber "${runtime_assets[@]}" dist/release/release-manifest.json dist/release/SHA256SUMS dist/release/spi-installer.cjs dist/release/install.sh dist/release/INSTALLER-NOTICES.txt
+          gh release edit "$RELEASE_TAG" --title "sPi $RELEASE_TAG (Linux)" --draft=false
       - name: Verify public assets before publishing npm
         run: node scripts/verify-release.cjs
       - name: Publish light npm package with Trusted Publishing

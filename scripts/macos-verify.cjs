@@ -11,6 +11,7 @@ function verifyMac(executable){
   const icon=path.join(resources,info.CFBundleIconFile.endsWith('.icns')?info.CFBundleIconFile:info.CFBundleIconFile+'.icns')
   assert.deepEqual(fs.readFileSync(icon),fs.readFileSync(path.join(__dirname,'../build/icons/icon.icns')))
   const native=path.join(resources,'app.asar.unpacked/node_modules/node-pty/build/Release')
+  for(const file of [executable,path.join(native,'spawn-helper')])fs.accessSync(file,fs.constants.X_OK)
   for(const file of [executable,path.join(native,'pty.node'),path.join(native,'spawn-helper')]){
     const arch=execFileSync('/usr/bin/lipo',['-archs',file],{encoding:'utf8'}).trim()
     assert.equal(arch,process.arch==='x64'?'x86_64':'arm64','Runtime must be native to its declared target')

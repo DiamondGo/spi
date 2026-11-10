@@ -74,10 +74,24 @@ function stripMacDebug(directory,platform=process.platform,run=execFileSync){
   }
   require('./privacy.cjs').scanTree(directory,{binary:true})
 }
+function restoreUnpackedModes(original,extracted){
+  if(!fs.existsSync(original))return
+  function visit(dir){for(const e of fs.readdirSync(dir,{withFileTypes:true})){
+    const source=path.join(dir,e.name),target=path.join(extracted,path.relative(original,source))
+    if(e.isSymbolicLink())continue
+    if(e.isDirectory()){visit(source);continue}
+    if(fs.existsSync(target)&&fs.lstatSync(target).isFile())fs.chmodSync(target,fs.statSync(source).mode&0o777)
+  }}
+  visit(original)
+}
 async function sanitizeRuntime(resources){
   const archive=path.join(resources,'app.asar'), tmp=fs.mkdtempSync(path.join(os.tmpdir(),'spi-public-runtime-'))
   try{
     asar.extractAll(archive,tmp)
+    // ASAR unpacked entries omit executable metadata; extractAll otherwise
+    // turns spawn-helper into a non-executable file. Preserve original modes,
+    // without following links or retaining setuid/setgid bits.
+    restoreUnpackedModes(archive+'.unpacked',tmp)
     const ptyDirectory=path.join(tmp,'node_modules','node-pty')
     keepPty(ptyDirectory)
     stripMacDebug(ptyDirectory)
@@ -125,4 +139,4 @@ function manifest(){
   fs.writeFileSync(path.join(release,'SHA256SUMS'),files.map(n=>crypto.createHash('sha256').update(fs.readFileSync(path.join(release,n))).digest('hex')+'  '+n).join('\n')+'\n')
 }
 if(require.main===module)(async()=>{const cmd=process.argv[2];if(cmd==='prepare')await prepare();else if(cmd==='archive')await archive();else if(cmd==='manifest')manifest();else throw Error('prepare | archive | manifest')})().catch(e=>{console.error(e.message);process.exitCode=1})
-module.exports={config,prepare,archive,manifest,sanitizeRuntime,keepPty,stripMacDebug,copyRuntime}
+module.exports={config,prepare,archive,manifest,sanitizeRuntime,keepPty,stripMacDebug,copyRuntime,restoreUnpackedModes}

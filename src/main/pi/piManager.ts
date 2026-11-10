@@ -44,6 +44,8 @@ export class PiManager {
     this.permissions.subscribe(() => this.extensionUi.refresh())
   }
 
+  private uiAvailable(): boolean { try { return this.hasUi() } catch { return false } }
+
   async open(cwd: string, sessionPath?: string): Promise<{ sessionId: string; state: PiState }> {
     // Only existing session files have an identity. New sessions in the same cwd stay independent.
     if (!sessionPath) return this.startSession(cwd)
@@ -91,6 +93,7 @@ export class PiManager {
             s.child.stdin?.write(JSON.stringify({ type: 'extension_ui_response', id: reqId, value: allow ? 'allow' : 'deny' }) + '\n')
           }
           try {
+            if (!this.uiAvailable() || this.closing.has(id)) { reply(false); return }
             const request = JSON.parse(e.title.slice(('spi-permission:' + token + ':').length))
             this.permissions.request(id, reqId, request.cwd, request.tool, request.input, reply)
           } catch (error) {

@@ -1,3 +1,4 @@
+import { performance } from 'perf_hooks'
 import type { PiRecord } from '../../shared/types'
 
 export interface ToolApproval {
@@ -68,13 +69,13 @@ export class ExtensionUi {
     if (event.timeout !== undefined && timeout === undefined) p.approval = null
     const ttl = approval ? Math.min(timeout ?? APPROVAL_TTL, APPROVAL_TTL) : timeout
     if (ttl !== undefined) {
-      p.deadline = Date.now() + ttl
+      p.deadline = performance.now() + ttl
       p.timer = setTimeout(() => this.finish(sessionId, id, p, { type: 'extension_ui_response', id, cancelled: true }, 'expired'), ttl)
       p.timer.unref?.()
     }
     if (entries.size > MAX_PENDING) {
       this.finish(sessionId, id, p, { type: 'extension_ui_response', id, cancelled: true }, 'cancelled')
-    } else if (p.deadline !== undefined && p.deadline <= Date.now()) {
+    } else if (p.deadline !== undefined && p.deadline <= performance.now()) {
       this.finish(sessionId, id, p, { type: 'extension_ui_response', id, cancelled: true }, 'expired')
     } else if (!this.autoAllow(sessionId, id, p)) {
       this.deps.publish(sessionId, request)
@@ -90,7 +91,7 @@ export class ExtensionUi {
 
   private autoAllow(sessionId: string, id: string, p: Pending): boolean {
     if (!p.approval || !this.deps.canAutoAllow(sessionId)) return false
-    if (p.deadline !== undefined && p.deadline <= Date.now()) {
+    if (p.deadline !== undefined && p.deadline <= performance.now()) {
       this.finish(sessionId, id, p, { type: 'extension_ui_response', id, cancelled: true }, 'expired')
     } else {
       this.finish(sessionId, id, p, { type: 'extension_ui_response', id, value: 'Allow' }, 'auto-allow')
@@ -101,7 +102,7 @@ export class ExtensionUi {
   answer(sessionId: string, id: string, payload: Payload): void {
     const p = this.pending.get(sessionId)?.get(id)
     if (!p || !this.deps.canAnswer(sessionId)) throw new Error('扩展询问已取消、过期或会话已停止')
-    if (p.deadline !== undefined && p.deadline <= Date.now()) {
+    if (p.deadline !== undefined && p.deadline <= performance.now()) {
       this.finish(sessionId, id, p, { type: 'extension_ui_response', id, cancelled: true }, 'expired')
       throw new Error('扩展询问已取消、过期或会话已停止')
     }

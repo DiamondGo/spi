@@ -4,7 +4,7 @@ function load(relative,mocks={}){const file=path.join(tmp,path.basename(relative
 const ui=load('src/main/pi/extensionUi.ts'),{Permissions}=load('src/main/pi/permissions.ts')
 const instances=[],managers=[];let count=0,seq=0
 class FakePi {
-  constructor(id,cwd,file,pi,extension,token){this.id=id;this.cwd=cwd;this.wire=[];this.commands=[];this.child={stdin:{writable:true,write:line=>{this.wire.push(JSON.parse(line));return true}}};instances.push(this);queueMicrotask(()=>this.onEvent({type:'extension_ui_request',method:'notify',message:'spi-permission-ready:'+token}))}
+  constructor(id,cwd,file,pi,extension,token){this.id=id;this.cwd=cwd;this.token=token;this.wire=[];this.commands=[];this.child={stdin:{writable:true,write:line=>{this.wire.push(JSON.parse(line));return true}}};instances.push(this);queueMicrotask(()=>this.onEvent({type:'extension_ui_request',method:'notify',message:'spi-permission-ready:'+token}))}
   sendCommand(command){this.commands.push(command);if(command==='get_state')return Promise.resolve({sessionFile:path.join(tmp,this.id+'.jsonl')});if(command==='clear_queue'&&this.clearGate)return this.clearGate;return Promise.resolve({steering:[],followUp:[]})}
   close(){if(!this.exited){this.exited=true;this.child.stdin.writable=false;this.onExit(0)}}
   kill(){this.close()}
@@ -38,6 +38,7 @@ async function check(name,fn){await fn();count++;console.log('PASS',name);for(co
   })
   await check('no UI or missing bridge readiness prevents automatic replies',async()=>{
     const a=await setup(false);a.p.setMode(a.id,'all');a.pi.onEvent(req());assert.equal(a.pi.wire.length,0);await assert.rejects(a.m.answerExtensionUi(a.id,'r',{value:'Allow'}),/已停止/)
+    a.pi.onEvent({type:'extension_ui_request',method:'select',id:'own',title:'spi-permission:'+a.pi.token+':'+JSON.stringify({cwd:tmp,tool:'bash',input:{command:'fixture'}}),options:['allow','deny']});assert.equal(a.pi.wire.at(-1).value,'deny')
     const p=new Permissions(path.join(tmp,'not-ready.json'),()=>{});p.open('x');p.setMode('x','all');assert.equal(p.canAutoAllowExtension('x'),false);p.ready('x');assert.equal(p.canAutoAllowExtension('x'),true);p.hold('x');assert.equal(p.canAutoAllowExtension('x'),false);p.close('x')
   })
   await check('login/deletion/plan/unknown/forwarded and other UI methods remain manual even in All',async()=>{

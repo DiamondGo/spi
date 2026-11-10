@@ -1,5 +1,13 @@
 # Distribution verification / 分发验收
 
+## macOS candidate acceptance (not a public release)
+
+- [Actions run 42892344373](https://github.com/DiamondGo/spi/actions/runs/42892344373) succeeded for native darwin-arm64 (macOS 26), native darwin-x64 (macOS 15 Intel), and combined artifact assembly, from source commit c3230af5a4c148747ccf4f98f388746732e050cd.
+- Both actual ZIPs were installed into temporary roots. Native architecture, ICNS icon, executable helper permissions, refreshed ASAR hash and deep/strict ad-hoc signatures passed before/after extraction; real PTY, isolated GUI, PNG/SVG favicon, Pi RPC, same-directory single-instance reuse and normal application quit passed.
+- Regression coverage includes compiler prefix mapping, debug metadata removal, no unused mac prebuilds, unchanged Windows helper retention, verbatim framework links, canonical parent aliases, malicious link rejection, unpacked execution modes, immediate secondary exit and owner-checked quit without bypassing confirmation.
+- Combined artifact: `spi-macos-0.1.1-build-8` (251916971 bytes), SHA-256 `203bef998258eebd963a627eb3316718fd26afc09b3e5ec4555584daef4a9151`. It includes both runtime ZIPs, checksums, the two-target manifest, standalone installer/bootstrap and build reports. [Download and signing limits](macos-build.md).
+- Bundles declare macOS 13.0 minimum, not verified compatibility with every OS version. Ad-hoc signatures are NOT Developer ID signatures or notarization; Gatekeeper acceptance is not claimed. Public Linux v0.1.1 assets/npm were unchanged, and public Pi installs still use the Linux-only manifest.
+
 ## Linux v0.1.1 release acceptance
 
 - Public desktop Release: https://github.com/DiamondGo/spi/releases/tag/v0.1.1 — Linux x64 and arm64, with the new spy icon and owned desktop entry. The v0.1.0 assets were not overwritten.

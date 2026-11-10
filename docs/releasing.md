@@ -24,7 +24,7 @@ npm run test:installer
 npm run dist -- --production
 ```
 
-The initial published platform matrix contains Linux x64 and arm64 only; Windows/macOS are deferred. Build on the native target runner. `dist/release` contains a complete runtime archive, target descriptor, `release-manifest.json`, `SHA256SUMS`, the standalone installer, license notices and the version-bound shell bootstrap. `dist/npm-package` is the only npm publishing directory. The root and launcher source package are private.
+The initial published platform matrix contains Linux x64 and arm64 only; Windows/macOS public releases are deferred. The independent [macOS candidate workflow](macos-build.md) now verifies native Apple Silicon/Intel ZIPs and uploads Actions artifacts without modifying public Release assets or npm. Build on the native target runner. `dist/release` contains a complete runtime archive, target descriptor, `release-manifest.json`, `SHA256SUMS`, the standalone installer, license notices and the version-bound shell bootstrap. `dist/npm-package` is the only npm publishing directory. The root and launcher source package are private.
 
 Runtime archives:
 
@@ -33,6 +33,7 @@ spi-<version>-linux-x64.tar.gz
 spi-<version>-linux-arm64.tar.gz
 spi-<version>-win32-x64.zip
 spi-<version>-darwin-arm64.zip
+spi-<version>-darwin-x64.zip
 ```
 
 No AppImage is used by this workflow. Full Electron/runtime resources, private native PTY and the permission extension must be included. Native modules are rebuilt for the pinned Electron ABI. macOS runtime cleanup happens before ad-hoc signing, not after signing. No notarization or release certificate is silently assumed.

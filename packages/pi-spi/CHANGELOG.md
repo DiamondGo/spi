@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Native macOS Apple Silicon/Intel ZIP candidates, with safe framework links, canonical extraction containment, preserved PTY helper modes, source-path cleanup and signed ASAR hash verification.
+- macOS secondary processes exit before readiness; owning-window app quit uses the same confirmation/cleanup controller and defers native termination until cancelled events unwind.
+- These source changes are not replacements for published 0.1.1 assets/npm. Developer ID signing, notarization and a new matching public release remain separate gates.
+
 ## 0.1.1
 
 - Original female-spy silhouette icon for the application window, favicon and platform packages.

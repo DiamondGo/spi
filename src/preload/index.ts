@@ -29,17 +29,12 @@ const api: IpcApi = {
     ipcRenderer.on('settings:changed', listener)
     return () => ipcRenderer.removeListener('settings:changed', listener)
   },
-  getPermissions: () => ipcRenderer.invoke('permissions:get'),
-  setPermissionMode: (id, mode) => ipcRenderer.invoke('permissions:mode', id, mode),
-  setDefaultPermissionMode: mode => ipcRenderer.invoke('permissions:default', mode),
-  answerPermission: (id, reqId, decision) => ipcRenderer.invoke('permissions:answer', id, reqId, decision),
-  clearSessionPermissions: id => ipcRenderer.invoke('permissions:clear', id),
-  addPermissionRule: (cwd, command) => ipcRenderer.invoke('permissions:add-rule', cwd, command),
-  removePermissionRule: id => ipcRenderer.invoke('permissions:remove-rule', id),
-  onPermissionsChanged: cb => {
+  getYoloState: () => ipcRenderer.invoke('yolo:get'),
+  setYolo: (id, enabled) => ipcRenderer.invoke('yolo:set', id, enabled),
+  onYoloChanged: cb => {
     const listener = (_e: unknown, state: unknown) => cb(state as never)
-    ipcRenderer.on('permissions:changed', listener)
-    return () => ipcRenderer.removeListener('permissions:changed', listener)
+    ipcRenderer.on('yolo:changed', listener)
+    return () => ipcRenderer.removeListener('yolo:changed', listener)
   },
   getHome: () => ipcRenderer.invoke('app:home'),
   findPi: () => ipcRenderer.invoke('pi:find'),

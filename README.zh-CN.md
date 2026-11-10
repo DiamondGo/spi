@@ -8,11 +8,11 @@
 
 - 目录/近期会话、置顶、多标签和独立草稿；重复点击同一会话只激活原 tab。
 - 流式回复、思考/工具输出、扩展交互、会话级工具执行审批。
-- 模型/思考/许可选择、图片附件、文件与命令补全。
+- 模型/思考选择、会话级 YOLO 开关、图片附件、文件与命令补全。
 - 每会话真实 PTY 终端；深色/浅色/高对比主题与英中界面。
 - 下载完整预编译目录，**无需 AppImage、FUSE 或用户现场编译 C++**。
 
-**源码新增，尚未发布：** 当前会话选择全部允许后，可以[对兼容格式的 Pi 工具审批自动回复单次 Allow](docs/extension-approvals.md)，其他询问仍需手动。已发布的 v0.1.1 和 Mac build-8 候选包尚不包含此功能。
+**源码新增，尚未发布：** 顶栏改为单一 [YOLO 开关](docs/extension-approvals.md)。选中时自动回复兼容 Pi 工具审批的单次 Allow；未选中时遵循 Pi 自己的会话设置，不再增加 sPi 审批。旧 sPi 权限模式/白名单面板已移除。已发布的 v0.1.1 和 Mac build-8 候选包尚不包含此改动。
 
 ## 发布状态与依赖
 
@@ -110,7 +110,7 @@ npm run build
 npm start
 npm run test:sessions
 npm run test:settings
-npm run test:permissions
+npm run test:yolo
 npm run test:terminal
 npm run test:launch
 npm run test:installer
@@ -125,6 +125,6 @@ npm run test:distribution    # 有本地 Linux Release 时验证完整 Pi 包/�
 node scripts/with-display.cjs scripts/portable-smoke.cjs dist/linux-unpacked/spi
 ```
 
-另有确定性权限/设置/终端 GUI 测试。基础/高级 smoke 会使用真实模型和现有认证，不作为公开 CI 默认任务。测试使用临时 profile，仅清理本次拥有的进程。Linux GUI 测试要求 Xvfb（可用 `SPI_XVFB_BINARY` 指定私有副本），不接管共享桌面；用户正常安装/运行不需要 Xvfb。
+另有确定性 YOLO/设置/终端 GUI 测试。基础/高级 smoke 会使用真实模型和现有认证，不作为公开 CI 默认任务。测试使用临时 profile，仅清理本次拥有的进程。Linux GUI 测试要求 Xvfb（可用 `SPI_XVFB_BINARY` 指定私有副本），不接管共享桌面；用户正常安装/运行不需要 Xvfb。
 
 参见[发布说明](docs/releasing.md)与[验收记录](docs/verification.md)。二进制压缩包只放 GitHub Releases，不进 Git 或轻量 npm 包。项目尚未选择开源授权，元数据为 `UNLICENSED`；分发时保留第三方许可证。

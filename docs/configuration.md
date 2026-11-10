@@ -33,6 +33,12 @@ Defaults are documented in both READMEs. Shell profiles and PATH are never edite
 
 `SPI_ALLOW_TEST_HTTP` and `SPI_RELEASE_BASE_URL` are reserved for isolated tests: only explicit loopback HTTP is accepted. Do not set them in production, examples or CI publishing jobs.
 
+## YOLO and Pi session policy / YOLO 与 Pi 会话设置
+
+The unreleased source UI has a boolean YOLO switch, default off per new/reopened session. Off follows Pi's session rules/mode and adds no sPi approval; off does not force Pi to ask if it already permits an operation. On automatically sends a one-time Allow for narrowly compatible Pi tool prompts, without changing Pi's mode, model profile or permission files. Other questions/direct blocks remain effective. [Details and trust boundary](extension-approvals.md).
+
+The previous sPi permission modes and rule editor are removed in source. Existing `spi-permissions.json` files are retained without reads/rewrites/deletion; they do not influence the new switch. No persistent YOLO default is saved. The session scanner respects `PI_CODING_AGENT_DIR`; without it, the normal personal Pi agent directory is used.
+
 ## Checks before staging or publishing / 提交与发布前检查
 
 ```bash

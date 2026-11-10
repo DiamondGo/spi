@@ -1,12 +1,12 @@
 # Distribution verification / 分发验收
 
-## Unreleased automatic Pi approval replies
+## Unreleased YOLO switch (supersedes the separate sPi permission layer)
 
-- Source-only feature; the published v0.1.1 installers/runtime and macOS build-8 candidates were not replaced.
-- `test:extension-ui` passes 22 unit checks: exact compatibility fingerprints and negative cases, per-session All/readiness/UI guards, existing/new prompts, manual/auto races, duplicate IDs, expiry, single/concurrent Stop ordering, close/settlement, unknown manual methods, failed streams, internal-event spoof protection, unchanged saved permissions, and answered-card audit state.
-- `test:extension-ui-smoke` passes 9 isolated real Electron/Pi RPC checks with a deterministic loopback-only model and synthetic compatible extension. It verifies pending/future bash and five-option write prompts reply only with Allow, generic/unknown dialogs remain manual, direct blocks hold, Stop cancels, returning to Ask restores prompts, and model/allowlist/Pi settings remain unchanged without renderer exceptions.
-- The existing isolated permission/UI regression also passes all 27 checks, including handshake fail-closed, exact allowlist behavior, queued draft recovery and session restoration. Typecheck and existing settings/session/permission/terminal/icon/native-build tests pass.
-- [Behavior, limits and format-based trust boundary](extension-approvals.md). No global Pi extension/configuration was modified, and no external model request was used.
+- Source-only change; published v0.1.1 and macOS build-8 remain unchanged. The header is now a two-state YOLO checkbox, not a Permissions selector. Off follows Pi's session policy without adding sPi approval; on auto-replies Allow once to compatible Pi tool dialogs.
+- `test:yolo` passes 13 policy checks and 5 private lifecycle-bridge checks; `test:extension-ui` passes 23 compatibility/lifecycle/audit checks. They include off delegating already-approved tools, no invented default Pi dialog timeout, per-session state, fail-closed readiness/Stop/UI guards, races, generic manual dialogs, direct-block preservation and legacy permission files left untouched.
+- `test:yolo-smoke` passes 21 real Electron/Pi RPC checks: Pi ask/bypass/deny behavior while off, mouse/Space switching without a confirmation modal, tab isolation, header geometry at 1280/900px, compatible automatic replies, generic manual dialogs, direct blocks, Stop, sidebar split, session-file deduplication, and default-off reopen. Legacy sPi rules/API/panel are no longer active.
+- Updated settings GUI regression passes 12 checks, including all three themes/two languages and readable YOLO at both widths. Terminal GUI regression passes 13 real PTY checks with the simplified header. Unit settings/session/terminal suites and typecheck pass.
+- Deterministic GUI tests now isolate HOME/XDG/Pi-agent/profile/workspace, including session-history scanning. They use loopback-only model traffic and private Xvfb, do not load the user's real permission extension, and verify unchanged Pi/legacy settings. [Semantics, migration and trust boundary](extension-approvals.md).
 
 ## macOS candidate acceptance (not a public release)
 

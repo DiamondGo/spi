@@ -5,7 +5,7 @@ const path = require('node:path')
 module.exports = async function ({ app, stop, waitFor, pass, fill, artifacts, workspace, descendants, hashes, before }) {
   const evaluate = expression => app.eval(expression)
   const get = id => evaluate(`window.spi.getTerminal(${JSON.stringify(id)})`)
-  const state = () => evaluate('window.spi.getPermissions()')
+  const state = () => evaluate('window.spi.getYoloState()')
   const write = (info,text) => evaluate(`window.spi.writeTerminal(${JSON.stringify(info.sessionId)},${JSON.stringify(info.terminalId)},${JSON.stringify(text)})`)
   const output = (info, marker) => waitFor(async()=>{
     const s=await get(info.sessionId)
@@ -32,13 +32,11 @@ module.exports = async function ({ app, stop, waitFor, pass, fill, artifacts, wo
   try {
     a=Object.keys((await state()).sessions)[0]
     assert.equal(await evaluate(`document.querySelectorAll('.input-options select').length`),1)
-    assert.equal(await evaluate(`document.querySelectorAll('.tb-details select').length`),3)
-    assert.equal(await evaluate(`!!document.querySelector('.input-options .permission-settings-button')`),false)
-    await evaluate(`(()=>{const e=document.querySelector('select[data-control="permission"]');e.value='__settings';e.dispatchEvent(new Event('change',{bubbles:true}))})()`)
-    await waitFor(()=>evaluate(`!!document.querySelector('.permission-settings')`),'permission rules in header menu')
-    assert.equal((await state()).sessions[a].mode,'ask')
-    await evaluate(`document.querySelector('.permission-panel-close').click()`)
-    pass('composer removes duplicate header controls; permission rules remain accessible from header menu')
+    assert.equal(await evaluate(`document.querySelectorAll('.tb-details select').length`),2)
+    assert.equal(await evaluate(`document.querySelectorAll('.tb-yolo input[role="switch"]').length`),1)
+    assert.equal(await evaluate(`!!document.querySelector('.permissions,.permission-settings')`),false)
+    assert.equal((await state()).sessions[a].enabled,false)
+    pass('composer has delivery/terminal controls; header has only model/thinking selectors and the YOLO switch')
 
     await fill(app,'SPI_TERMINAL_DRAFT_A')
     const first=await open(a)
@@ -194,7 +192,7 @@ module.exports = async function ({ app, stop, waitFor, pass, fill, artifacts, wo
   }catch(error){
     if(!app.exited){
       try{await capture('terminal-failure')}catch{}
-      try{fs.writeFileSync(path.join(artifacts,'terminal-failure.json'),JSON.stringify(await evaluate(`(async()=>({body:document.body.innerText,terminals:await Promise.all(Object.keys((await window.spi.getPermissions()).sessions).map(id=>window.spi.getTerminal(id)))}))()`),null,2))}catch{}
+      try{fs.writeFileSync(path.join(artifacts,'terminal-failure.json'),JSON.stringify(await evaluate(`(async()=>({body:document.body.innerText,terminals:await Promise.all(Object.keys((await window.spi.getYoloState()).sessions).map(id=>window.spi.getTerminal(id)))}))()`),null,2))}catch{}
     }
     throw error
   }finally{

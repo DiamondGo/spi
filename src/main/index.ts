@@ -5,8 +5,8 @@ import { readdir } from 'fs/promises'
 import { findPi, saveManualPiPath, loadPinned, togglePinned, loadLayout, saveLayout, type LayoutState } from './pi/piFinder'
 import { scanSessions, scanRecent } from './pi/sessionScanner'
 import { PiManager } from './pi/piManager'
-import { Permissions } from './pi/permissions'
-import type { AppSettings, PermissionDecision, PermissionMode, SafePermissionMode } from '../shared/types'
+import { YoloPolicy } from './pi/yolo'
+import type { AppSettings } from '../shared/types'
 import { SettingsStore, themeChrome } from './settings'
 import { QuitController } from './quitController'
 import { translate } from '../shared/i18n'
@@ -92,15 +92,13 @@ const quitting = new QuitController(
   }
 )
 function requestQuit(): void { void quitting.request().catch(error => console.error('[sPi quit]', error)) }
-let permissionManager: Permissions | null = null
+let yoloPolicy: YoloPolicy | null = null
 
-function getPermissions(): Permissions {
-  if (!permissionManager) {
-    permissionManager = new Permissions(join(app.getPath('userData'), 'spi-permissions.json'), state => {
-      BrowserWindow.getAllWindows().forEach(w => w.webContents.send('permissions:changed', state))
-    })
-  }
-  return permissionManager
+function getYoloPolicy(): YoloPolicy {
+  if (!yoloPolicy) yoloPolicy = new YoloPolicy(state => {
+    BrowserWindow.getAllWindows().filter(w => !w.webContents.isDestroyed()).forEach(w => w.webContents.send('yolo:changed', state))
+  })
+  return yoloPolicy
 }
 
 async function getManager(): Promise<PiManager> {
@@ -112,7 +110,7 @@ async function getManager(): Promise<PiManager> {
       if (!piPath) throw new Error('pi not found')
       manager = new PiManager(
         piPath,
-        getPermissions(),
+        getYoloPolicy(),
         app.isPackaged ? join(process.resourcesPath, 'spi-permission-extension.mjs') : join(__dirname, 'permissionExtension.js'),
         (e) => BrowserWindow.getAllWindows().forEach((w) => w.webContents.send('pi:event', e)),
         (sessionId) => {
@@ -197,13 +195,8 @@ ipcMain.handle('settings:update', (_e, patch: Partial<AppSettings>) => {
   BrowserWindow.getAllWindows().forEach(win => win.webContents.send('settings:changed', settings))
   return settings
 })
-ipcMain.handle('permissions:get', () => getPermissions().snapshot())
-ipcMain.handle('permissions:mode', (_e, id: string, mode: PermissionMode) => getPermissions().setMode(id, mode))
-ipcMain.handle('permissions:default', (_e, mode: SafePermissionMode) => getPermissions().setDefault(mode))
-ipcMain.handle('permissions:answer', (_e, id: string, reqId: string, decision: PermissionDecision) => getPermissions().answer(id, reqId, decision))
-ipcMain.handle('permissions:clear', (_e, id: string) => getPermissions().clear(id))
-ipcMain.handle('permissions:add-rule', (_e, cwd: string, command: string) => getPermissions().addRule(cwd, command))
-ipcMain.handle('permissions:remove-rule', (_e, id: string) => getPermissions().removeRule(id))
+ipcMain.handle('yolo:get', () => getYoloPolicy().snapshot())
+ipcMain.handle('yolo:set', (_e, id: string, enabled: boolean) => getYoloPolicy().setEnabled(id, enabled))
 ipcMain.handle('app:home', () => os.homedir())
 ipcMain.handle('pi:find', () => findPi())
 ipcMain.handle('pi:set-path', (_e, p: string) => saveManualPiPath(p))

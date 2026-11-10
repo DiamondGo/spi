@@ -60,7 +60,7 @@ jobs:
       - run: npm ci
       - run: node scripts/distribution.cjs prepare --production
       - run: npm install --global --ignore-scripts @earendil-works/pi-coding-agent@1.5.0
-      - run: npm run typecheck && npm run test:launch && npm run test:icons && npm run test:extension-ui
+      - run: npm run typecheck && npm run test:launch && npm run test:icons && npm run test:yolo && npm run test:extension-ui
       - name: Build complete native runtime (no AppImage)
         run: npm run dist -- --production
       - name: Native PTY, GUI, Pi RPC and single-instance smoke

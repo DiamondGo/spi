@@ -65,18 +65,17 @@ module.exports = async function ({ app, launch, stop, waitFor, pass, fill, artif
     await waitFor(()=>evaluate(`!document.querySelector('.app-settings-dialog')`),'Escape closes modal')
     pass('settings dialog traps focus and closes with Escape')
 
-    const id=Object.keys((await evaluate('window.spi.getPermissions()')).sessions)[0]
+    const id=Object.keys((await evaluate('window.spi.getYoloState()')).sessions)[0]
     await waitFor(()=>evaluate(`!!document.querySelector('select[title="Title bar Model"] option[value="spi-test/fixture"]')`),'fixture model in English header')
     await evaluate(`(()=>{const e=document.querySelector('select[title="Title bar Model"]');e.value='spi-test/fixture';e.dispatchEvent(new Event('change',{bubbles:true}))})()`)
     await waitFor(()=>evaluate(`window.spi.getState(${JSON.stringify(id)}).then(s=>s.model.provider==='spi-test')`),'fixture model selected')
     await fill(app,JSON.stringify({tool:'bash',input:{command:'printf SPI_SETTINGS_OUTPUT'}}))
     await evaluate(`document.querySelector('.btn-send').click()`)
-    await waitFor(()=>evaluate(`!!document.querySelector('.permission-request')`),'English approval card')
-    assert.ok(await evaluate(`Array.from(document.querySelectorAll('.permission-request button')).some(e=>e.textContent==='Allow once')`))
-    await evaluate(`Array.from(document.querySelectorAll('.permission-request button')).find(e=>e.textContent==='Allow once').click()`)
+    assert.equal(await evaluate(`document.querySelector('input[aria-label="YOLO"]').checked`),false)
     await waitFor(()=>evaluate(`window.__smokeEvents.some(e=>e.sessionId===${JSON.stringify(id)}&&e.event.type==='agent_settled')`),'fixture finished')
     assert.ok(await evaluate(`document.querySelector('.tool-output-text').textContent.includes('SPI_SETTINGS_OUTPUT')`))
-    pass('English tool / approval UI remains functional with actual pi and a deterministic local model')
+    assert.equal(await evaluate(`!!document.querySelector('.permission-request,.permissions')`),false)
+    pass('YOLO off follows Pi: an approved tool runs without an added sPi approval panel')
 
     for (const theme of ['dark','light','high-contrast']) {
       for (const language of ['en','zh']) {
@@ -85,9 +84,7 @@ module.exports = async function ({ app, launch, stop, waitFor, pass, fill, artif
         await close()
         assert.equal(await evaluate(`document.documentElement.dataset.theme`),theme)
         assert.equal(await evaluate(`document.documentElement.lang`),language==='zh'?'zh-CN':'en')
-        await evaluate(`(()=>{const e=document.querySelector('select[data-control="permission"]');e.value='__settings';e.dispatchEvent(new Event('change',{bubbles:true}))})()`)
-        await waitFor(()=>evaluate(`!!document.querySelector('.permission-settings')`),'localized permission panel')
-        const colors=await evaluate(`(()=>{const css=e=>{const s=getComputedStyle(e);return {fg:s.color,bg:s.backgroundColor,border:s.borderColor}};return {body:css(document.body),header:css(document.querySelector('.titlebar')),input:css(document.querySelector('.input-bar textarea')),tool:css(document.querySelector('.tool-card')),permissions:css(document.querySelector('.permissions')),placeholder:getComputedStyle(document.querySelector('.input-bar textarea'),'::placeholder').color,send:css(document.querySelector('.btn-send')),panel:document.querySelector('.permission-settings').textContent}})()`)
+        const colors=await evaluate(`(()=>{const css=e=>{const s=getComputedStyle(e);return {fg:s.color,bg:s.backgroundColor,border:s.borderColor}};return {body:css(document.body),header:css(document.querySelector('.titlebar')),input:css(document.querySelector('.input-bar textarea')),tool:css(document.querySelector('.tool-card')),yolo:css(document.querySelector('.tb-yolo')),placeholder:getComputedStyle(document.querySelector('.input-bar textarea'),'::placeholder').color,send:css(document.querySelector('.btn-send')),yoloLabel:document.querySelector('.tb-yolo').textContent.trim()}})()`)
         function lum(color) { const values=color.match(/[\d.]+/g).slice(0,3).map(Number).map(v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4});return values[0]*.2126+values[1]*.7152+values[2]*.0722 }
         function ratio(a,b) { const x=lum(a),y=lum(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05) }
         assert.ok(ratio(colors.body.fg,colors.body.bg)>=4.5,JSON.stringify(colors))
@@ -95,7 +92,8 @@ module.exports = async function ({ app, launch, stop, waitFor, pass, fill, artif
         assert.ok(ratio(colors.placeholder,colors.input.bg)>=4.5,JSON.stringify(colors))
         if(theme==='light') assert.equal(colors.body.bg,'rgb(255, 255, 255)')
         if(theme==='high-contrast') { assert.equal(colors.body.fg,'rgb(255, 255, 255)');assert.equal(colors.body.bg,'rgb(0, 0, 0)');assert.ok(ratio(colors.send.fg,colors.send.bg)>=4.5,JSON.stringify(colors.send)) }
-        assert.ok(colors.panel.includes(language==='en'?'sPi allowlist':'sPi 白名单'))
+        assert.equal(colors.yoloLabel,'YOLO')
+        assert.ok(ratio(colors.yolo.fg,colors.yolo.bg)>=4.5,JSON.stringify(colors.yolo))
         assert.ok(await evaluate(`document.querySelector('.tool-output-text').textContent.includes('SPI_SETTINGS_OUTPUT')`))
         for(const [width,height] of [[1280,800],[900,640]]) {
           await app.send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false})
@@ -104,7 +102,6 @@ module.exports = async function ({ app, launch, stop, waitFor, pass, fill, artif
           await capture(`settings-${theme}-${language}-${width}`)
         }
         await app.send('Emulation.clearDeviceMetricsOverride')
-        await evaluate(`document.querySelector('.permission-panel-close').click()`)
         pass(`theme/language matrix: ${theme} / ${language}, readable UI at 1280 and 900px`)
       }
     }

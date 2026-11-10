@@ -36,6 +36,7 @@ interface Pending {
   request: PiRecord
   approval: ToolApproval | null
   deadline?: number
+  autoDeadline?: number
   timer?: ReturnType<typeof setTimeout>
 }
 interface Dependencies {
@@ -67,7 +68,10 @@ export class ExtensionUi {
       ? Math.min(event.timeout, 2147483647) : undefined
     // Invalid timeout metadata is never eligible for automatic approval.
     if (event.timeout !== undefined && timeout === undefined) p.approval = null
-    const ttl = approval ? Math.min(timeout ?? APPROVAL_TTL, APPROVAL_TTL) : timeout
+    // Do not invent a Pi timeout while YOLO is off. Old requests can stay
+    // manual indefinitely if Pi permits it; only auto-reply eligibility ages out.
+    if (approval) p.autoDeadline = performance.now() + APPROVAL_TTL
+    const ttl = timeout
     if (ttl !== undefined) {
       p.deadline = performance.now() + ttl
       p.timer = setTimeout(() => this.finish(sessionId, id, p, { type: 'extension_ui_response', id, cancelled: true }, 'expired'), ttl)
@@ -90,7 +94,7 @@ export class ExtensionUi {
   }
 
   private autoAllow(sessionId: string, id: string, p: Pending): boolean {
-    if (!p.approval || !this.deps.canAutoAllow(sessionId)) return false
+    if (!p.approval || !this.deps.canAutoAllow(sessionId) || (p.autoDeadline !== undefined && p.autoDeadline <= performance.now())) return false
     if (p.deadline !== undefined && p.deadline <= performance.now()) {
       this.finish(sessionId, id, p, { type: 'extension_ui_response', id, cancelled: true }, 'expired')
     } else {

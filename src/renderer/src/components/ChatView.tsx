@@ -149,7 +149,7 @@ function DialogCard({ item, sessionId }: { item: Extract<Item, { kind: 'dialog' 
   }
 
   if (item.answered) {
-    const result = item.resolution === 'auto-allow' ? t('sPi 已自动回复 Allow（仅本次）')
+    const result = item.resolution === 'auto-allow' ? t('YOLO 已自动回复 Allow（仅本次）')
       : item.resolution === 'failed' ? t('答复发送失败，未确认允许')
         : item.resolution === 'cancelled' || item.resolution === 'expired' ? t('已取消或过期') : item.result ?? t('已答复')
     return <div className="dialog-card answered" data-auto-approved={item.resolution === 'auto-allow' || undefined}>{item.resolution === 'failed' ? '⚠' : '✅'} {title} → {result}</div>

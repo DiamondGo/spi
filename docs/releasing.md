@@ -36,7 +36,7 @@ spi-<version>-darwin-arm64.zip
 spi-<version>-darwin-x64.zip
 ```
 
-No AppImage is used by this workflow. Full Electron/runtime resources, private native PTY and the permission extension must be included. Native modules are rebuilt for the pinned Electron ABI. macOS runtime cleanup happens before ad-hoc signing, not after signing. No notarization or release certificate is silently assumed.
+No AppImage is used by this workflow. Full Electron/runtime resources, private native PTY and the session lifecycle bridge (the existing permission-extension resource filename) must be included. Native modules are rebuilt for the pinned Electron ABI. macOS runtime cleanup happens before ad-hoc signing, not after signing. No notarization or release certificate is silently assumed.
 
 Linux x64 CI builds on Ubuntu 22.04; arm64 CI uses Ubuntu 24.04. Each archive records its actual build glibc version, and the installer refuses older hosts. This is a conservative baseline, not a promise that every distribution with matching glibc has all desktop libraries. Windows/macOS require their native CI smoke to pass. Don't rename an x64 archive to claim arm64 support.
 

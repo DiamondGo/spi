@@ -3,7 +3,7 @@ import { join } from 'path'
 import os from 'os'
 import type { SessionMeta } from '../../shared/types'
 
-const SESSIONS_DIR = join(os.homedir(), '.pi', 'agent', 'sessions')
+const SESSIONS_DIR = join(process.env.PI_CODING_AGENT_DIR || join(os.homedir(), '.pi', 'agent'), 'sessions')
 const READ_CAP = 2 * 1024 * 1024 // 单个会话文件最多读 2MB 提取标题
 
 /** cwd → 会话目录名：去掉开头 /，把 / \ : 换成 -，前后各加一个 - */

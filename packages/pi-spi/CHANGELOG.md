@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Session-only automatic one-time Allow replies for narrowly recognized permission-modes-compatible Pi tool approvals while sPi is in All mode; auditable, expiry/Stop-safe, with generic dialogs and direct blocks preserved.
+- Replace sPi permission modes/rule editor with a session-local YOLO checkbox: on automatically replies Allow once to compatible Pi tool approvals; off delegates to Pi without another sPi prompt. Legacy sPi permission files are preserved but no longer applied. Generic dialogs/direct blocks and Stop/close guards remain effective.
 - Native macOS Apple Silicon/Intel ZIP candidates, with safe framework links, canonical extraction containment, preserved PTY helper modes, source-path cleanup and signed ASAR hash verification.
 - macOS secondary processes exit before readiness; owning-window app quit uses the same confirmation/cleanup controller and defers native termination until cancelled events unwind.
 - These source changes are not replacements for published 0.1.1 assets/npm. Developer ID signing, notarization and a new matching public release remain separate gates.

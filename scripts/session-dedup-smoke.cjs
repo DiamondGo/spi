@@ -8,13 +8,13 @@ module.exports = async function ({ app, waitFor, pass, fill, workspace, currentI
   const tab = id => `.session-tab[data-session-id="${id}"]`
   const active = () => evaluate(`document.querySelector('.session-tab.active')?.dataset.sessionId`)
   const count = () => evaluate(`document.querySelectorAll('.session-tab').length`)
-  const permissions = () => evaluate('window.spi.getPermissions()')
+  const permissions = () => evaluate('window.spi.getYoloState()')
   const clickRow = (container, times = 1) => evaluate(`(()=>{const e=[...document.querySelectorAll(${JSON.stringify(container+' .session-item')})].find(e=>e.dataset.sessionPath===${JSON.stringify(ownPath)});if(!e)throw new Error('Owned test row missing');for(let i=0;i<${times};i++)e.click()})()`)
   const waitRow = container => waitFor(() => evaluate(`Array.from(document.querySelectorAll(${JSON.stringify(container+' .session-item')})).some(e=>e.dataset.sessionPath===${JSON.stringify(ownPath)})`), 'owned session row in '+container)
   const view = label => evaluate(`document.querySelector('.sidebar-mode-toggle button[aria-label=${JSON.stringify(label)}]').click()`)
   // Re-mount directory view so its list includes the file written by the preceding tool request.
   await view('近期'); await view('目录'); await waitRow('.session-list')
-  await evaluate(`window.spi.setPermissionMode(${JSON.stringify(currentId)},'remember')`)
+  await evaluate(`window.spi.setYolo(${JSON.stringify(currentId)},true)`)
   await fill(app,'SPI_DEDUP_DRAFT_A')
   await evaluate(`(()=>{const e=document.querySelector('select[title="发送方式"]');e.value='followUp';e.dispatchEvent(new Event('change',{bubbles:true}))})()`)
   const originalText = await evaluate(`document.querySelector('.chat-messages').innerText`)
@@ -23,8 +23,8 @@ module.exports = async function ({ app, waitFor, pass, fill, workspace, currentI
   assert.equal(await evaluate(`document.querySelector('.input-bar textarea').value`),'SPI_DEDUP_DRAFT_A')
   assert.equal(await evaluate(`document.querySelector('select[title="发送方式"]').value`),'followUp')
   assert.equal(await evaluate(`document.querySelector('.chat-messages').innerText`),originalText)
-  assert.equal((await permissions()).sessions[currentId].mode,'remember')
-  pass('repeated directory clicks reuse one tab without resetting draft, output, delivery mode or permissions')
+  assert.equal((await permissions()).sessions[currentId].enabled,true)
+  pass('repeated directory clicks reuse one tab without resetting draft, output, delivery mode or YOLO')
 
   await evaluate(`document.querySelector('.btn-new').click()`)
   await waitFor(async()=>await count()===2&&(await active())!==currentId,'fresh peer tab in same cwd')
@@ -66,7 +66,7 @@ module.exports = async function ({ app, waitFor, pass, fill, workspace, currentI
   await evaluate(`document.querySelector(${JSON.stringify(tab(peer)+' .session-tab-close')}).click()`)
   await waitFor(async()=>await count()===1&&!(await permissions()).sessions[peer],'close only temporary peer')
   assert.equal(await active(),currentId)
-  await evaluate(`window.spi.setPermissionMode(${JSON.stringify(currentId)},'ask')`)
+  await evaluate(`window.spi.setYolo(${JSON.stringify(currentId)},false)`)
   await fill(app,'')
   pass('cold concurrent opens create one pi/tab; closed sessions reopen cleanly and path aliases reuse it')
   return currentId

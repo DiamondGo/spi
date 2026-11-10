@@ -41,13 +41,13 @@ class FakePiSession {
   kill() { this.exit() }
 }
 const { PiManager } = load('src/main/pi/piManager.ts', {'./piSession':{PiSession:FakePiSession},'./extensionUi':load('src/main/pi/extensionUi.ts')})
-const { Permissions } = load('src/main/pi/permissions.ts')
+const { YoloPolicy } = load('src/main/pi/yolo.ts')
 const extension = path.join(tmp, 'gate.mjs'), file = path.join(tmp, 'history.jsonl')
 fs.writeFileSync(extension,'// fixture'); fs.writeFileSync(file,'{}\n')
 const managers=[]
 function manager() {
   controls.hold=false; controls.failNext=false
-  const p=new Permissions(path.join(tmp, 'permissions-'+managers.length+'.json'),()=>{})
+  const p=new YoloPolicy(()=>{})
   const m=new PiManager('fake-pi',p,extension,()=>{},()=>{}); managers.push(m); return m
 }
 async function check(name, fn) {
@@ -55,12 +55,12 @@ async function check(name, fn) {
   for(const m of managers)m.closeAll()
 }
 async function main() {
-  await check('backend reuses an opened file and preserves session permissions',async()=>{
+  await check('backend reuses an opened file and preserves its YOLO switch',async()=>{
     const m=manager(), n=instances.length, a=await m.open(tmp,file)
-    m.permissions.setMode(a.sessionId,'remember')
+    m.yolo.setEnabled(a.sessionId,true)
     const b=await m.open(tmp,file)
     assert.equal(a.sessionId,b.sessionId); assert.equal(instances.length,n+1); assert.equal(m.size,1)
-    assert.equal(m.permissions.snapshot().sessions[a.sessionId].mode,'remember')
+    assert.equal(m.yolo.snapshot().sessions[a.sessionId].enabled,true)
   })
   await check('concurrent backend opens share one startup/handshake and one pi',async()=>{
     const m=manager(), n=instances.length; controls.hold=true
@@ -83,7 +83,7 @@ async function main() {
   await check('failed startup releases its pending key and permissions so retry can succeed',async()=>{
     const m=manager(); controls.failNext=true
     await assert.rejects(m.open(tmp,file),/exited/)
-    assert.equal(m.size,0); assert.equal(Object.keys(m.permissions.snapshot().sessions).length,0)
+    assert.equal(m.size,0); assert.equal(Object.keys(m.yolo.snapshot().sessions).length,0)
     assert.ok((await m.open(tmp,file)).sessionId); assert.equal(m.size,1)
   })
   await check('closing files are not reused; after exit reopening creates a fresh session',async()=>{
@@ -115,7 +115,7 @@ async function main() {
   await check('idempotent store insertion preserves draft, images, queue mode, output and running state',async()=>{
     store.addSession('a',tmp,{sessionFile:file,isStreaming:false}); store.setDraft('a','unsent'); store.setSendMode('a','followUp')
     store.setPendingImages('a',[{data:'image-data',mimeType:'image/png'}]); store.setStreaming('a',true)
-    store.setPermissionSettingsOpen('a',true); store.loadHistory('a',[{kind:'user',text:'keep output'}])
+    store.loadHistory('a',[{kind:'user',text:'keep output'}])
     const before=store.getStore().sessions.a
     assert.equal(store.addSession('a','wrong-cwd',{isStreaming:false}),false)
     assert.strictEqual(store.getStore().sessions.a,before); clear()

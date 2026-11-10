@@ -7,9 +7,9 @@
 ## Features
 
 - Directory/recent-session navigation, pinned history, independent tabs and drafts; repeated clicks activate the same session.
-- Streaming replies, thinking/tool output, extension interaction and per-session execution approvals.
-- **Unreleased source feature:** Allow all can [reply once to compatible Pi tool approvals](docs/extension-approvals.md); other dialogs remain manual. Published v0.1.1 does not yet include this.
-- Model, thinking and permission controls; image attachments and file/command completion.
+- Streaming replies, thinking/tool output and Pi extension interaction.
+- **Unreleased source feature:** a session-local [YOLO checkbox](docs/extension-approvals.md). On: reply Allow once to compatible Pi tool approvals. Off: follow Pi's session settings without an added sPi approval layer. Published v0.1.1 does not include this.
+- Model/thinking selectors, image attachments and file/command completion.
 - Embedded real PTY terminal per session, dark/light/high-contrast themes and English/Chinese UI.
 - Native precompiled desktop archives: **no AppImage, FUSE, or end-user C++ build**.
 
@@ -107,7 +107,7 @@ npm run build
 npm start
 npm run test:sessions
 npm run test:settings
-npm run test:permissions
+npm run test:yolo
 npm run test:terminal
 npm run test:launch
 npm run test:installer
@@ -122,6 +122,6 @@ npm run test:distribution    # Complete Linux install/Pi-package checks when a l
 node scripts/with-display.cjs scripts/portable-smoke.cjs dist/linux-unpacked/spi
 ```
 
-The deterministic permission/settings/terminal GUI suites are also available. Basic/advanced smoke tests use real configured model providers and are not public CI defaults. Tests use temporary profiles and only clean up their own processes. Linux GUI tests require Xvfb (`SPI_XVFB_BINARY` can select a private copy), never the shared desktop. End-user installs do not require Xvfb.
+The deterministic YOLO/settings/terminal GUI suites are also available. Basic/advanced smoke tests use real configured model providers and are not public CI defaults. Tests use temporary profiles and only clean up their own processes. Linux GUI tests require Xvfb (`SPI_XVFB_BINARY` can select a private copy), never the shared desktop. End-user installs do not require Xvfb.
 
 See [publishing](docs/releasing.md) and [verification](docs/verification.md). Runtime archives belong to GitHub Releases, never Git or the lightweight npm tarball. No source open-source license has been selected; project metadata is `UNLICENSED`. Distributed third-party licenses are retained.

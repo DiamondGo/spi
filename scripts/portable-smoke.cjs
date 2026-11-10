@@ -78,7 +78,7 @@ function descendants(pid){try{
   if(pi){
     const second=child(exe,[...headless,'--user-data-dir='+profile,'--cwd='+workspace],env)
     try{await exit(second)}finally{if(!second.done)second.kill()}
-    await wait(()=>evaluate('window.spi.getPermissions().then(s=>Object.keys(s.sessions).length===1&&Object.values(s.sessions)[0].ready&&!!document.querySelector(".session-tab.active"))'),'forwarded directory and real pi handshake')
+    await wait(()=>evaluate('(window.spi.getYoloState?window.spi.getYoloState():window.spi.getPermissions()).then(s=>Object.keys(s.sessions).length===1&&Object.values(s.sessions)[0].ready&&!!document.querySelector(".session-tab.active"))'),'forwarded directory and real pi handshake')
     const firstId=await evaluate('document.querySelector(".session-tab.active").dataset.sessionId')
     const third=child(exe,[...headless,'--user-data-dir='+profile,'--cwd='+workspace],env)
     try{await exit(third)}finally{if(!third.done)third.kill()}

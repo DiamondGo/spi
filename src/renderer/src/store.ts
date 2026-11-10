@@ -51,7 +51,6 @@ export interface SessionUI {
   draft: string
   sendMode: SendMode
   pendingImages: ImageRef[]
-  permissionSettingsOpen?: boolean
   error?: string
 }
 
@@ -178,10 +177,6 @@ export function restoreQueuedMessages(id: string, messages: string[]): void {
   if (!messages.length) return
   // Read the latest draft, not the snapshot captured when abort was requested.
   patchSession(id, (s) => ({ ...s, draft: [s.draft, ...messages].filter(Boolean).join('\n\n') }))
-}
-
-export function setPermissionSettingsOpen(id: string, open: boolean): void {
-  patchSession(id, s => ({ ...s, permissionSettingsOpen: open }))
 }
 
 export function setSendMode(id: string, sendMode: SendMode): void {

@@ -49,7 +49,8 @@ async function testMainClose(language, confirmOnExit, answer, ownsInstance = tru
   let dialogOptions, resolveDialog, dialogCalls = 0, stopped = 0
   class Manager {
     size = 1
-    async open() { return { sessionId: 'owned', state: {} } }
+    constructor(_pi, policy) { this.policy = policy }
+    async open() { this.policy.open('owned'); this.policy.ready('owned'); return { sessionId: 'owned', state: {} } }
     closeAll() { stopped++ }
   }
   const electron = {
@@ -69,7 +70,7 @@ async function testMainClose(language, confirmOnExit, answer, ownsInstance = tru
     if (name === '../shared/i18n') return { translate }
     if (name === './pi/piFinder') return { findPi: async () => '/test/pi' }
     if (name === './pi/piManager') return { PiManager: Manager }
-    if (name === './pi/permissions') return { Permissions: class {} }
+    if (name === './pi/yolo') return load('src/main/pi/yolo.ts')
     if (name === './pi/sessionScanner') return {}
     return require(name)
   }
@@ -82,6 +83,11 @@ async function testMainClose(language, confirmOnExit, answer, ownsInstance = tru
   assert.deepEqual(exitCodes, [])
   await handlers.get('settings:update')({}, { language, confirmOnExit, theme: 'light' })
   await handlers.get('session:open')({}, { cwd: '/test' })
+  assert.equal(handlers.has('permissions:get'), false); assert.equal(handlers.has('permissions:mode'), false)
+  assert.deepEqual(handlers.get('yolo:get')(), { sessions: { owned: { enabled: false, ready: true } } })
+  handlers.get('yolo:set')({}, 'owned', true); assert.equal(handlers.get('yolo:get')().sessions.owned.enabled, true)
+  assert.throws(() => handlers.get('yolo:set')({}, 'owned', 'all'), /boolean/)
+  handlers.get('yolo:set')({}, 'owned', false)
   const win = windows[0]
   if (process.platform === 'linux') assert.equal(app.desktopName, 'spi.desktop')
   assert.ok(win.options.icon.endsWith(path.join('build', 'icons', 'icon.png')))

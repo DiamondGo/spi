@@ -3,7 +3,6 @@ import type { SessionUI } from '../store'
 import { setDraft, setSendMode, setPendingImages, restoreQueuedMessages, type SendMode } from '../store'
 import type { ImageRef } from '../../../shared/types'
 import { useAutoHeightTextarea } from '../useAutoHeightTextarea'
-import { usePermissionControls } from './PermissionControls'
 import { Icon, IconControl, IconSelect } from './IconControl'
 import { useT } from '../preferences'
 import { openSessionTerminal, useTerminals } from '../terminals'
@@ -22,7 +21,6 @@ interface Completion {
 export function InputBar({ session }: Props) {
   const t = useT()
   const { sendMode: mode, pendingImages } = session
-  const permissions = usePermissionControls(session)
   const [sending, setSending] = useState(false)
   const terminals = useTerminals()
   const terminalOpen = Boolean(terminals.terminals[session.id])
@@ -188,7 +186,6 @@ export function InputBar({ session }: Props) {
 
   return (
     <div className="input-bar-wrap" data-session-id={session.id}>
-      {permissions.panels}
       {completion && completion.matches.length > 0 && (
         <div className="completion-popup">
           {completion.matches.map((m, i) => (

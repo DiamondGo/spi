@@ -54,14 +54,17 @@ function processInfo(pid) {
     return { pid, cmdline: fs.readFileSync(`/proc/${pid}/cmdline`, 'utf8').replaceAll('\0', ' ').trim(), cwd: fs.readlinkSync(`/proc/${pid}/cwd`) }
   } catch { return { pid } }
 }
+function startTime(pid) { try { const s=fs.readFileSync(`/proc/${pid}/stat`,'utf8');return s.slice(s.lastIndexOf(')')+2).split(' ')[19] } catch { return null } }
 async function stop(app) {
   if (!app || app.exited) return
   app.ws?.close()
-  // Snapshot descendants before killing the parent. Never pgrep/pkill other tasks.
-  for (const pid of descendants(app.child.pid).reverse()) {
-    try { process.kill(pid, 'SIGKILL') } catch {}
+  // Snapshot only this parent's descendants and verify identities before signalling.
+  if (process.platform==='linux' && (!app.started || startTime(app.child.pid)!==app.started)) return
+  const own=descendants(app.child.pid).map(pid=>[pid,startTime(pid)])
+  for (const [pid,started] of own.reverse()) {
+    if (started && startTime(pid)===started) { try { process.kill(pid, 'SIGKILL') } catch {} }
   }
-  app.child.kill('SIGKILL')
+  if (process.platform!=='linux'||startTime(app.child.pid)===app.started) app.child.kill('SIGKILL')
   app.child.stdout.destroy()
   app.child.stderr.destroy()
   await Promise.race([new Promise(r => app.child.once('exit', r)), delay(2000)])
@@ -72,6 +75,13 @@ async function launch() {
   delete env.ELECTRON_RUN_AS_NODE
   delete env.ELECTRON_VITE_DEV_SERVER_URL
   if (process.argv.includes('--terminal')) env.HISTFILE = path.join(artifacts, 'terminal-shell-history')
+  if (['--yolo','--settings','--terminal','--extension-ui'].some(flag => process.argv.includes(flag))) {
+    env.PI_CODING_AGENT_DIR = path.join(artifacts, 'agent')
+    env.HOME = path.join(artifacts, 'home')
+    env.XDG_CONFIG_HOME = path.join(artifacts, 'xdg-config')
+    env.XDG_CACHE_HOME = path.join(artifacts, 'xdg-cache')
+    for (const dir of [env.HOME, env.XDG_CONFIG_HOME, env.XDG_CACHE_HOME, path.join(env.HOME, 'fixture-a'), path.join(env.HOME, 'fixture-b')]) fs.mkdirSync(dir, { recursive: true })
+  }
   const executable = process.platform === 'win32' ? 'electron.exe' : 'electron'
   const installed = process.env.SPI_SMOKE_EXECUTABLE
   if (process.platform === 'linux' && process.env.SPI_TEST_VIRTUAL_DISPLAY !== '1') throw new Error('Use scripts/with-display.cjs for isolated GUI tests')
@@ -79,7 +89,7 @@ async function launch() {
   const child = spawn(installed || path.join(repo, 'node_modules/electron/dist', executable), [
     ...(installed ? [] : [repo]), ...isolatedDisplay, `--user-data-dir=${profile}`, '--remote-debugging-port=0'
   ], { cwd: repo, env, stdio: ['ignore', 'pipe', 'pipe'] })
-  const app = { child, log: '', exited: false, errors: [], pending: new Map(), index }
+  const app = { child, started: startTime(child.pid), log: '', exited: false, errors: [], pending: new Map(), index }
   current = app
   apps.push(app)
   child.stdout.on('data', d => { app.log += d })
@@ -152,8 +162,8 @@ const text = (app, selector) => app.eval(`document.querySelector(${JSON.stringif
 
 async function main() {
   console.log('ARTIFACTS', artifacts)
-  if (process.argv.includes('--permissions') || process.argv.includes('--settings') || process.argv.includes('--terminal') || process.argv.includes('--extension-ui')) {
-    await require('./permissions-smoke.cjs')({ launch, stop, waitFor, pass, fill, text, results, workspace, profile, repo, artifacts, descendants })
+  if (process.argv.includes('--yolo') || process.argv.includes('--settings') || process.argv.includes('--terminal') || process.argv.includes('--extension-ui')) {
+    await require('./gui-fixture-smoke.cjs')({ launch, stop, waitFor, pass, fill, text, results, workspace, profile, repo, artifacts, descendants })
     return
   }
   let app = await launch()
@@ -169,8 +179,8 @@ async function main() {
   await waitFor(() => app.eval(`document.querySelector('select[title="标题栏模型"]')?.options.length > 1`), 'model list')
   await waitFor(() => app.eval(`document.querySelector('select[title="标题栏思考"]')?.options.length>1`), 'thinking choices in title bar')
   const selectors = await app.eval(`[...document.querySelectorAll('.tb-details select,.input-options select')].map(s=>({title:s.title,value:s.value,count:s.options.length}))`)
-  assert.equal(selectors.length, 4)
-  assert.ok(selectors.some(s => s.title === '标题栏许可'))
+  assert.equal(selectors.length, 3)
+  assert.ok(await app.eval(`!!document.querySelector('input[aria-label="YOLO"]')`))
   assert.equal(await app.eval(`document.querySelectorAll('.input-options select').length`), 1)
   const oldThinking = selectors.find(s => s.title === '标题栏思考').value
   const nextThinking = await app.eval(`(()=>{const s=document.querySelector('select[title="标题栏思考"]');const next=[...s.options].find(o=>o.value!==s.value&&o.value!=='off');s.value=next.value;s.dispatchEvent(new Event('change',{bubbles:true}));return next.value})()`)
@@ -188,12 +198,8 @@ async function main() {
   await waitFor(() => app.eval(`!!document.querySelector('.btn-send:not([disabled])')`), 'send enabled')
   await app.eval(`document.querySelector('.btn-send').click()`)
   await waitFor(() => app.eval(`window.__smokeEvents.some(e=>e.event.type==='agent_start')`), 'agent start')
-  await waitFor(() => app.eval(`!!document.querySelector('.permission-request')`), 'sPi execution approval', 60000)
-  const approval = await app.eval(`window.spi.getPermissions()`)
-  assert.equal(approval.pending.length, 1)
-  assert.equal(approval.pending[0].tool, 'bash')
-  assert.equal(approval.pending[0].input.command, 'printf SPI_TOOL_OUTPUT')
-  await app.eval(`(()=>{const d=document.querySelector('.permission-request');[...d.querySelectorAll('button')].find(b=>b.textContent==='单次允许').click()})()`)
+  const activeSession = await app.eval(`document.querySelector('.session-tab.active').dataset.sessionId`)
+  await app.eval(`window.spi.setYolo(${JSON.stringify(activeSession)},true)`)
   await waitFor(() => app.eval(`window.__smokeEvents.some(e=>e.event.type==='agent_settled')`), 'agent settled', 90000)
   const reply = await text(app, '.chat-messages')
   assert.ok(reply.includes('SPI_SMOKE_OK'), reply.slice(-1200))
@@ -263,7 +269,7 @@ async function main() {
   pass('no renderer exceptions / error-level browser logs')
 }
 
-const watchdog = setTimeout(() => { console.error('SMOKE global timeout'); finish(1) }, process.argv.includes('--advanced') || process.argv.includes('--permissions') || process.argv.includes('--settings') || process.argv.includes('--terminal') || process.argv.includes('--extension-ui') ? 300000 : 210000)
+const watchdog = setTimeout(() => { console.error('SMOKE global timeout'); finish(1) }, process.argv.includes('--advanced') || process.argv.includes('--yolo') || process.argv.includes('--settings') || process.argv.includes('--terminal') || process.argv.includes('--extension-ui') ? 300000 : 210000)
 let finishing = false
 async function finish(code) {
   if (finishing) return

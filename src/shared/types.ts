@@ -59,24 +59,8 @@ export interface LayoutState {
   sessions?: Array<{ cwd: string; sessionPath?: string }>
 }
 
-export type PermissionMode = 'ask' | 'remember' | 'allowlist' | 'all'
-export type SafePermissionMode = Exclude<PermissionMode, 'all'>
-export type PermissionDecision = 'deny' | 'once' | 'session' | 'whitelist' | 'all'
-
-export interface PermissionRule {
-  id: string
-  cwd: string
-  tool: string
-  input: Record<string, unknown>
-}
-export interface PermissionRequest extends PermissionRule {
-  sessionId: string
-}
-export interface PermissionSnapshot {
-  defaultMode: SafePermissionMode
-  rules: PermissionRule[]
-  sessions: Record<string, { mode: PermissionMode; remembered: number; ready: boolean }>
-  pending: PermissionRequest[]
+export interface YoloSnapshot {
+  sessions: Record<string, { enabled: boolean; ready: boolean }>
 }
 
 export type AppTheme = 'dark' | 'light' | 'high-contrast'
@@ -119,14 +103,9 @@ export interface IpcApi {
   updateAppSettings(patch: Partial<AppSettings>): Promise<AppSettings>
   quitApp(): Promise<boolean>
   onAppSettingsChanged(cb: (settings: AppSettings) => void): () => void
-  getPermissions(): Promise<PermissionSnapshot>
-  setPermissionMode(id: string, mode: PermissionMode): Promise<void>
-  setDefaultPermissionMode(mode: SafePermissionMode): Promise<void>
-  answerPermission(id: string, requestId: string, decision: PermissionDecision): Promise<void>
-  clearSessionPermissions(id: string): Promise<void>
-  addPermissionRule(cwd: string, command: string): Promise<void>
-  removePermissionRule(id: string): Promise<void>
-  onPermissionsChanged(cb: (state: PermissionSnapshot) => void): () => void
+  getYoloState(): Promise<YoloSnapshot>
+  setYolo(id: string, enabled: boolean): Promise<void>
+  onYoloChanged(cb: (state: YoloSnapshot) => void): () => void
   getHome(): Promise<string>
   findPi(): Promise<string | null>
   setPiPath(p: string): Promise<void>

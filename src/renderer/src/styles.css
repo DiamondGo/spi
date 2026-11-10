@@ -19,29 +19,10 @@ body,
   height: 100%;
 }
 
-/* ---- sPi 执行权限 ---- */
-.permissions { flex-shrink: 0; max-height: 40vh; overflow-y: auto; border-top: 1px solid #3b3b3b; background: #23252a; font-size: 12px; }
-.permission-toolbar { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-.input-bar .permission-settings-button { background: #2a2a2a; color: #aaa; border: 1px solid #444; padding: 6px 8px; position: relative; font-size: 16px; flex-shrink: 0; }
-.input-bar .permission-settings-button:hover, .input-bar .permission-settings-button[aria-expanded="true"] { background: #3b3f4b; color: #eee; }
-.permission-count { position: absolute; top: -6px; right: -6px; border-radius: 10px; background: #b47b32; color: #fff; font-size: 10px; padding: 1px 4px; }
-.permissions button, .permissions select { background: #30343e; color: #ddd; border: 1px solid #515767; border-radius: 4px; padding: 4px 8px; cursor: pointer; }
-.permissions button:hover { background: #414756; }
-.permissions button:disabled, .permissions select:disabled { opacity: .5; cursor: default; }
+/* ---- Pi extension dialogs (not an sPi approval layer) ---- */
 .permission-hint { color: #a4a8b2; overflow-wrap: anywhere; }
 .permission-warning { color: #f2bb75 !important; }
 .permission-error { color: #ff9c9c; padding: 8px 14px; }
-.permission-settings { padding: 8px 14px 12px; border-top: 1px solid #434957; }
-.permission-settings p { line-height: 1.6; margin: 8px 0; }
-.permission-settings h4 { margin: 12px 0 6px; }
-.permission-settings label { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-.permission-command { display: block; width: 100%; min-height: 55px; margin: 6px 0; background: #191c22; color: #ddd; border: 1px solid #515767; border-radius: 4px; padding: 8px; }
-.permission-rule-list { max-height: 220px; overflow: auto; }
-.permission-rule { padding: 8px; margin: 6px 0; border: 1px solid #414756; border-radius: 5px; }
-.permissions pre { white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; background: #191c22; padding: 8px; border-radius: 4px; max-height: 180px; overflow: auto; margin: 6px 0; }
-.permission-requests { padding: 0 14px 8px; }
-.permission-request { border: 1px solid #a47c47; border-radius: 6px; padding: 10px; margin-top: 6px; background: #292722; }
-.permission-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 
 /* ---- 自定义标题栏 ---- */
 
@@ -70,7 +51,7 @@ body,
   padding-left: 78px;
 }
 
-.titlebar button, .titlebar select, .titlebar .tb-choice {
+.titlebar button, .titlebar select, .titlebar .tb-choice, .titlebar .tb-yolo, .titlebar input {
   -webkit-app-region: no-drag;
 }
 
@@ -138,10 +119,14 @@ body,
 }
 
 .tb-field { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tb-yolo { display: inline-flex; align-items: center; justify-content: center; gap: 7px; flex: 0 0 76px; height: 28px; padding: 3px 7px; border: 1px solid var(--border, #484d59); border-radius: 5px; background: var(--raised, #2b2e36); color: var(--muted, #aaa); cursor: pointer; white-space: nowrap; }
+.tb-yolo input { width: 14px; height: 14px; margin: 0; accent-color: var(--warning, #f2bb75); cursor: inherit; }
+.tb-yolo.enabled { color: var(--warning, #f2bb75); border-color: var(--warning, #ac7b3f); background: var(--warning-bg, #382e20); }
+.tb-yolo:focus-within { outline: 2px solid var(--focus, #6da7ff); outline-offset: 1px; }
+.tb-yolo:has(input:disabled) { opacity: .55; cursor: default; }
 .tb-choice { position: relative; display: flex; align-items: center; height: 28px; min-width: 0; padding: 3px 8px; border: 1px solid #484d59; border-radius: 5px; background: #2b2e36; cursor: pointer; }
 .tb-choice { flex-shrink: 0; }
 .tb-choice:has(.tb-model) { width: 200px; }
-.tb-choice:has(.tb-permission) { width: 150px; }
 .tb-choice:has(.tb-thinking) { width: 115px; }
 .tb-choice:hover { background: #383e4a; border-color: #75829b; }
 .tb-choice:focus-within { outline: 2px solid #6da7ff; outline-offset: 1px; }
@@ -155,14 +140,12 @@ body,
   .tb-brand { display: none; }
   .tb-choice { padding-inline: 5px; }
   .tb-choice:has(.tb-model) { width: 155px; }
-  .tb-choice:has(.tb-permission) { width: 125px; }
   .tb-choice:has(.tb-thinking) { width: 95px; }
 }
 @media (max-width: 800px) {
   .tb-status { display: none; }
   .tb-details { gap: 4px; }
   .tb-choice:has(.tb-model) { width: 120px; }
-  .tb-choice:has(.tb-permission) { width: 105px; }
   .tb-choice:has(.tb-thinking) { width: 88px; }
 }
 .tb-model { color: #aaf; }

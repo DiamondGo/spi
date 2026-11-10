@@ -1,9 +1,8 @@
 import { useMemo, useState } from 'react'
-import { setPermissionSettingsOpen, useStore } from '../store'
-import { changePermissionMode, permissionLabels, usePermissionSnapshot } from '../permissions'
+import { useStore } from '../store'
+import { useYoloSnapshot } from '../yolo'
 import { useSessionSettings } from '../sessionSettings'
 import { usePreferences, useT } from '../preferences'
-import type { PermissionMode } from '../../../shared/types'
 import { TitleSelect } from './TitleSelect'
 import { Icon, IconControl } from './IconControl'
 import { AppSettingsPanel } from './AppSettingsPanel'
@@ -12,12 +11,12 @@ export function TitleBar({ sidebarOpen, onToggleSidebar }: { sidebarOpen: boolea
   const t = useT()
   const { settings: appSettings } = usePreferences()
   const { sessions, activeId } = useStore()
-  const { state: permissions, error: permissionError } = usePermissionSnapshot()
+  const { state: yolo, error: yoloError } = useYoloSnapshot()
   const active = activeId ? sessions[activeId] : null
   const settings = useSessionSettings(active)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [permissionBusy, setPermissionBusy] = useState(false)
-  const [permissionChangeError, setPermissionChangeError] = useState('')
+  const [yoloBusy, setYoloBusy] = useState(false)
+  const [yoloChangeError, setYoloChangeError] = useState('')
   const isMac = navigator.userAgent.includes('Mac')
   const firstUser = active?.items.find(item => item.kind === 'user')
   const name = useMemo(() => {
@@ -29,17 +28,16 @@ export function TitleBar({ sidebarOpen, onToggleSidebar }: { sidebarOpen: boolea
     return active ? t('新会话 · {dir}', { dir: active.cwd.split(/[/\\]/).filter(Boolean).pop() || active.cwd }) : ''
   }, [active?.state?.sessionName, active?.cwd, firstUser, appSettings.language])
   const model = settings.model
-  const policy = activeId ? permissions?.sessions[activeId] : null
-  const permission = permissionError ? t('读取失败') : policy?.ready ? t(permissionLabels[policy.mode]) : t('加载中…')
+  const policy = activeId ? yolo?.sessions[activeId] : null
   const thinking = active?.state?.thinkingLevel
   const thinkingText = thinking === 'off' ? t('关闭（off）') : thinking || t('未提供')
-  const waiting = activeId && permissions?.pending.some(request => request.sessionId === activeId)
-  const error = settings.error || permissionChangeError
-  async function setPermission(mode: PermissionMode): Promise<void> {
+  const waiting = active?.items.some(item => item.kind === 'dialog' && !item.answered)
+  const error = settings.error || yoloChangeError || yoloError
+  async function setYolo(enabled: boolean): Promise<void> {
     if (!activeId) return
-    setPermissionBusy(true)
-    setPermissionChangeError('')
-    try { await changePermissionMode(activeId, mode) } catch (e) { setPermissionChangeError(String(e)) } finally { setPermissionBusy(false) }
+    setYoloBusy(true)
+    setYoloChangeError('')
+    try { await window.spi.setYolo(activeId, enabled) } catch (e) { setYoloChangeError(String(e)) } finally { setYoloBusy(false) }
   }
 
   return (
@@ -56,13 +54,10 @@ export function TitleBar({ sidebarOpen, onToggleSidebar }: { sidebarOpen: boolea
           {!settings.models.length && <option value={model ? `${model.provider}/${model.id}` : ''}>{model?.name || t('加载中…')}</option>}
           {settings.models.map(m => <option key={`${m.provider}/${m.id}`} value={`${m.provider}/${m.id}`}>{m.name} · {m.provider}</option>)}
         </TitleSelect>
-        <TitleSelect label={t('许可')} text={t('许可：{mode}', { mode: permission })} detail={permissionError || t('当前会话：{permission}', { permission })} className="tb-permission" value={policy?.mode ?? 'ask'} disabled={!policy?.ready || permissionBusy} warning={policy?.mode === 'all'} onChange={e => {
-          if (e.target.value === '__settings') setPermissionSettingsOpen(active.id, true)
-          else void setPermission(e.target.value as PermissionMode)
-        }}>
-          {Object.entries(permissionLabels).map(([value, text]) => <option key={value} value={value}>{t(text)}</option>)}
-          <option value="__settings">{t('权限设置 / 白名单')}</option>
-        </TitleSelect>
+        <label className={`tb-yolo${policy?.enabled ? ' enabled' : ''}`} title={yoloError || t(policy?.enabled ? 'YOLO 开启：自动单次 Allow 兼容的 Pi 工具审批；其他确认和直接拒绝仍有效。' : 'YOLO 关闭：不自动代答，遵循 Pi 当前会话设置；不额外增加 sPi 审批。')}>
+          <input type="checkbox" role="switch" aria-label="YOLO" data-control="yolo" checked={policy?.enabled ?? false} disabled={!policy?.ready || yoloBusy || !!yoloError} onChange={e => void setYolo(e.target.checked)} />
+          <span>YOLO</span>
+        </label>
         <TitleSelect label={t('思考')} text={t('思考：{level}', { level: thinkingText })} className="tb-thinking" value={settings.level} disabled={settings.busy || !settings.levels.length || !(model?.reasoning || settings.levels.some(level => level !== 'off'))} onChange={e => void settings.changeLevel(e.target.value)}>
           {!settings.levels.length && <option value={settings.level}>{settings.level}</option>}
           {settings.levels.map(level => <option key={level} value={level}>{level === 'off' ? t('关闭（off）') : level}</option>)}

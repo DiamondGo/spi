@@ -53,16 +53,7 @@ module.exports = async function ({ app, waitFor, pass, fill, text, results, arti
   }
   const allowOnce = async index => {
     await tab(index)
-    await waitFor(async () => {
-      await allowLegacyIfPresent()
-      return evaluate(`!!document.querySelector('.permission-request')`)
-    }, 'sPi permission gate')
-    const own = await evaluate(`window.spi.getPermissions()`)
-    assert.equal(own.pending.length, 1)
-    assert.equal(own.pending[0].tool, 'bash')
-    assert.match(own.pending[0].input.command, /^sleep (5|12|20|60); printf SPI_[A-Z_]+$/)
-    await evaluate(`(()=>{const d=document.querySelector('.permission-request');[...d.querySelectorAll('button')].find(b=>b.textContent==='单次允许').click()})()`)
-    await waitFor(() => evaluate(`!document.querySelector('.permission-request')`), 'sPi one-time permission answered')
+    assert.equal(await evaluate(`!!document.querySelector('.permission-request')`),false)
     await allowLegacyIfPresent()
     permissions++
   }
@@ -200,6 +191,6 @@ module.exports = async function ({ app, waitFor, pass, fill, text, results, arti
   pass('other running session completes normally after stopping its peer')
   fs.writeFileSync(path.join(artifacts, 'advanced-events.json'), JSON.stringify(await events(), null, 2))
   assert.equal(app.errors.length, 0, JSON.stringify(app.errors))
-  pass('sPi single-approval round-trips; external approvals remain single-use if present', { permissions, legacyPermissions })
+  pass('no extra sPi approval gate; Pi approvals remain single-use if present', { permissions, legacyPermissions })
   pass('advanced run: no renderer exceptions')
 }

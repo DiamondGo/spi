@@ -46,18 +46,10 @@ html, body, #root { background: var(--bg); color: var(--fg); }
 .tb-status.waiting, .permission-warning { color: var(--warning) !important; }
 .tb-choice.permission-warning, .icon-select.permission-warning select { border-color: var(--warning); background: var(--warning-bg); }
 .tb-native-select option, .icon-select select option { color: var(--fg); background: var(--raised); }
-.permissions { background: var(--panel); border-color: var(--subtle); }
-.permissions button, .permissions select, .input-bar .permission-settings-button { background: var(--raised); color: var(--fg); border-color: var(--border); }
-.permissions button:hover, .input-bar .permission-settings-button:hover,
-.input-bar .permission-settings-button[aria-expanded="true"] { background: var(--selected); color: var(--fg); }
 .permission-hint, .session-list-title, .session-item-meta, .recent-section-label,
 .thinking-block summary, .tool-state, .tool-args summary, .tool-output summary,
 .raw-block summary, .completion-desc, .code-lang, .placeholder { color: var(--dim); }
 .permission-error, .session-error, .settings-error { color: var(--danger); }
-.permission-command, .permissions pre { background: var(--code); color: var(--fg); border-color: var(--border); }
-.permission-rule, .permission-settings { border-color: var(--border); }
-.permission-request { background: var(--warning-bg); border-color: var(--warning); }
-.permission-count { background: var(--warning); color: var(--bg); }
 .sidebar, .sidebar-mode-toggle, .session-pane, .session-list-header, .session-item,
 .session-tabs, .thinking-block, .toolcall-block, .diff-view, .diff-hunk + .diff-hunk,
 .input-bar { border-color: var(--subtle); }
@@ -111,14 +103,13 @@ html, body, #root { background: var(--bg); color: var(--fg); }
 .terminal-header { display: flex; align-items: center; gap: 10px; min-height: 30px; padding: 2px 10px; border-bottom: 1px solid var(--subtle); font-size: 12px; }
 .terminal-shell { color: var(--dim); }
 .terminal-cwd { flex: 1; min-width: 0; color: var(--dim); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.terminal-close, .permission-panel-close { display: grid; place-items: center; width: 26px; height: 26px; padding: 4px; border: 1px solid var(--border); border-radius: 4px; color: var(--muted); background: var(--raised); cursor: pointer; }
+.terminal-close { display: grid; place-items: center; width: 26px; height: 26px; padding: 4px; border: 1px solid var(--border); border-radius: 4px; color: var(--muted); background: var(--raised); cursor: pointer; }
 .terminal-close:hover { color: var(--danger); border-color: var(--danger); }
 .terminal-body { flex: 1; min-height: 0; min-width: 0; padding: 5px 8px; overflow: hidden; }
 .terminal-body > .xterm { height: 100%; }
 .terminal-loading, .terminal-error { padding: 6px 12px; color: var(--muted); border-top: 1px solid var(--subtle); }
 .terminal-error { color: var(--danger); }
 .terminal-error button { margin-left: 8px; background: var(--raised); border: 1px solid var(--border); color: var(--fg); border-radius: 4px; cursor: pointer; }
-.permission-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
 
 /* Application settings live in the top layer, outside the draggable title bar. */
 .titlebar .icon-control, .app-settings-dialog, .app-settings-dialog * { -webkit-app-region: no-drag; }

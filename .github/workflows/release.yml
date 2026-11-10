@@ -95,7 +95,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" --draft --title "sPi $GITHUB_REF_NAME" --generate-notes
-          gh release upload "$GITHUB_REF_NAME" dist/release/spi-*.tar.gz dist/release/spi-*.zip dist/release/release-manifest.json dist/release/SHA256SUMS dist/release/spi-installer.cjs dist/release/install.sh dist/release/INSTALLER-NOTICES.txt
+          shopt -s nullglob
+          runtime_assets=(dist/release/spi-*.tar.gz dist/release/spi-*.zip)
+          test "${#runtime_assets[@]}" -gt 0
+          gh release upload "$GITHUB_REF_NAME" "${runtime_assets[@]}" dist/release/release-manifest.json dist/release/SHA256SUMS dist/release/spi-installer.cjs dist/release/install.sh dist/release/INSTALLER-NOTICES.txt
           gh release edit "$GITHUB_REF_NAME" --draft=false
       - name: Verify public assets before publishing npm
         run: node scripts/verify-release.cjs

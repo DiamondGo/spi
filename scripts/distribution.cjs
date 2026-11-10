@@ -62,11 +62,25 @@ function keepPty(directory,platform=process.platform,arch=process.arch){
     else runtimeOnly(path.join(prebuilt,name))
   }
 }
+function stripMacDebug(directory,platform=process.platform,run=execFileSync){
+  if(platform!=='darwin')return
+  // ld's N_OSO debug-map entries can retain absolute object paths even when
+  // clang's DWARF/source prefix maps are set. Strip debug metadata before
+  // ASAR integrity is generated and before electron-builder signs the app.
+  for(const name of ['pty.node','spawn-helper']){
+    const file=path.join(directory,'build/Release',name)
+    if(!fs.existsSync(file))throw Error('Missing rebuilt macOS PTY runtime: '+name)
+    run('/usr/bin/strip',['-S',file],{stdio:['ignore','pipe','pipe']})
+  }
+  require('./privacy.cjs').scanTree(directory,{binary:true})
+}
 async function sanitizeRuntime(resources){
   const archive=path.join(resources,'app.asar'), tmp=fs.mkdtempSync(path.join(os.tmpdir(),'spi-public-runtime-'))
   try{
     asar.extractAll(archive,tmp)
-    keepPty(path.join(tmp,'node_modules','node-pty'))
+    const ptyDirectory=path.join(tmp,'node_modules','node-pty')
+    keepPty(ptyDirectory)
+    stripMacDebug(ptyDirectory)
     const manifest=JSON.parse(fs.readFileSync(path.join(tmp,'package.json'),'utf8'))
     // No developer scripts/paths are needed at runtime.
     delete manifest.scripts;delete manifest.devDependencies
@@ -110,4 +124,4 @@ function manifest(){
   fs.writeFileSync(path.join(release,'SHA256SUMS'),files.map(n=>crypto.createHash('sha256').update(fs.readFileSync(path.join(release,n))).digest('hex')+'  '+n).join('\n')+'\n')
 }
 if(require.main===module)(async()=>{const cmd=process.argv[2];if(cmd==='prepare')await prepare();else if(cmd==='archive')await archive();else if(cmd==='manifest')manifest();else throw Error('prepare | archive | manifest')})().catch(e=>{console.error(e.message);process.exitCode=1})
-module.exports={config,prepare,archive,manifest,sanitizeRuntime,keepPty}
+module.exports={config,prepare,archive,manifest,sanitizeRuntime,keepPty,stripMacDebug}

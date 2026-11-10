@@ -1,5 +1,5 @@
 const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),assert=require('node:assert/strict'),{execFileSync}=require('node:child_process')
-const {macBuildEnv}=require('./native-build-env.cjs'),{keepPty}=require('./distribution.cjs'),privacy=require('./privacy.cjs')
+const {macBuildEnv}=require('./native-build-env.cjs'),{keepPty,stripMacDebug}=require('./distribution.cjs'),privacy=require('./privacy.cjs')
 const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'spi-native-build-test-'));let count=0
 function check(name,fn){fn();console.log('PASS',name);count++}
 function write(root,name,data='fixture'){const f=path.join(root,name);fs.mkdirSync(path.dirname(f),{recursive:true});fs.writeFileSync(f,data)}
@@ -27,6 +27,14 @@ try{
   check('Windows runtime helper prebuilds are not removed by mac-only pruning',()=>{
     const dir=path.join(tmp,'windows');for(const f of ['build/Release/conpty.node','prebuilds/win32-x64/conpty/OpenConsole.exe','prebuilds/win32-x64/conpty/conpty.dll'])write(dir,f)
     keepPty(dir,'win32','x64');assert.ok(fs.existsSync(path.join(dir,'prebuilds/win32-x64/conpty/OpenConsole.exe')))
+  })
+  check('native debug stripping is mac-only, complete, and privacy-checked before signing',()=>{
+    const dir=path.join(tmp,'strip');for(const f of ['build/Release/pty.node','build/Release/spawn-helper'])write(dir,f)
+    const calls=[];stripMacDebug(dir,'darwin',(cmd,args)=>calls.push([cmd,args.slice(0,1),path.basename(args[1])]))
+    assert.deepEqual(calls,[['/usr/bin/strip',['-S'],'pty.node'],['/usr/bin/strip',['-S'],'spawn-helper']])
+    stripMacDebug(dir,'linux',()=>{throw Error('Linux must not strip macOS binaries')})
+    fs.rmSync(path.join(dir,'build/Release/spawn-helper'));assert.throws(()=>stripMacDebug(dir,'darwin',()=>{}),/Missing rebuilt/)
+    write(dir,'build/Release/spawn-helper',os.homedir()+'/private.o');assert.throws(()=>stripMacDebug(dir,'darwin',()=>{}),/local-home-path/)
   })
   check('privacy still rejects a home path in native binaries and identifies the relative location only',()=>{
     const dir=path.join(tmp,'scan');write(dir,'node_modules/node-pty/build/Release/pty.node',os.homedir()+'/hidden.cc')

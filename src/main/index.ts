@@ -66,6 +66,9 @@ function applyWindowTheme(settings: AppSettings): void {
     if (process.platform !== 'darwin') win.setTitleBarOverlay({ color: chrome.color, symbolColor: chrome.symbolColor, height: 40 })
   }
 }
+function traceLifecycle(event: string): void {
+  if (process.env.SPI_TEST_LIFECYCLE === '1') console.log('[sPi lifecycle] ' + event)
+}
 const quitting = new QuitController(
   () => getSettings().get().confirmOnExit,
   async () => {
@@ -80,7 +83,13 @@ const quitting = new QuitController(
     const result = owner ? await dialog.showMessageBox(owner, options) : await dialog.showMessageBox(options)
     return result.response === 0
   },
-  () => { terminalManager?.closeAll(); manager?.closeAll(); app.quit() }
+  () => {
+    terminalManager?.closeAll(); manager?.closeAll()
+    // Let a prevented native close/before-quit event unwind before re-entering
+    // Cocoa's termination path (notably when confirmation is disabled).
+    traceLifecycle('quit-committed')
+    setImmediate(() => { traceLifecycle('quit-dispatched'); app.quit() })
+  }
 )
 function requestQuit(): void { void quitting.request().catch(error => console.error('[sPi quit]', error)) }
 let permissionManager: Permissions | null = null
@@ -141,9 +150,10 @@ function createWindow(): void {
   })
   win.on('ready-to-show', () => win.show())
   const owner = win.webContents.id
-  win.on('closed', () => terminalManager?.closeOwner(owner))
+  win.on('closed', () => { traceLifecycle('closed'); terminalManager?.closeOwner(owner) })
   win.webContents.on('render-process-gone', () => terminalManager?.closeOwner(owner))
   win.on('close', event => {
+    traceLifecycle('close')
     // Prevent destruction first: Cancel must leave the current window and sessions usable.
     if (!quitting.allowed && BrowserWindow.getAllWindows().length === 1) { event.preventDefault(); requestQuit() }
   })
@@ -247,9 +257,11 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {
+  traceLifecycle('window-all-closed')
   if (process.platform !== 'darwin') app.quit()
 })
 
 app.on('before-quit', event => {
+  traceLifecycle('before-quit')
   if (!quitting.allowed) { event.preventDefault(); requestQuit() }
 })

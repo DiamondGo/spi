@@ -89,6 +89,7 @@ async function testMainClose(language, confirmOnExit, answer, ownsInstance = tru
   assert.equal(win.background, themeChrome.light.background)
   const e = { preventDefault() { this.prevented = true } }
   win.emit('close', e)
+  assert.equal(Boolean(app.didQuit), false, 'Native close event must unwind before app.quit re-enters termination')
   assert.equal(e.prevented, true, 'Window must not be destroyed while approval is pending')
   if (confirmOnExit) {
     assert.equal(dialogCalls, 1)
@@ -98,7 +99,7 @@ async function testMainClose(language, confirmOnExit, answer, ownsInstance = tru
     assert.equal(dialogOptions.message, translate('确定退出 sPi 吗？', language))
     assert.ok(dialogOptions.detail.includes('1'))
     resolveDialog({ response: answer ? 0 : 1 })
-    await tick()
+    await tick(); await tick()
     assert.equal(Boolean(app.didQuit), answer)
     assert.equal(stopped, answer ? 1 : 0)
     if (!answer) {
@@ -106,11 +107,13 @@ async function testMainClose(language, confirmOnExit, answer, ownsInstance = tru
       // Disabling confirmation then closing quits without another dialog.
       await handlers.get('settings:update')({}, { confirmOnExit: false })
       win.emit('close', { preventDefault() {} })
+      await tick()
       assert.equal(app.didQuit, true)
       assert.equal(dialogCalls, 1)
       assert.equal(stopped, 1)
     }
   } else {
+    await tick()
     assert.equal(dialogCalls, 0); assert.equal(app.didQuit, true); assert.equal(stopped, 1)
   }
 }

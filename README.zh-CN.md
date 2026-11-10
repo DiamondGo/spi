@@ -16,7 +16,7 @@
 
 源码仓库：[DiamondGo/spi](https://github.com/DiamondGo/spi)。npm 包为 **[`spi-agent-gui`](https://www.npmjs.com/package/spi-agent-gui)**，可执行命令仍为 **`spi`**；公开默认值集中在 `release.config.json`。
 
-**Linux 桌面 Release [v0.1.0](https://github.com/DiamondGo/spi/releases/tag/v0.1.0) 和 npm 包 `spi-agent-gui@0.1.0` 均已发布。** 已在干净的非 root Docker 环境中，通过 Pi 安装公开 npm 包并下载公开运行包，验证 GUI、原生 PTY、Pi RPC、命令入口和 renderer sandbox 正常。
+**Linux 桌面 Release [v0.1.1](https://github.com/DiamondGo/spi/releases/tag/v0.1.1) 已发布，包含女间谍新图标和受归属保护的 Linux 桌面入口。匹配的 npm 包仍待发布，npm latest 目前仍为 `0.1.0`。** 之前版本的公开 Pi 安装流程已通过干净非 root Docker 验收；新版公开运行包另已通过升级/回滚、原生窗口图标、GUI、PTY、Pi RPC 和 sandbox 检查，待 npm 发布后再验证 `0.1.1` 的公开 npm 安装。
 
 发布准备已升级到 Electron 45.2.3 和 electron-builder 26.18.0，high/critical 审计告警已清除；仍有六条 minimatch 构建工具链 moderate 审计条目。发布流水线继续拦截 high/critical 问题。
 
@@ -48,9 +48,9 @@ npx --package spi-agent-gui spi install
 从 **GitHub Release 附件**下载并检查 `install.sh` 后执行：
 
 ```bash
-bash install.sh --version 0.1.0
+bash install.sh --version 0.1.1
 # 可选覆盖目录：
-bash install.sh --version 0.1.0 --install-dir /path/to/user-install --bin-dir /path/to/user-bin
+bash install.sh --version 0.1.1 --install-dir /path/to/user-install --bin-dir /path/to/user-bin
 ```
 
 发行版脚本已绑定仓库/tag，先下载和核验独立安装器，再下载匹配的运行包。源码脚本默认使用同一仓库，fork 可通过 `SPI_RELEASE_REPOSITORY` 覆盖。Windows 通过 Pi 包/Node 安装器安装，不要求 Bash。
@@ -59,7 +59,7 @@ bash install.sh --version 0.1.0 --install-dir /path/to/user-install --bin-dir /p
 
 ```bash
 npm run dist:prepare
-bash install.sh --version 0.1.0 --archive /path/to/spi-0.1.0-linux-x64.tar.gz --manifest /path/to/release-manifest.json
+bash install.sh --version 0.1.1 --archive /path/to/spi-0.1.1-linux-x64.tar.gz --manifest /path/to/release-manifest.json
 ```
 
 SHA-256 用于检测错包和损坏，不等同于独立的发布者签名认证。

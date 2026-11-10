@@ -1,5 +1,13 @@
 # Distribution verification / 分发验收
 
+## Linux v0.1.1 release acceptance
+
+- Public desktop Release: https://github.com/DiamondGo/spi/releases/tag/v0.1.1 — Linux x64 and arm64, with the new spy icon and owned desktop entry. The v0.1.0 assets were not overwritten.
+- Native release run [42872533693](https://github.com/DiamondGo/spi/actions/runs/42872533693) passed both architectures and anonymous public asset checksum verification. Checks run 42872529395 also passed, including the corrected Electron test stub for desktop identity.
+- Both native targets verified the packaged artwork against the generated PNG, the owned native window's icon, SVG favicon, real GUI/PTY/Pi RPC, single-instance forwarding and enabled renderer seccomp sandbox.
+- A fresh non-root x64 Docker container installed the public 0.1.0 runtime using the verified public 0.1.1 installer, upgraded to 0.1.1, rolled back to 0.1.0, then rolled forward to 0.1.1. Desktop entry creation/removal tracked the selected version correctly; the final native window icon, GUI/PTY/RPC, single-instance and sandbox checks passed. No host config, credentials or binaries were mounted.
+- The matching npm 0.1.1 package is still awaiting publication. Its public `pi install` acceptance is not yet claimed. The clean container harness now checks desktop ownership and the new icon once that package is available.
+
 ## Linux v0.1.0 release acceptance
 
 - Public desktop Release: https://github.com/DiamondGo/spi/releases/tag/v0.1.0 — Linux x64 and arm64 only.

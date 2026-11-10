@@ -16,7 +16,7 @@
 
 Source: [DiamondGo/spi](https://github.com/DiamondGo/spi). The npm package is **[`spi-agent-gui`](https://www.npmjs.com/package/spi-agent-gui)**; the executable is **`spi`**. These public defaults are stored in `release.config.json`.
 
-**Linux desktop Release [v0.1.0](https://github.com/DiamondGo/spi/releases/tag/v0.1.0) and npm package `spi-agent-gui@0.1.0` are published.** A clean non-root Docker test installed the public npm package through Pi, downloaded the public runtime and verified the GUI, native PTY, Pi RPC, command location and active renderer sandbox.
+**Linux desktop Release [v0.1.1](https://github.com/DiamondGo/spi/releases/tag/v0.1.1) is published with the new spy icon and owned Linux desktop entry. Its matching npm package is awaiting publication; npm latest is still `0.1.0`.** The prior public Pi-install flow passed clean non-root Docker acceptance. The new public runtime additionally passed upgrade/rollback, native window icon, GUI, PTY, Pi RPC and sandbox checks; the `0.1.1` public npm install will be checked after publication.
 
 Release preparation upgraded Electron to 45.2.3 and electron-builder to 26.18.0. No high/critical npm audit findings remain; six moderate build-toolchain entries remain around minimatch. The release workflow continues to block high/critical advisories.
 
@@ -48,9 +48,9 @@ If another `spi` exists, or Pi's directory is read-only, explicitly choose `--bi
 Download `install.sh` from the **Release assets**, review it, then run:
 
 ```bash
-bash install.sh --version 0.1.0
+bash install.sh --version 0.1.1
 # Optional:
-bash install.sh --version 0.1.0 --install-dir /path/to/user-install --bin-dir /path/to/user-bin
+bash install.sh --version 0.1.1 --install-dir /path/to/user-install --bin-dir /path/to/user-bin
 ```
 
 The published bootstrap contains the repository/tag; it downloads and checks the standalone installer, then the matching runtime. The source checkout uses the same repository by default; forks can override it with `SPI_RELEASE_REPOSITORY`. Windows uses the Pi package/Node installer, not Bash.
@@ -59,7 +59,7 @@ For an offline install, prepare the installer first and supply a local archive a
 
 ```bash
 npm run dist:prepare
-bash install.sh --version 0.1.0 --archive /path/to/spi-0.1.0-linux-x64.tar.gz --manifest /path/to/release-manifest.json
+bash install.sh --version 0.1.1 --archive /path/to/spi-0.1.1-linux-x64.tar.gz --manifest /path/to/release-manifest.json
 ```
 
 SHA-256 detects mismatched/corrupt downloads; it is not an independent publisher-signature guarantee.

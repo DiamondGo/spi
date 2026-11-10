@@ -2,6 +2,7 @@
 const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),assert=require('node:assert/strict')
 const {spawn,execFileSync}=require('node:child_process')
 const spec=process.env.SPI_VERIFY_PACKAGE||'spi-agent-gui@0.1.0'
+const expectedVersion=process.env.SPI_EXPECTED_VERSION||'0.1.0'
 function locate(name){return execFileSync('/bin/sh',['-c','command -v '+name],{encoding:'utf8'}).trim()}
 function run(command,args,options={}){return new Promise((resolve,reject)=>{
   const child=spawn(command,args,{stdio:'inherit',env:process.env,...options})
@@ -40,7 +41,7 @@ async function commands(pi){return new Promise((resolve,reject)=>{
   const spi=locate('spi')
   assert.equal(path.dirname(spi),path.dirname(pi),'spi must be globally visible beside the user-owned pi launcher')
   const version=execFileSync(spi,['--version'],{encoding:'utf8'}).trim()
-  assert.equal(version,spec.slice(spec.lastIndexOf('@')+1))
+  assert.equal(version,expectedVersion)
   const doctor=JSON.parse(execFileSync(spi,['doctor'],{encoding:'utf8'}))
   assert.equal(doctor.platform,'linux-x64')
   console.log('PASS public pi install, user command location, version and doctor')

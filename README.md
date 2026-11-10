@@ -14,9 +14,9 @@ A desktop GUI for your existing **Pi coding agent**. sPi runs an independent Pi 
 
 ## Release status and requirements
 
-Source: [DiamondGo/spi](https://github.com/DiamondGo/spi). The fixed, planned npm package name is **`spi-agent-gui`**; the executable is **`spi`**. These public defaults are stored in `release.config.json`.
+Source: [DiamondGo/spi](https://github.com/DiamondGo/spi). The npm package is **[`spi-agent-gui`](https://www.npmjs.com/package/spi-agent-gui)**; the executable is **`spi`**. These public defaults are stored in `release.config.json`.
 
-**Linux desktop Release [v0.1.0](https://github.com/DiamondGo/spi/releases/tag/v0.1.0) is published. The npm package is still awaiting its first publication.** The Pi/npm commands below become usable after that publication; a current npm 404 does not mean you need to substitute a package name. The public runtime installer can already download the Linux Release.
+**Linux desktop Release [v0.1.0](https://github.com/DiamondGo/spi/releases/tag/v0.1.0) and npm package `spi-agent-gui@0.1.0` are published.** A clean non-root Docker test installed the public npm package through Pi, downloaded the public runtime and verified the GUI, native PTY, Pi RPC, command location and active renderer sandbox.
 
 Release preparation upgraded Electron to 45.2.3 and electron-builder to 26.18.0. No high/critical npm audit findings remain; six moderate build-toolchain entries remain around minimatch. The release workflow continues to block high/critical advisories.
 
@@ -24,7 +24,7 @@ The initial release targets **Linux x64 and Linux arm64 only**, both validated o
 
 Install **Pi** first and configure authentication/models using Pi itself. The bootstrap/Pi installer requires Node.js **22.19+**; the installed spi launcher can use its private Electron runtime for its installer commands. sPi does not install or upgrade Pi for you.
 
-## Install (after publishing)
+## Install
 
 ### Pi package — recommended
 

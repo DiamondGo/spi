@@ -1,0 +1,3 @@
+registry=https://registry.npmjs.org/
+# Prefer Trusted Publishing. If a token is needed, inject NPM_TOKEN via your environment/CI secret store.
+# //registry.npmjs.org/:_authToken=${NPM_TOKEN}

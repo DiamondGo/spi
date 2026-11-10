@@ -1,0 +1,73 @@
+// Uses only this run's own session file. No historical user row is opened.
+const assert = require('node:assert/strict')
+
+module.exports = async function ({ app, waitFor, pass, fill, workspace, currentId }) {
+  const evaluate = expression => app.eval(expression)
+  const ownPath = await evaluate(`window.spi.getState(${JSON.stringify(currentId)}).then(s=>s.sessionFile)`)
+  assert.ok(ownPath)
+  const tab = id => `.session-tab[data-session-id="${id}"]`
+  const active = () => evaluate(`document.querySelector('.session-tab.active')?.dataset.sessionId`)
+  const count = () => evaluate(`document.querySelectorAll('.session-tab').length`)
+  const permissions = () => evaluate('window.spi.getPermissions()')
+  const clickRow = (container, times = 1) => evaluate(`(()=>{const e=[...document.querySelectorAll(${JSON.stringify(container+' .session-item')})].find(e=>e.dataset.sessionPath===${JSON.stringify(ownPath)});if(!e)throw new Error('Owned test row missing');for(let i=0;i<${times};i++)e.click()})()`)
+  const waitRow = container => waitFor(() => evaluate(`Array.from(document.querySelectorAll(${JSON.stringify(container+' .session-item')})).some(e=>e.dataset.sessionPath===${JSON.stringify(ownPath)})`), 'owned session row in '+container)
+  const view = label => evaluate(`document.querySelector('.sidebar-mode-toggle button[aria-label=${JSON.stringify(label)}]').click()`)
+  // Re-mount directory view so its list includes the file written by the preceding tool request.
+  await view('近期'); await view('目录'); await waitRow('.session-list')
+  await evaluate(`window.spi.setPermissionMode(${JSON.stringify(currentId)},'remember')`)
+  await fill(app,'SPI_DEDUP_DRAFT_A')
+  await evaluate(`(()=>{const e=document.querySelector('select[title="发送方式"]');e.value='followUp';e.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+  const originalText = await evaluate(`document.querySelector('.chat-messages').innerText`)
+  await clickRow('.session-list', 8)
+  assert.equal(await count(),1); assert.equal(await active(),currentId)
+  assert.equal(await evaluate(`document.querySelector('.input-bar textarea').value`),'SPI_DEDUP_DRAFT_A')
+  assert.equal(await evaluate(`document.querySelector('select[title="发送方式"]').value`),'followUp')
+  assert.equal(await evaluate(`document.querySelector('.chat-messages').innerText`),originalText)
+  assert.equal((await permissions()).sessions[currentId].mode,'remember')
+  pass('repeated directory clicks reuse one tab without resetting draft, output, delivery mode or permissions')
+
+  await evaluate(`document.querySelector('.btn-new').click()`)
+  await waitFor(async()=>await count()===2&&(await active())!==currentId,'fresh peer tab in same cwd')
+  const peer = await active()
+  await fill(app,'SPI_DEDUP_DRAFT_B')
+  await clickRow('.session-list', 5)
+  await waitFor(async()=>await active()===currentId,'directory click activates existing tab')
+  assert.equal(await count(),2)
+  assert.equal(await evaluate(`document.querySelector('.input-bar textarea').value`),'SPI_DEDUP_DRAFT_A')
+  await view('近期'); await waitRow('.recent-list')
+  await evaluate(`document.querySelector(${JSON.stringify(tab(peer))}).click()`)
+  await clickRow('.recent-list', 8)
+  await waitFor(async()=>await active()===currentId,'recent click activates existing tab')
+  assert.equal(await count(),2); assert.equal(Object.keys((await permissions()).sessions).length,2)
+  assert.equal(await evaluate(`document.querySelector('.input-bar textarea').value`),'SPI_DEDUP_DRAFT_A')
+  assert.equal(await evaluate(`document.querySelector('.chat-messages').innerText`),originalText)
+  pass('directory/recent entries activate the same existing tab while new-session action remains independent')
+
+  const oldId=currentId
+  await evaluate(`document.querySelector(${JSON.stringify(tab(oldId)+' .session-tab-close')}).click()`)
+  await waitFor(async()=>!(await permissions()).sessions[oldId]&&await count()===1,'original session fully closed')
+  await view('目录'); await waitRow('.session-list')
+  // Race direct IPC callers with repeated real row clicks: backend and renderer both deduplicate.
+  const options=JSON.stringify({cwd:workspace,sessionPath:ownPath})
+  const direct=evaluate(`Promise.all(Array.from({length:6},()=>window.spi.openSession(${options}))).then(xs=>xs.map(x=>x.sessionId))`)
+  await clickRow('.session-list', 10)
+  const ids=await direct
+  assert.equal(new Set(ids).size,1)
+  currentId=ids[0]
+  assert.notEqual(currentId,oldId)
+  await waitFor(async()=>await count()===2&&await active()===currentId,'one reopened tab for concurrent clicks')
+  assert.equal(Object.keys((await permissions()).sessions).length,2)
+  await clickRow('.session-list', 5)
+  assert.equal(await count(),2)
+  const alias=ownPath.slice(0,ownPath.lastIndexOf('/'))+'/./'+ownPath.slice(ownPath.lastIndexOf('/')+1)
+  assert.equal(await evaluate(`window.spi.openSession(${JSON.stringify({cwd:workspace,sessionPath:alias})}).then(x=>x.sessionId)`),currentId)
+  await evaluate(`document.querySelector(${JSON.stringify(tab(peer))}).click()`)
+  assert.equal(await evaluate(`document.querySelector('.input-bar textarea').value`),'SPI_DEDUP_DRAFT_B')
+  await evaluate(`document.querySelector(${JSON.stringify(tab(peer)+' .session-tab-close')}).click()`)
+  await waitFor(async()=>await count()===1&&!(await permissions()).sessions[peer],'close only temporary peer')
+  assert.equal(await active(),currentId)
+  await evaluate(`window.spi.setPermissionMode(${JSON.stringify(currentId)},'ask')`)
+  await fill(app,'')
+  pass('cold concurrent opens create one pi/tab; closed sessions reopen cleanly and path aliases reuse it')
+  return currentId
+}

@@ -1,0 +1,101 @@
+name: Native release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: read
+env:
+  SPI_RELEASE_REPOSITORY: ${{ github.repository }}
+  SPI_NPM_PACKAGE: ${{ vars.SPI_NPM_PACKAGE }}
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-22.04
+            target: linux-x64
+            executable: dist/linux-unpacked/spi
+          - runner: ubuntu-24.04-arm
+            target: linux-arm64
+            executable: dist/linux-arm64-unpacked/spi
+          - runner: windows-2022
+            target: win32-x64
+            executable: dist/win-unpacked/spi.exe
+          - runner: macos-14
+            target: darwin-arm64
+            executable: dist/mac-arm64/sPi.app/Contents/MacOS/sPi
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Verify native runner and release identity
+        shell: bash
+        run: |
+          node -e "if(process.platform+'-'+process.arch!==process.argv[1])process.exit(1)" '${{ matrix.target }}'
+          node -e "if(process.env.GITHUB_REF_TYPE==='tag'&&process.env.GITHUB_REF_NAME!=='v'+require('./package.json').version)process.exit(1)"
+      - run: npm ci
+      - run: node scripts/distribution.cjs prepare --production
+      - run: npm install --global --ignore-scripts @earendil-works/pi-coding-agent@1.5.0
+      - run: npm run typecheck && npm run test:launch
+      - name: Build complete native runtime (no AppImage)
+        run: npm run dist -- --production
+      - name: Native PTY, GUI, Pi RPC and single-instance smoke
+        run: node scripts/install-native-smoke.cjs
+      - name: Full isolated Pi installation checks (Linux x64)
+        if: matrix.target == 'linux-x64'
+        run: npm run test:distribution
+      - name: Inspect light npm contents
+        run: npm pack ./dist/npm-package --dry-run --ignore-scripts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ matrix.target }}
+          path: |
+            dist/release/spi-*.tar.gz
+            dist/release/spi-*.zip
+            dist/release/linux-*.json
+            dist/release/win32-*.json
+            dist/release/darwin-*.json
+          if-no-files-found: error
+  publish:
+    needs: native
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+      id-token: write
+    environment: release
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: https://registry.npmjs.org
+      - run: npm ci --ignore-scripts
+      - name: Block publication on high/critical dependency advisories
+        run: npm audit --audit-level=high
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: native-*
+          merge-multiple: true
+          path: dist/release
+      - run: node scripts/distribution.cjs prepare --production && node scripts/distribution.cjs manifest
+      - name: Create draft, upload assets, then make Release visible
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --draft --title "sPi $GITHUB_REF_NAME" --generate-notes
+          gh release upload "$GITHUB_REF_NAME" dist/release/spi-*.tar.gz dist/release/spi-*.zip dist/release/release-manifest.json dist/release/SHA256SUMS dist/release/spi-installer.cjs dist/release/install.sh dist/release/INSTALLER-NOTICES.txt
+          gh release edit "$GITHUB_REF_NAME" --draft=false
+      - name: Verify public assets before publishing npm
+        run: node scripts/verify-release.cjs
+      - name: Publish light npm package with Trusted Publishing
+        working-directory: dist/npm-package
+        run: |
+          npm install --global npm@^11.5.1
+          npm publish --provenance --access public

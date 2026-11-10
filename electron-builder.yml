@@ -1,0 +1,25 @@
+appId: com.kexie.spi
+productName: sPi
+directories:
+  buildResources: build
+afterPack: scripts/after-pack.cjs
+files:
+  - out/**
+  - package.json
+asarUnpack:
+  - node_modules/node-pty/**
+extraResources:
+  - from: out/main/permissionExtension.js
+    to: spi-permission-extension.mjs
+linux:
+  target:
+    - dir
+  category: Development
+win:
+  target:
+    - dir
+mac:
+  target:
+    - dir
+  category: public.app-category.developer-tools
+  identity: "-"

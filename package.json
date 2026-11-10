@@ -1,0 +1,60 @@
+{
+  "name": "spi",
+  "version": "0.1.0",
+  "description": "sPi - Simple Pi Agent GUI",
+  "private": true,
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "main": "out/main/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "postinstall": "electron-builder install-app-deps",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "dist": "node scripts/build-portable.cjs",
+    "dist:linux": "node scripts/build-portable.cjs",
+    "dist:win": "node scripts/build-portable.cjs",
+    "dist:prepare": "node scripts/distribution.cjs prepare",
+    "dist:manifest": "node scripts/distribution.cjs manifest",
+    "dist:appimage": "electron-vite build && electron-builder --linux AppImage",
+    "check:privacy": "node scripts/privacy.cjs",
+    "test:installer": "node scripts/installer.test.cjs",
+    "test:distribution": "node scripts/distribution.test.cjs",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "test:launch": "node scripts/launch.test.cjs",
+    "test:sessions": "node scripts/sessions.test.cjs",
+    "test:terminal": "node scripts/terminal.test.cjs",
+    "test:terminal-smoke": "electron-vite build && node scripts/smoke.cjs --terminal",
+    "test:settings": "node scripts/settings.test.cjs",
+    "test:settings-smoke": "electron-vite build && node scripts/smoke.cjs --settings",
+    "test:permissions": "node scripts/permissions.test.cjs",
+    "test:permission-smoke": "electron-vite build && node scripts/smoke.cjs --permissions",
+    "test:smoke": "electron-vite build && node scripts/smoke.cjs",
+    "test:advanced": "electron-vite build && node scripts/smoke.cjs --advanced"
+  },
+  "dependencies": {
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
+    "node-pty": "^1.1.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@electron/asar": "^3.4.1",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "33.4.11",
+    "electron-builder": "^25.1.8",
+    "electron-vite": "^3.0.0",
+    "esbuild": "^0.25.12",
+    "tar": "^7.5.22",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.3",
+    "yauzl": "^3.4.0",
+    "yazl": "^3.3.1"
+  }
+}

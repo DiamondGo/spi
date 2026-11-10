@@ -89,7 +89,11 @@ function descendants(pid){try{
   }else if(process.env.CI){throw Error('CI requires Pi for native integration check')}
   else console.log('SKIP Pi directory forwarding: Pi not installed')
   await evaluate('window.spi.updateAppSettings({confirmOnExit:false})')
-  await evaluate('window.close()').catch(()=>{})
+  // On macOS renderer window.close() destroys a window without the native
+  // close event; an app with no windows intentionally remains in the Dock.
+  // Exercise the real, confirmation-aware application quit path instead.
+  if(process.platform==='darwin')assert.equal(await evaluate('typeof window.spi.quitApp'),'function')
+  await evaluate('window.spi.quitApp ? window.spi.quitApp() : window.close()').catch(()=>{})
   await exit(app)
   console.log('RESULT PASS',tmp)
 })().catch(e=>{if(app){fs.writeFileSync(path.join(tmp,'failure.log'),app.log);const events=app.log.match(/\[sPi lifecycle\] (?:quit-committed|quit-dispatched|before-quit|window-all-closed|closed|close)\b/g)||[];console.error(events.slice(-20).join('\n'))}console.error(e.message);process.exitCode=1}).finally(()=>{

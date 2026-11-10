@@ -164,6 +164,10 @@ function createWindow(): void {
 }
 
 // ---- IPC 白名单 ----
+ipcMain.handle('app:quit', event => {
+  if (event.sender.isDestroyed() || !BrowserWindow.getAllWindows().some(win => win.webContents === event.sender)) throw new Error('Application window is closed')
+  return quitting.request()
+})
 ipcMain.handle('app:launch-request', () => launchRequest)
 ipcMain.handle('app:ack-launch', (_event, id: string) => { if (launchRequest?.id === id) launchRequest = null })
 ipcMain.handle('terminal:open', (event, id: string, cols: number, rows: number) => {

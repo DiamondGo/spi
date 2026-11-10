@@ -22,7 +22,7 @@ let count = 0
 const check = async (name, fn) => { await fn(); console.log('PASS', name); count++ }
 const tick = () => new Promise(resolve => setImmediate(resolve))
 
-async function testMainClose(language, confirmOnExit, answer, ownsInstance = true) {
+async function testMainClose(language, confirmOnExit, answer, ownsInstance = true, viaIPC = false) {
   const home = fs.mkdtempSync(path.join(tmp, 'main-'))
   const app = new EventEmitter()
   app.getPath = () => home
@@ -87,6 +87,12 @@ async function testMainClose(language, confirmOnExit, answer, ownsInstance = tru
   assert.ok(win.options.icon.endsWith(path.join('build', 'icons', 'icon.png')))
   if (process.platform !== 'darwin') assert.equal(win.overlay.color, themeChrome.light.color)
   assert.equal(win.background, themeChrome.light.background)
+  assert.throws(() => handlers.get('app:quit')({ sender: { isDestroyed: () => true } }), /closed/)
+  assert.throws(() => handlers.get('app:quit')({ sender: { isDestroyed: () => false } }), /closed/)
+  if (viaIPC) {
+    assert.equal(await handlers.get('app:quit')({ sender: win.webContents }), true)
+    await tick(); assert.equal(app.didQuit, true); assert.equal(stopped, 1); assert.equal(dialogCalls, 0); return
+  }
   const e = { preventDefault() { this.prevented = true } }
   win.emit('close', e)
   assert.equal(Boolean(app.didQuit), false, 'Native close event must unwind before app.quit re-enters termination')
@@ -192,5 +198,6 @@ async function testMainClose(language, confirmOnExit, answer, ownsInstance = tru
   await check('real main close handler: English cancel retains window and sessions', () => testMainClose('en',true,false))
   await check('real main close handler: Chinese confirmation commits once', () => testMainClose('zh',true,true))
   await check('real main close handler: disabling confirmation exits immediately', () => testMainClose('en',false,true))
+  await check('renderer app quit validates its owning window and uses normal cleanup', () => testMainClose('en',false,true,true,true))
   console.log(`RESULT PASS ${count} checks ${tmp}`)
 })().catch(error => { console.error(error); process.exitCode=1 })

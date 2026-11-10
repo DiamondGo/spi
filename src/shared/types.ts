@@ -117,6 +117,7 @@ export interface IpcApi {
   onTerminalEvent(cb: (event: TerminalEvent) => void): () => void
   getAppSettings(): Promise<AppSettings>
   updateAppSettings(patch: Partial<AppSettings>): Promise<AppSettings>
+  quitApp(): Promise<boolean>
   onAppSettingsChanged(cb: (settings: AppSettings) => void): () => void
   getPermissions(): Promise<PermissionSnapshot>
   setPermissionMode(id: string, mode: PermissionMode): Promise<void>

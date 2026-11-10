@@ -23,6 +23,7 @@ const api: IpcApi = {
   },
   getAppSettings: () => ipcRenderer.invoke('settings:get'),
   updateAppSettings: patch => ipcRenderer.invoke('settings:update', patch),
+  quitApp: () => ipcRenderer.invoke('app:quit'),
   onAppSettingsChanged: cb => {
     const listener = (_e: unknown, settings: unknown) => cb(settings as never)
     ipcRenderer.on('settings:changed', listener)

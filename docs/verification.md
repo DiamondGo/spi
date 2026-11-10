@@ -1,5 +1,13 @@
 # Distribution verification / 分发验收
 
+## Unreleased automatic Pi approval replies
+
+- Source-only feature; the published v0.1.1 installers/runtime and macOS build-8 candidates were not replaced.
+- `test:extension-ui` passes 22 unit checks: exact compatibility fingerprints and negative cases, per-session All/readiness/UI guards, existing/new prompts, manual/auto races, duplicate IDs, expiry, single/concurrent Stop ordering, close/settlement, unknown manual methods, failed streams, internal-event spoof protection, unchanged saved permissions, and answered-card audit state.
+- `test:extension-ui-smoke` passes 9 isolated real Electron/Pi RPC checks with a deterministic loopback-only model and synthetic compatible extension. It verifies pending/future bash and five-option write prompts reply only with Allow, generic/unknown dialogs remain manual, direct blocks hold, Stop cancels, returning to Ask restores prompts, and model/allowlist/Pi settings remain unchanged without renderer exceptions.
+- The existing isolated permission/UI regression also passes all 27 checks, including handshake fail-closed, exact allowlist behavior, queued draft recovery and session restoration. Typecheck and existing settings/session/permission/terminal/icon/native-build tests pass.
+- [Behavior, limits and format-based trust boundary](extension-approvals.md). No global Pi extension/configuration was modified, and no external model request was used.
+
 ## macOS candidate acceptance (not a public release)
 
 - [Actions run 42892344373](https://github.com/DiamondGo/spi/actions/runs/42892344373) succeeded for native darwin-arm64 (macOS 26), native darwin-x64 (macOS 15 Intel), and combined artifact assembly, from source commit c3230af5a4c148747ccf4f98f388746732e050cd.

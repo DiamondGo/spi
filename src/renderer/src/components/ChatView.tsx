@@ -138,21 +138,28 @@ function ItemView({ item, sessionId }: { item: Item; sessionId: string }) {
 function DialogCard({ item, sessionId }: { item: Extract<Item, { kind: 'dialog' }>; sessionId: string }) {
   const t = useT()
   const [text, setText] = useState(item.prefill ?? '')
+  const [error, setError] = useState('')
+  const title = item.title ?? (item.approvalTool ? t('Pi 工具审批 · {tool}', { tool: item.approvalTool }) : item.method)
 
   async function answer(payload: { value?: string; confirmed?: boolean; cancelled?: boolean }, label: string): Promise<void> {
     try {
       await window.spi.answerExtensionUi(sessionId, item.reqId, payload)
       answerDialog(sessionId, item.reqId, label)
-    } catch {}
+    } catch { setError(t('扩展询问已失效或答复发送失败')) }
   }
 
   if (item.answered) {
-    return <div className="dialog-card answered">✅ {item.title ?? item.method} → {item.result}</div>
+    const result = item.resolution === 'auto-allow' ? t('sPi 已自动回复 Allow（仅本次）')
+      : item.resolution === 'failed' ? t('答复发送失败，未确认允许')
+        : item.resolution === 'cancelled' || item.resolution === 'expired' ? t('已取消或过期') : item.result ?? t('已答复')
+    return <div className="dialog-card answered" data-auto-approved={item.resolution === 'auto-allow' || undefined}>{item.resolution === 'failed' ? '⚠' : '✅'} {title} → {result}</div>
   }
 
   return (
     <div className="dialog-card">
-      <div className="dialog-title">{item.title ?? item.method}</div>
+      <div className="permission-hint">{item.approvalAdapter ? t('Pi 工具审批 · permission-modes 兼容格式') : t('Pi 扩展询问（需手动答复）')}</div>
+      <div className="dialog-title">{title}</div>
+      {error && <div role="alert" className="permission-error">{error}</div>}
       {item.message && <div className="dialog-message">{item.message}</div>}
       {item.method === 'select' && (
         <div className="dialog-buttons">

@@ -40,7 +40,7 @@ class FakePiSession {
   close() { this.exit() }
   kill() { this.exit() }
 }
-const { PiManager } = load('src/main/pi/piManager.ts', {'./piSession':{PiSession:FakePiSession}})
+const { PiManager } = load('src/main/pi/piManager.ts', {'./piSession':{PiSession:FakePiSession},'./extensionUi':load('src/main/pi/extensionUi.ts')})
 const { Permissions } = load('src/main/pi/permissions.ts')
 const extension = path.join(tmp, 'gate.mjs'), file = path.join(tmp, 'history.jsonl')
 fs.writeFileSync(extension,'// fixture'); fs.writeFileSync(file,'{}\n')

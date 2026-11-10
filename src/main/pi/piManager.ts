@@ -4,6 +4,7 @@ import { resolve } from 'path'
 import type { PiEventPayload, PiQueue, PiState } from '../../shared/types'
 import { PiSession } from './piSession'
 import { Permissions } from './permissions'
+import { ExtensionUi } from './extensionUi'
 
 function sessionFileKey(cwd: string, file: string): string {
   const absolute = resolve(cwd, file)
@@ -13,16 +14,35 @@ function sessionFileKey(cwd: string, file: string): string {
 export class PiManager {
   private sessions = new Map<string, PiSession>()
   private closing = new Set<string>()
+  private suspending = new Map<string, number>()
   private sessionFiles = new Map<string, string>()
   private opening = new Map<string, Promise<{ sessionId: string; state: PiState }>>()
+  private extensionUi: ExtensionUi
 
   constructor(
     private piPath: string,
     readonly permissions: Permissions,
     private extensionPath: string,
     private emitEvent: (e: PiEventPayload) => void,
-    private emitClosed: (sessionId: string) => void
-  ) {}
+    private emitClosed: (sessionId: string) => void,
+    private hasUi: () => boolean = () => false
+  ) {
+    const canAnswer = (id: string) => {
+      try { return this.sessions.has(id) && !this.closing.has(id) && !this.suspending.has(id) && this.hasUi() && this.permissions.isReady(id) }
+      catch { return false }
+    }
+    this.extensionUi = new ExtensionUi({
+      canAnswer,
+      canAutoAllow: id => canAnswer(id) && this.permissions.canAutoAllowExtension(id),
+      send: (id, response) => {
+        const stream = this.sessions.get(id)?.child.stdin
+        if (!stream || stream.destroyed || stream.writableEnded || stream.writable === false) throw new Error('pi UI response stream unavailable')
+        stream.write(JSON.stringify(response) + '\n')
+      },
+      publish: (sessionId, event) => this.emitEvent({ sessionId, event })
+    })
+    this.permissions.subscribe(() => this.extensionUi.refresh())
+  }
 
   async open(cwd: string, sessionPath?: string): Promise<{ sessionId: string; state: PiState }> {
     // Only existing session files have an identity. New sessions in the same cwd stay independent.
@@ -81,18 +101,23 @@ export class PiManager {
         }
       }
       if (e.type === 'agent_start') this.permissions.begin(id)
-      if (e.type === 'agent_settled') this.permissions.cancel(id)
-      // Do not allow a prompt to forge sPi permission events through regular pi records.
-      if (String(e.type).startsWith('spi_permission')) return
+      if (e.type === 'agent_settled') { this.extensionUi.cancel(id); this.permissions.cancel(id) }
+      // Internal approval results must never be forgeable through regular pi records.
+      if (String(e.type).startsWith('spi_permission') || String(e.type).startsWith('spi_extension')) return
+      if (this.extensionUi.receive(id, e)) return
       this.emitEvent({ sessionId: id, event: e })
     }
     s.onStderr = (t) => console.error(`[pi:${id.slice(0, 8)}] stderr:`, t)
     s.onExit = () => {
       rejectReady(new Error('pi exited before permissions became ready'))
+      this.closing.add(id)
+      this.extensionUi.cancel(id)
+      this.extensionUi.forget(id)
       this.permissions.close(id)
       this.sessions.delete(id)
       this.sessionFiles.delete(id)
       this.closing.delete(id)
+      this.suspending.delete(id)
       this.emitClosed(id)
     }
     this.sessions.set(id, s)
@@ -103,10 +128,14 @@ export class PiManager {
       if (file) this.sessionFiles.set(id, sessionFileKey(cwd, file))
       return { sessionId: id, state }
     } catch (error) {
+      this.closing.add(id)
+      this.extensionUi.cancel(id)
+      this.extensionUi.forget(id)
       this.permissions.close(id)
       this.sessions.delete(id)
       this.sessionFiles.delete(id)
       s.kill()
+      this.closing.delete(id)
       throw error
     } finally {
       clearTimeout(timer)
@@ -118,6 +147,7 @@ export class PiManager {
     if (!s) return
     this.closing.add(sessionId)
     this.permissions.stop(sessionId)
+    this.extensionUi.cancel(sessionId)
     try {
       await s.sendCommand('abort', {}, 3000)
     } catch {}
@@ -125,7 +155,9 @@ export class PiManager {
   }
 
   closeAll(): void {
-    for (const [id, s] of this.sessions) { this.closing.add(id); this.permissions.stop(id); s.close() }
+    // Freeze every session before any permission observer can run during shutdown.
+    for (const id of this.sessions.keys()) { this.closing.add(id); this.permissions.hold(id) }
+    for (const [id, s] of this.sessions) { this.permissions.stop(id); this.extensionUi.cancel(id); s.close() }
   }
 
   async sendPrompt(sessionId: string, text: string, mode: 'normal' | 'steer' | 'followUp', images?: Array<{ data: string; mimeType: string }>): Promise<void> {
@@ -149,14 +181,20 @@ export class PiManager {
     let queue: PiQueue = { steering: [], followUp: [] }
     if (!s) return queue
     // Freeze approvals first, but don't resolve the dialog until queued messages have been removed.
+    this.suspending.set(sessionId, (this.suspending.get(sessionId) ?? 0) + 1)
     this.permissions.hold(sessionId)
     // Esc 行为：先清队列再中止，将尚未执行的文本返回给渲染进程恢复草稿。
     try {
-      queue = (await s.sendCommand('clear_queue', {}, 3000)) as PiQueue
-    } catch {}
-    this.permissions.cancel(sessionId)
-    await s.sendCommand('abort')
-    return queue
+      try { queue = (await s.sendCommand('clear_queue', {}, 3000)) as PiQueue } catch {}
+      this.extensionUi.cancel(sessionId)
+      this.permissions.cancel(sessionId)
+      await s.sendCommand('abort')
+      return queue
+    } finally {
+      const remaining = (this.suspending.get(sessionId) ?? 1) - 1
+      if (remaining > 0) this.suspending.set(sessionId, remaining)
+      else this.suspending.delete(sessionId)
+    }
   }
 
   getCwd(sessionId: string): string {
@@ -191,11 +229,7 @@ export class PiManager {
     if (this.permissions.snapshot().pending.some(p => p.sessionId === sessionId && p.id === id)) {
       throw new Error('sPi 权限审批必须使用专用审批接口')
     }
-    const rec: Record<string, unknown> = { type: 'extension_ui_response', id }
-    if (payload.cancelled) rec.cancelled = true
-    else if (payload.confirmed !== undefined) rec.confirmed = payload.confirmed
-    else rec.value = payload.value ?? ''
-    s.child.stdin?.write(JSON.stringify(rec) + '\n')
+    this.extensionUi.answer(sessionId, id, payload)
   }
 
   async getAvailableModels(sessionId: string): Promise<unknown[]> {

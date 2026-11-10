@@ -31,6 +31,7 @@ export class Permissions {
   private rules: PermissionRule[] = []
   private sessions = new Map<string, { mode: PermissionMode; keys: Set<string>; ready: boolean; stopping: boolean }>()
   private pending = new Map<string, Pending>()
+  private observers = new Set<() => void>()
 
   constructor(private file: string, private changed: (state: PermissionSnapshot) => void) {
     // A corrupt permission file is an error, never a reason to silently enable unrestricted tools.
@@ -70,7 +71,10 @@ export class Permissions {
       pending: [...this.pending.values()].map(p => structuredClone(p.request))
     }
   }
-  private emit(): void { this.changed(this.snapshot()) }
+  subscribe(listener: () => void): () => void { this.observers.add(listener); return () => this.observers.delete(listener) }
+  isReady(id: string): boolean { return !!this.sessions.get(id)?.ready }
+  canAutoAllowExtension(id: string): boolean { const s = this.sessions.get(id); return !!s?.ready && !s.stopping && s.mode === 'all' }
+  private emit(): void { this.changed(this.snapshot()); for (const observer of this.observers) observer() }
   open(id: string): void {
     this.sessions.set(id, { mode: this.defaultMode, keys: new Set(), ready: false, stopping: false })
     this.emit()

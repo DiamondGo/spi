@@ -34,6 +34,9 @@ export type Item =
       prefill?: string
       answered: boolean
       result?: string
+      approvalTool?: string
+      approvalAdapter?: string
+      resolution?: 'auto-allow' | 'manual' | 'cancelled' | 'expired' | 'failed'
     }
   | { kind: 'raw'; json: string }
 
@@ -447,6 +450,21 @@ export function applyEvent(id: string, event: Record<string, unknown>): void {
     pushStatus(id, n ? '队列中 {count} 条待发消息' : '消息队列已清空', { count: n })
     return
   }
+  if (t === 'spi_extension_ui_result') {
+    const result = event as { id: string; resolution: 'auto-allow' | 'manual' | 'cancelled' | 'expired' | 'failed'; adapter?: string; tool?: string }
+    if (typeof result.id !== 'string' || !['auto-allow', 'manual', 'cancelled', 'expired', 'failed'].includes(result.resolution)) return
+    patchSession(id, s => {
+      const existing = s.items.find(it => it.kind === 'dialog' && it.reqId === result.id)
+      if (existing?.kind === 'dialog') {
+        if (existing.answered) return s
+        return { ...s, items: s.items.map(it => it === existing ? { ...existing, answered: true, resolution: result.resolution } : it) }
+      }
+      if (result.resolution !== 'auto-allow' && result.resolution !== 'failed') return s
+      return { ...s, items: [...s.items, { kind: 'dialog', reqId: result.id, method: 'select', answered: true,
+        approvalTool: result.tool, approvalAdapter: result.adapter, resolution: result.resolution }] }
+    })
+    return
+  }
   if (t === 'extension_ui_request') {
     const req = event as {
       id: string
@@ -456,6 +474,7 @@ export function applyEvent(id: string, event: Record<string, unknown>): void {
       options?: string[]
       placeholder?: string
       prefill?: string
+      spiToolApproval?: { adapter: string; tool: string }
     }
     if (['select', 'confirm', 'input', 'editor'].includes(req.method)) {
       patchSession(id, (s) => ({
@@ -471,6 +490,8 @@ export function applyEvent(id: string, event: Record<string, unknown>): void {
             options: req.options,
             placeholder: req.placeholder,
             prefill: req.prefill,
+            approvalTool: req.spiToolApproval?.tool,
+            approvalAdapter: req.spiToolApproval?.adapter,
             answered: false
           }
         ]

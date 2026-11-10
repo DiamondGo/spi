@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Session-only automatic one-time Allow replies for narrowly recognized permission-modes-compatible Pi tool approvals while sPi is in All mode; auditable, expiry/Stop-safe, with generic dialogs and direct blocks preserved.
 - Native macOS Apple Silicon/Intel ZIP candidates, with safe framework links, canonical extraction containment, preserved PTY helper modes, source-path cleanup and signed ASAR hash verification.
 - macOS secondary processes exit before readiness; owning-window app quit uses the same confirmation/cleanup controller and defers native termination until cancelled events unwind.
 - These source changes are not replacements for published 0.1.1 assets/npm. Developer ID signing, notarization and a new matching public release remain separate gates.

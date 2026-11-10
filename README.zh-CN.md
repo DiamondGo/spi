@@ -12,6 +12,8 @@
 - 每会话真实 PTY 终端；深色/浅色/高对比主题与英中界面。
 - 下载完整预编译目录，**无需 AppImage、FUSE 或用户现场编译 C++**。
 
+**源码新增，尚未发布：** 当前会话选择全部允许后，可以[对兼容格式的 Pi 工具审批自动回复单次 Allow](docs/extension-approvals.md)，其他询问仍需手动。已发布的 v0.1.1 和 Mac build-8 候选包尚不包含此功能。
+
 ## 发布状态与依赖
 
 源码仓库：[DiamondGo/spi](https://github.com/DiamondGo/spi)。npm 包为 **[`spi-agent-gui`](https://www.npmjs.com/package/spi-agent-gui)**，可执行命令仍为 **`spi`**；公开默认值集中在 `release.config.json`。

@@ -8,6 +8,7 @@
 
 - Directory/recent-session navigation, pinned history, independent tabs and drafts; repeated clicks activate the same session.
 - Streaming replies, thinking/tool output, extension interaction and per-session execution approvals.
+- **Unreleased source feature:** Allow all can [reply once to compatible Pi tool approvals](docs/extension-approvals.md); other dialogs remain manual. Published v0.1.1 does not yet include this.
 - Model, thinking and permission controls; image attachments and file/command completion.
 - Embedded real PTY terminal per session, dark/light/high-contrast themes and English/Chinese UI.
 - Native precompiled desktop archives: **no AppImage, FUSE, or end-user C++ build**.

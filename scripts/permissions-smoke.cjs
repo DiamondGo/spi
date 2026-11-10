@@ -44,7 +44,23 @@ module.exports = async function ({ launch, stop, waitFor, pass, fill, workspace,
   fs.writeFileSync(fixture, `export default function(pi) { pi.registerCommand('spi-title', {description:'sPi title test', handler:async args=>pi.setSessionName(args)}); pi.registerProvider('spi-test', { api: 'openai-completions', baseUrl: 'http://127.0.0.1:${server.address().port}/v1', apiKey: 'local-fixture', models: [{ id: 'fixture', name: 'sPi deterministic test', reasoning: false, input: ['text'], contextWindow: 32768, maxTokens: 1024, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 } }] }) }`)
   const pi = process.env.SPI_TEST_PI_PATH || execFileSync('which', ['pi'], { encoding: 'utf8' }).trim()
   const wrapper = path.join(artifacts, 'test-pi')
-  fs.writeFileSync(wrapper, `#!/bin/sh\nexec ${sh(pi)} --no-extensions --extension ${sh(fixture)} "$@"\n`, { mode: 0o700 })
+  let extraExtension = ''
+  if (process.argv.includes('--extension-ui')) {
+    const approvals = path.join(artifacts, 'approval-fixture.mjs')
+    fs.writeFileSync(approvals, `export default function(pi) { pi.on('tool_call', async (event, ctx) => {
+      const command=String(event.input.command||''); let title, options=['Allow','Allow always (this project)','Allow always (global)','Block'];
+      if(command.includes('SPI_EXT_DENY'))return {block:true,reason:'SPI_FIXTURE_DIRECT_BLOCK'};
+      if(command.includes('SPI_EXT_GENERIC'))title='Delete saved sessions?';
+      else if(command.includes('SPI_EXT_UNKNOWN')){title='Allow bash? '+command;options=['Allow','Block'];}
+      else if(command.includes('SPI_EXT_'))title='Allow bash? "'+command+'"';
+      else if(event.toolName==='write'&&String(event.input.path).endsWith('SPI_EXT_WRITE.txt')){title='Allow write on '+event.input.path+'?';options.splice(3,0,'Allow all (enable bypass)');}
+      else return;
+      const choice=await ctx.ui.select(title,options);ctx.ui.notify('SPI_EXT_ANSWER:'+event.toolName+':'+String(choice),'info');
+      if(choice!=='Allow')return {block:true,reason:'SPI_FIXTURE_NOT_ALLOWED'};
+    }) }`)
+    extraExtension = ' --extension ' + sh(approvals)
+  }
+  fs.writeFileSync(wrapper, `#!/bin/sh\nexec ${sh(pi)} --no-extensions --extension ${sh(fixture)}${extraExtension} "$@"\n`, { mode: 0o700 })
   const configPath = path.join(profile, 'spi-config.json')
   const config = JSON.parse(fs.readFileSync(configPath, 'utf8'))
   config.piPath = wrapper
@@ -104,6 +120,10 @@ module.exports = async function ({ launch, stop, waitFor, pass, fill, workspace,
   }
   try {
     app = await launch()
+    if (process.argv.includes('--extension-ui')) {
+      await require('./extension-ui-smoke.cjs')({app,waitFor,pass,workspace,artifacts,hashes,before})
+      return
+    }
     if (process.argv.includes('--terminal')) {
       await require('./terminal-smoke.cjs')({ app, launch, stop, waitFor, pass, fill, artifacts, profile, workspace, descendants, hashes, before })
       return

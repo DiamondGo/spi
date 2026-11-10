@@ -24,7 +24,7 @@ export function usePermissionControls(active: SessionUI): { panels: ReactNode } 
     try { await fn() } catch (e) { setError(String(e)) } finally { setBusy(false) }
   }
   function answer(sessionId: string, id: string, decision: PermissionDecision): void {
-    if (decision === 'all' && !window.confirm(t('允许该会话的本次及后续全部工具调用？这不会影响其他会话，也不会修改 pi 配置。'))) return
+    if (decision === 'all' && !window.confirm(t('允许该会话的本次及后续全部工具调用？这不会影响其他会话，也不会修改 pi 配置。') + '\n\n' + t('已识别的 Pi 工具审批（包括等待中的）会自动回复单次 Allow，不写入 Pi 白名单。其他扩展询问和直接拒绝不会被绕过。'))) return
     void run(() => window.spi.answerPermission(sessionId, id, decision))
   }
   const panels = (error || loadError || settings || state?.pending.length) ? (
@@ -35,6 +35,7 @@ export function usePermissionControls(active: SessionUI): { panels: ReactNode } 
           <IconControl tooltip={t('关闭权限设置')}><button type="button" className="permission-panel-close" aria-label={t('关闭权限设置')} onClick={() => setPermissionSettingsOpen(activeId, false)}><Icon name="close" /></button></IconControl>
         </div>
         <p>{t('仅保存到 sPi 配置目录；不修改 ~/.pi 或项目的 pi 配置。所有工具（包括读取、写入、命令和嵌套调用）均需通过审批。已有 pi 扩展仍可能另外要求批准。')}</p>
+        <p>{t('全部允许时，仅对 permission-modes 兼容格式的工具审批自动代答；这不是经过认证的扩展来源识别，其他询问仍需手动。')}</p>
         <label>{t('新建 / 重开会话的默认模式：')}
           <select title={t('默认执行权限')} value={state.defaultMode} disabled={busy} onChange={e => void run(() => window.spi.setDefaultPermissionMode(e.target.value as SafePermissionMode))}>
             {(['ask', 'remember', 'allowlist'] as const).map(mode => <option key={mode} value={mode}>{labels[mode]}</option>)}

@@ -118,7 +118,8 @@ async function getManager(): Promise<PiManager> {
         (sessionId) => {
           terminalManager?.closeSession(sessionId)
           BrowserWindow.getAllWindows().forEach(w => w.webContents.send('session:closed', sessionId))
-        }
+        },
+        () => BrowserWindow.getAllWindows().some(w => !w.webContents.isDestroyed() && w.webContents.getOSProcessId() > 0)
       )
       return manager
     })().catch(error => { managerPromise = null; throw error })

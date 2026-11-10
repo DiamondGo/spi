@@ -34,7 +34,7 @@ jobs:
       - name: Install locked build tools without unrelocated addon postinstall
         run: npm ci --ignore-scripts
       - run: npm audit --audit-level=high
-      - run: npm run typecheck && npm run test:launch && npm run test:settings && npm run test:icons && npm run test:native-build && npm run check:privacy
+      - run: npm run typecheck && npm run test:launch && npm run test:settings && npm run test:extension-ui && npm run test:icons && npm run test:native-build && npm run check:privacy
       - name: Install Pi for isolated RPC integration (bounded registry retry)
         shell: bash
         run: |

@@ -34,6 +34,8 @@
     "test:settings": "node scripts/settings.test.cjs",
     "test:settings-smoke": "electron-vite build && node scripts/with-display.cjs scripts/smoke.cjs --settings",
     "test:permissions": "node scripts/permissions.test.cjs",
+    "test:extension-ui": "node scripts/extension-ui.test.cjs",
+    "test:extension-ui-smoke": "electron-vite build && node scripts/with-display.cjs scripts/smoke.cjs --extension-ui",
     "test:permission-smoke": "electron-vite build && node scripts/with-display.cjs scripts/smoke.cjs --permissions",
     "test:smoke": "electron-vite build && node scripts/with-display.cjs scripts/smoke.cjs",
     "test:advanced": "electron-vite build && node scripts/with-display.cjs scripts/smoke.cjs --advanced"

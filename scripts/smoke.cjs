@@ -152,7 +152,7 @@ const text = (app, selector) => app.eval(`document.querySelector(${JSON.stringif
 
 async function main() {
   console.log('ARTIFACTS', artifacts)
-  if (process.argv.includes('--permissions') || process.argv.includes('--settings') || process.argv.includes('--terminal')) {
+  if (process.argv.includes('--permissions') || process.argv.includes('--settings') || process.argv.includes('--terminal') || process.argv.includes('--extension-ui')) {
     await require('./permissions-smoke.cjs')({ launch, stop, waitFor, pass, fill, text, results, workspace, profile, repo, artifacts, descendants })
     return
   }
@@ -263,7 +263,7 @@ async function main() {
   pass('no renderer exceptions / error-level browser logs')
 }
 
-const watchdog = setTimeout(() => { console.error('SMOKE global timeout'); finish(1) }, process.argv.includes('--advanced') || process.argv.includes('--permissions') || process.argv.includes('--settings') || process.argv.includes('--terminal') ? 300000 : 210000)
+const watchdog = setTimeout(() => { console.error('SMOKE global timeout'); finish(1) }, process.argv.includes('--advanced') || process.argv.includes('--permissions') || process.argv.includes('--settings') || process.argv.includes('--terminal') || process.argv.includes('--extension-ui') ? 300000 : 210000)
 let finishing = false
 async function finish(code) {
   if (finishing) return

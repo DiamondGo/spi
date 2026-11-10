@@ -8,7 +8,7 @@ export const permissionLabels: Record<PermissionMode, string> = {
 
 // Both the title bar and the composer use the same IPC source, confirmation and labels.
 export async function changePermissionMode(sessionId: string, mode: PermissionMode): Promise<void> {
-  if (mode === 'all' && !window.confirm(getT()('允许此会话今后的全部工具调用（包括命令、读写文件及扩展工具）？仅本次打开有效，不会成为默认设置。已有待审批请求仍需单独处理。'))) return
+  if (mode === 'all' && !window.confirm(getT()('允许此会话今后的全部工具调用（包括命令、读写文件及扩展工具）？仅本次打开有效，不会成为默认设置。已有 sPi 待审批请求仍需单独处理。') + '\n\n' + getT()('已识别的 Pi 工具审批（包括等待中的）会自动回复单次 Allow，不写入 Pi 白名单。其他扩展询问和直接拒绝不会被绕过。'))) return
   await window.spi.setPermissionMode(sessionId, mode)
 }
 

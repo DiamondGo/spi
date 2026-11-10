@@ -34,9 +34,15 @@ jobs:
       - name: Install locked build tools without unrelocated addon postinstall
         run: npm ci --ignore-scripts
       - run: npm audit --audit-level=high
-      - run: npm run typecheck && npm run test:launch && npm run test:icons && npm run test:native-build && npm run check:privacy
-      - name: Install Pi for isolated RPC integration
-        run: npm install --global --ignore-scripts @earendil-works/pi-coding-agent@1.5.0
+      - run: npm run typecheck && npm run test:launch && npm run test:settings && npm run test:icons && npm run test:native-build && npm run check:privacy
+      - name: Install Pi for isolated RPC integration (bounded registry retry)
+        shell: bash
+        run: |
+          for attempt in 1 2 3; do
+            if npm install --global --ignore-scripts --prefer-online @earendil-works/pi-coding-agent@1.5.0; then exit 0; fi
+            if [ "$attempt" -lt 3 ]; then sleep 20; fi
+          done
+          exit 1
       - name: Build native app, sanitize before signing, archive and scan
         run: npm run dist -- --production
       - name: Verify native binaries, bundle icon and ad-hoc signatures

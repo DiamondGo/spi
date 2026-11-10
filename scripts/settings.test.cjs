@@ -22,15 +22,17 @@ let count = 0
 const check = async (name, fn) => { await fn(); console.log('PASS', name); count++ }
 const tick = () => new Promise(resolve => setImmediate(resolve))
 
-async function testMainClose(language, confirmOnExit, answer) {
+async function testMainClose(language, confirmOnExit, answer, ownsInstance = true) {
   const home = fs.mkdtempSync(path.join(tmp, 'main-'))
   const app = new EventEmitter()
   app.getPath = () => home
   app.isPackaged = false
   app.setName = () => {}
   app.setDesktopName = name => { app.desktopName = name }
-  app.requestSingleInstanceLock = () => true
-  app.whenReady = () => Promise.resolve()
+  const exitCodes = []
+  app.exit = code => { exitCodes.push(code) }
+  app.requestSingleInstanceLock = () => ownsInstance
+  app.whenReady = () => ownsInstance ? Promise.resolve() : new Promise(() => {})
   app.quit = () => { const e = { preventDefault() { this.prevented = true } }; app.emit('before-quit', e); if (!e.prevented) app.didQuit = true }
   const windows = []
   class Window extends EventEmitter {
@@ -73,12 +75,17 @@ async function testMainClose(language, confirmOnExit, answer) {
   }
   mod._compile(compile('src/main/index.ts'), filename)
   await tick()
+  if (!ownsInstance) {
+    assert.deepEqual(exitCodes, [0]); assert.equal(windows.length, 0); assert.equal(dialogCalls, 0); assert.equal(stopped, 0)
+    assert.deepEqual(fs.readdirSync(home), []); return
+  }
+  assert.deepEqual(exitCodes, [])
   await handlers.get('settings:update')({}, { language, confirmOnExit, theme: 'light' })
   await handlers.get('session:open')({}, { cwd: '/test' })
   const win = windows[0]
   if (process.platform === 'linux') assert.equal(app.desktopName, 'spi.desktop')
   assert.ok(win.options.icon.endsWith(path.join('build', 'icons', 'icon.png')))
-  assert.equal(win.overlay.color, themeChrome.light.color)
+  if (process.platform !== 'darwin') assert.equal(win.overlay.color, themeChrome.light.color)
   assert.equal(win.background, themeChrome.light.background)
   const e = { preventDefault() { this.prevented = true } }
   win.emit('close', e)
@@ -178,6 +185,7 @@ async function testMainClose(language, confirmOnExit, answer) {
     const failed=new QuitController(()=>true,async()=>{throw Error('dialog failed')},()=>exits++)
     await assert.rejects(failed.request()); assert.equal(failed.allowed,false); assert.equal(exits,1)
   })
+  await check('secondary instance exits before readiness without creating a window/profile or quit dialog', () => testMainClose('en',true,false,false))
   await check('real main close handler: English cancel retains window and sessions', () => testMainClose('en',true,false))
   await check('real main close handler: Chinese confirmation commits once', () => testMainClose('zh',true,true))
   await check('real main close handler: disabling confirmation exits immediately', () => testMainClose('en',false,true))

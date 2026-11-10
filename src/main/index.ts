@@ -21,6 +21,9 @@ const appIcon = app.isPackaged
   ? join(process.resourcesPath, 'icon.png')
   : join(__dirname, '../../build/icons/icon.png')
 const ownsInstance = app.requestSingleInstanceLock()
+// A secondary macOS process may never reach whenReady after losing the lock.
+// It owns no sessions/windows and must not enter the primary quit-confirmation flow.
+if (!ownsInstance) app.exit(0)
 let launchRequest: { id: string; cwd: string } | null = null
 function queueLaunch(argv: string[], cwd: string): void {
   try {
@@ -235,7 +238,7 @@ ipcMain.handle('session:set-thinking', (_e, id: string, level: string) =>
 ipcMain.handle('session:commands', (_e, id: string) => manager?.getCommands(id))
 
 app.whenReady().then(() => {
-  if (!ownsInstance) { app.exit(0); return }
+  if (!ownsInstance) return
   if (process.platform === 'darwin') app.dock?.setIcon(appIcon)
   createWindow()
   app.on('activate', () => {

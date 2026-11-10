@@ -1,8 +1,8 @@
 // Only public registry/Release traffic. No host config, credentials, cache or app binaries are mounted.
 const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),assert=require('node:assert/strict')
 const {spawn,execFileSync}=require('node:child_process')
-const spec=process.env.SPI_VERIFY_PACKAGE||'spi-agent-gui@0.1.1'
-const expectedVersion=process.env.SPI_EXPECTED_VERSION||'0.1.1'
+const spec=process.env.SPI_VERIFY_PACKAGE||'spi-agent-gui@0.1.2'
+const expectedVersion=process.env.SPI_EXPECTED_VERSION||'0.1.2'
 function locate(name){return execFileSync('/bin/sh',['-c','command -v '+name],{encoding:'utf8'}).trim()}
 function run(command,args,options={}){return new Promise((resolve,reject)=>{
   const child=spawn(command,args,{stdio:'inherit',env:process.env,...options})
@@ -58,8 +58,11 @@ async function commands(pi){return new Promise((resolve,reject)=>{
   console.log('PASS published Pi extension commands; no automatic GUI launch')
   process.env.SPI_ASSERT_RENDERER_SANDBOX='1'
   process.env.SPI_ASSERT_APP_ICON='1'
+  process.env.SPI_ASSERT_WORKSPACE_UI='1'
   await run(process.execPath,['/opt/spi-test/with-display.cjs','/opt/spi-test/portable-smoke.cjs',doctor.current.entryPath])
-  const report={package:spec,uid:process.getuid(),target:doctor.platform,version,sameBinDirectory:true,publicRegistry:true,hostConfigMounted:false,nativePty:true,gui:true,piRpc:true,singleInstance:true,rendererSandbox:true,customIcon:true,ownedDesktopEntry:true}
+  await run(process.execPath,['/opt/spi-test/with-display.cjs','/opt/spi-test/smoke.cjs','--workspace-ui'],{env:{...process.env,SPI_SMOKE_EXECUTABLE:doctor.current.entryPath}})
+  console.log('PASS published editable outbox, follow-up/steer order, active sidebar and path abbreviation')
+  const report={editableOutbox:true,steerFrontInsertion:true,resizableSidebar:true,activeSessionHighlight:true,homePathAbbreviation:true,package:spec,uid:process.getuid(),target:doctor.platform,version,sameBinDirectory:true,publicRegistry:true,hostConfigMounted:false,nativePty:true,gui:true,piRpc:true,singleInstance:true,rendererSandbox:true,customIcon:true,ownedDesktopEntry:true}
   fs.writeFileSync(path.join(os.homedir(),'clean-install-result.json'),JSON.stringify(report,null,2))
   console.log('CLEAN_INSTALL_RESULT '+JSON.stringify(report))
 })().catch(error=>{console.error(error.message);process.exitCode=1})

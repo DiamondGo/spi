@@ -86,6 +86,13 @@ function descendants(pid){try{
     assert.equal(await evaluate('document.querySelectorAll(".session-tab").length'),1)
     assert.equal(await evaluate('document.querySelector(".session-tab.active").dataset.sessionId'),firstId)
     console.log('PASS second-instance cwd forwarding reuses one real pi/session')
+    if(process.env.SPI_ASSERT_WORKSPACE_UI==='1'){
+      const features=await evaluate(`({api:['submitMessage','getPendingMessages','editPendingMessage','updatePendingMessage','cancelPendingMessage','setYolo'].every(k=>typeof window.spi[k]==='function'),legacy:typeof window.spi.getPermissions==='function',toggle:document.querySelectorAll('input[aria-label="YOLO"]').length,divider:!!document.querySelector('.sidebar-resizer[role="separator"]'),selectors:document.querySelectorAll('.tb-details select').length})`)
+      assert.deepEqual(features,{api:true,legacy:false,toggle:1,divider:true,selectors:2})
+      const outbox=await evaluate(`window.spi.getPendingMessages(${JSON.stringify(firstId)})`)
+      assert.ok(Array.isArray(outbox.items));assert.equal(outbox.sessionId,firstId)
+      console.log('PASS packaged editable-outbox APIs, YOLO switch and resizable-sidebar UI (not legacy queue-only UI)')
+    }
   }else if(process.env.CI){throw Error('CI requires Pi for native integration check')}
   else console.log('SKIP Pi directory forwarding: Pi not installed')
   await evaluate('window.spi.updateAppSettings({confirmOnExit:false})')

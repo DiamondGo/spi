@@ -3,6 +3,9 @@
 scripts/*
 !scripts/with-display.cjs
 !scripts/portable-smoke.cjs
+!scripts/smoke.cjs
+!scripts/gui-fixture-smoke.cjs
+!scripts/workspace-ui-smoke.cjs
 !tests/
 tests/*
 !tests/clean-install/

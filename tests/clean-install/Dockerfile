@@ -9,5 +9,5 @@ USER node
 RUN npm install --global --ignore-scripts --no-audit --no-fund @earendil-works/pi-coding-agent@1.5.0 \
     && npm cache clean --force
 WORKDIR /home/node
-COPY --chown=node:node scripts/with-display.cjs scripts/portable-smoke.cjs tests/clean-install/verify.cjs /opt/spi-test/
+COPY --chown=node:node scripts/with-display.cjs scripts/portable-smoke.cjs scripts/smoke.cjs scripts/gui-fixture-smoke.cjs scripts/workspace-ui-smoke.cjs tests/clean-install/verify.cjs /opt/spi-test/
 CMD ["node", "/opt/spi-test/verify.cjs"]

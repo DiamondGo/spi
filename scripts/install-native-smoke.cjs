@@ -9,5 +9,9 @@ const api=require('../dist/npm-package/dist/spi.cjs')
   const installed=await api.install({version:data.version,manifest,archive:path.join(root,'dist/release',item.file),installDir:path.join(tmp,'runtime'),binDir:path.join(tmp,'bin')})
   if(process.platform==='darwin')require('./macos-verify.cjs').verifyMac(installed.entryPath)
   execFileSync(process.execPath,[path.join(__dirname,'portable-smoke.cjs'),installed.entryPath],{stdio:'inherit',timeout:120000})
+  if(process.env.SPI_ASSERT_WORKSPACE_UI==='1'){
+    execFileSync(process.execPath,[path.join(__dirname,'with-display.cjs'),path.join(__dirname,'smoke.cjs'),'--workspace-ui'],{stdio:'inherit',timeout:240000,env:{...process.env,SPI_SMOKE_EXECUTABLE:installed.entryPath}})
+    console.log('PASS extracted-runtime editable queue and workspace interaction',target)
+  }
   console.log('PASS extracted native archive',target)
 })().catch(error=>{console.error(error.message);process.exitCode=1})

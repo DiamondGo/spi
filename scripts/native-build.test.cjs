@@ -1,5 +1,5 @@
 const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),assert=require('node:assert/strict'),{execFileSync}=require('node:child_process')
-const {macBuildEnv}=require('./native-build-env.cjs'),{keepPty,stripMacDebug}=require('./distribution.cjs'),privacy=require('./privacy.cjs')
+const {macBuildEnv}=require('./native-build-env.cjs'),{keepPty,stripMacDebug,copyRuntime}=require('./distribution.cjs'),privacy=require('./privacy.cjs')
 const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'spi-native-build-test-'));let count=0
 function check(name,fn){fn();console.log('PASS',name);count++}
 function write(root,name,data='fixture'){const f=path.join(root,name);fs.mkdirSync(path.dirname(f),{recursive:true});fs.writeFileSync(f,data)}
@@ -14,6 +14,12 @@ try{
     const home="/Users/build '$user`name",env=macBuildEnv({},home)
     const words=execFileSync('/bin/sh',['-c','set -- '+env.CFLAGS+'; printf "%s\\n" "$@"'],{encoding:'utf8'}).trim().split('\n')
     assert.deepEqual(words,['file','debug','macro'].map(k=>'-f'+k+'-prefix-map='+home+'=/spi-build'))
+  })
+  if(process.platform!=='win32')check('archive staging preserves framework symlinks verbatim instead of leaking absolute build paths',()=>{
+    const from=path.join(tmp,'original'),to=path.join(tmp,'staged');write(from,'Versions/A/file','signed-content')
+    fs.symlinkSync('A',path.join(from,'Versions/Current'));fs.symlinkSync('Versions/Current/file',path.join(from,'file'))
+    copyRuntime(from,to);assert.equal(fs.readlinkSync(path.join(to,'Versions/Current')),'A');assert.equal(fs.readlinkSync(path.join(to,'file')),'Versions/Current/file')
+    fs.rmSync(from,{recursive:true});assert.equal(fs.readFileSync(path.join(to,'file'),'utf8'),'signed-content')
   })
   check('mac sanitizer keeps rebuilt addon/helper and removes unused vendor prebuilds and metadata',()=>{
     const dir=path.join(tmp,'rebuilt');for(const f of ['build/Release/pty.node','build/Release/spawn-helper','build/Release/obj.target/private.o','build/config.gypi','prebuilds/darwin-arm64/pty.node','lib/index.js','package.json','src/private.cc'])write(dir,f)

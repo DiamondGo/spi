@@ -89,6 +89,7 @@ async function sanitizeRuntime(resources){
     await asar.createPackageWithOptions(tmp,archive,{unpackDir:'node_modules/node-pty'})
   }finally{fs.rmSync(tmp,{recursive:true,force:true})}
 }
+function copyRuntime(from,to){fs.cpSync(from,to,{recursive:true,dereference:false,verbatimSymlinks:true})}
 async function archive(){
   const cfg=config(), args=process.argv, from=path.resolve(args[args.indexOf('--from')+1]||''), t=args[args.indexOf('--target')+1]
   if(!args.includes('--from')||!args.includes('--target')||!['linux-x64','linux-arm64','win32-x64','darwin-arm64','darwin-x64'].includes(t))throw Error('archive --from DIR --target PLATFORM-ARCH')
@@ -96,7 +97,7 @@ async function archive(){
   const release=path.join(root,'dist/release');fs.mkdirSync(release,{recursive:true})
   const stage=fs.mkdtempSync(path.join(os.tmpdir(),'spi-runtime-archive-')), appDir=path.join(stage,'app')
   try{
-    fs.cpSync(from,appDir,{recursive:true,dereference:false})
+    copyRuntime(from,appDir)
     const entry=t.startsWith('darwin')?'app/sPi.app/Contents/MacOS/sPi':t.startsWith('win32')?'app/sPi.exe':'app/spi'
     const resources=t.startsWith('darwin')?path.join(appDir,'sPi.app/Contents/Resources'):path.join(appDir,'resources')
     if(!fs.existsSync(path.join(stage,entry))||!fs.existsSync(path.join(resources,'spi-permission-extension.mjs')))throw Error('Incomplete runtime')
@@ -124,4 +125,4 @@ function manifest(){
   fs.writeFileSync(path.join(release,'SHA256SUMS'),files.map(n=>crypto.createHash('sha256').update(fs.readFileSync(path.join(release,n))).digest('hex')+'  '+n).join('\n')+'\n')
 }
 if(require.main===module)(async()=>{const cmd=process.argv[2];if(cmd==='prepare')await prepare();else if(cmd==='archive')await archive();else if(cmd==='manifest')manifest();else throw Error('prepare | archive | manifest')})().catch(e=>{console.error(e.message);process.exitCode=1})
-module.exports={config,prepare,archive,manifest,sanitizeRuntime,keepPty,stripMacDebug}
+module.exports={config,prepare,archive,manifest,sanitizeRuntime,keepPty,stripMacDebug,copyRuntime}

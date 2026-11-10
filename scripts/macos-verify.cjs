@@ -6,6 +6,7 @@ function verifyMac(executable){
   const info=JSON.parse(execFileSync('/usr/bin/plutil',['-convert','json','-o','-',path.join(contents,'Info.plist')],{encoding:'utf8'}))
   assert.equal(info.CFBundleIdentifier,'com.kexie.spi');assert.equal(info.CFBundleExecutable,path.basename(executable))
   assert.equal(info.CFBundleShortVersionString,require('../package.json').version)
+  assert.deepEqual(info.ElectronAsarIntegrity?.['Resources/app.asar'],{algorithm:'SHA256',hash:require('./macos-integrity.cjs').headerHash(resources)},'Signed plist must describe the sanitized ASAR')
   assert.equal(info.CFBundleIconFile,path.basename(info.CFBundleIconFile))
   const icon=path.join(resources,info.CFBundleIconFile.endsWith('.icns')?info.CFBundleIconFile:info.CFBundleIconFile+'.icns')
   assert.deepEqual(fs.readFileSync(icon),fs.readFileSync(path.join(__dirname,'../build/icons/icon.icns')))
@@ -18,8 +19,8 @@ function verifyMac(executable){
   const signature=spawnSync('/usr/bin/codesign',['--display','--verbose=4',bundle],{encoding:'utf8'})
   assert.equal(signature.status,0);assert.match(signature.stderr,/Signature=adhoc/)
   assert.ok(!fs.existsSync(path.join(resources,'app.asar.unpacked/node_modules/node-pty/prebuilds')))
-  console.log('PASS native macOS architectures, ICNS bundle icon and intact ad-hoc signatures')
+  console.log('PASS native macOS architectures, ICNS bundle icon, ASAR integrity and intact ad-hoc signatures')
   return {target:process.platform+'-'+process.arch,version:info.CFBundleShortVersionString,minimumOS:info.LSMinimumSystemVersion,signature:'ad-hoc',notarized:false}
 }
 module.exports={verifyMac}
-if(require.main===module){try{const info=verifyMac(path.resolve(process.argv[2]));const out=process.argv[3];if(out){const sha=process.env.GITHUB_SHA;if(!/^[a-f0-9]{40}$/.test(sha||''))throw Error('Missing source identity');fs.writeFileSync(out,JSON.stringify({...info,sourceCommit:sha,electron:require('../package.json').devDependencies.electron,node:process.version},null,2)+'\n')}}catch(e){console.error(e.message);process.exitCode=1}}
+if(require.main===module){try{const info=verifyMac(path.resolve(process.argv[2]));console.log(JSON.stringify(info));const out=process.argv[3];if(out){const sha=process.env.GITHUB_SHA;if(!/^[a-f0-9]{40}$/.test(sha||''))throw Error('Missing source identity');fs.writeFileSync(out,JSON.stringify({...info,sourceCommit:sha,electron:require('../package.json').devDependencies.electron,node:process.version},null,2)+'\n')}}catch(e){console.error(e.message);process.exitCode=1}}

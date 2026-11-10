@@ -1,8 +1,8 @@
-# sPi - Simple Pi Agent GUI
+# sPi — Desktop GUI for Pi Coding Agent
 
 [简体中文](README.zh-CN.md)
 
-A desktop GUI for your existing **Pi coding agent**. sPi runs an independent Pi RPC process for each open session and reuses your Pi models, authentication, skills and extensions.
+**sPi (Simple Pi Agent GUI)** is an Electron + React desktop client for your existing **Pi Coding Agent**. Each open session runs an independent Pi RPC process and reuses your Pi models, authentication, skills and extensions.
 
 ## Features
 

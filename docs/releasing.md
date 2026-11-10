@@ -49,6 +49,12 @@ Linux x64 CI builds on Ubuntu 22.04; arm64 CI uses Ubuntu 24.04. Each archive re
 
 先通过对应平台实测，再发布 Release；确认下载和哈希正常后才发布 npm。CI 不执行需要真实模型认证的基础/高级测试，不上传用户 profile 或失败截图。首次可用性仍需在实际远程 CI 验证，不能把配置了 workflow 等同于已通过。
 
+## Interactive npm approval / 交互式 npm 审批
+
+Use a current npm CLI (11.15+ for staged publishing) in the maintainer's own interactive terminal. Account login and proof-of-presence for a particular publish are separate; never send passwords, OTPs or tokens through chat or commit them to source. A browser verification success alone does not establish public package availability.
+
+If npm reports `E409: Cannot publish over previously staged version`, do not retry uploading that version, bump the version to evade the conflict or automatically delete the staged package. Check `npm stage list spi-agent-gui` and the public registry. Review and approve a genuinely pending stage with `npm stage approve <stage-id>` in the maintainer's terminal. If the stage list is empty, approval may already have completed while public metadata is still propagating; perform a bounded availability check before taking further action. Completion requires the expected public version/latest tag and reviewed payload checksum, then a clean public Pi-install test.
+
 ## Maintenance / 维护
 
 - `pi update npm:spi-agent-gui` installs the newly published package's exact desktop version. `spi update` explicitly requests the latest stable desktop release.

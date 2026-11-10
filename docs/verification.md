@@ -6,7 +6,8 @@
 - Native release run [42872533693](https://github.com/DiamondGo/spi/actions/runs/42872533693) passed both architectures and anonymous public asset checksum verification. Checks run 42872529395 also passed, including the corrected Electron test stub for desktop identity.
 - Both native targets verified the packaged artwork against the generated PNG, the owned native window's icon, SVG favicon, real GUI/PTY/Pi RPC, single-instance forwarding and enabled renderer seccomp sandbox.
 - A fresh non-root x64 Docker container installed the public 0.1.0 runtime using the verified public 0.1.1 installer, upgraded to 0.1.1, rolled back to 0.1.0, then rolled forward to 0.1.1. Desktop entry creation/removal tracked the selected version correctly; the final native window icon, GUI/PTY/RPC, single-instance and sandbox checks passed. No host config, credentials or binaries were mounted.
-- The matching npm 0.1.1 package is still awaiting publication. Its public `pi install` acceptance is not yet claimed. The clean container harness now checks desktop ownership and the new icon once that package is available.
+- npm `spi-agent-gui@0.1.1` is published with latest tag 0.1.1; its tarball checksum matches the reviewed candidate. A fresh non-root Docker container successfully ran the public `pi install npm:spi-agent-gui@0.1.1`, then verified command placement/version/doctor, desktop entry ownership and hash, installed spy icon, Pi extension commands, actual native window icon/SVG favicon, GUI/PTY/Pi RPC, single-instance forwarding and renderer sandbox. The container had no host mounts, configuration, credentials or supplied application binaries.
+- A second fresh non-root container also passed unversioned `pi install npm:spi-agent-gui`, resolving latest to 0.1.1 and repeating all the same checks, including the owned desktop entry and new native icon.
 
 ## Linux v0.1.0 release acceptance
 

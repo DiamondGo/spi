@@ -2,7 +2,7 @@
 
 ## Public metadata / 公开发布信息
 
-`release.config.json` contains the project's fixed public defaults: repository **`DiamondGo/spi`**, planned npm package **`spi-agent-gui`**. These identifiers are not credentials, and users do not need to find or substitute a package name. Version 0.1.0 is published with publicly downloadable Linux Release assets. Future publications still require the maintainer's npm publishing authorization.
+`release.config.json` contains the project's fixed public defaults: repository **`DiamondGo/spi`**, planned npm package **`spi-agent-gui`**. These identifiers are not credentials, and users do not need to find or substitute a package name. Version 0.1.1 is published with publicly downloadable Linux Release assets. Future publications still require the maintainer's npm publishing authorization.
 
 Only for a fork or local override, copy `release.config.example.json` to **`release.config.local.json`** and set identifiers you control. The local file is ignored. Precedence is environment (`SPI_RELEASE_REPOSITORY` / `SPI_NPM_PACKAGE`), local override, then public defaults. CI uses `github.repository` and an optional `SPI_NPM_PACKAGE` repository variable.
 

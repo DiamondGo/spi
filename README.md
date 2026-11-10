@@ -16,7 +16,9 @@
 
 Source: [DiamondGo/spi](https://github.com/DiamondGo/spi). The npm package is **[`spi-agent-gui`](https://www.npmjs.com/package/spi-agent-gui)**; the executable is **`spi`**. These public defaults are stored in `release.config.json`.
 
-**Linux desktop Release [v0.1.1](https://github.com/DiamondGo/spi/releases/tag/v0.1.1) is published with the new spy icon and owned Linux desktop entry. Its matching npm package is awaiting publication; npm latest is still `0.1.0`.** The prior public Pi-install flow passed clean non-root Docker acceptance. The new public runtime additionally passed upgrade/rollback, native window icon, GUI, PTY, Pi RPC and sandbox checks; the `0.1.1` public npm install will be checked after publication.
+**Linux desktop Release [v0.1.1](https://github.com/DiamondGo/spi/releases/tag/v0.1.1) and npm package `spi-agent-gui@0.1.1` are published; npm latest is `0.1.1`.** The release includes the new spy icon and owned Linux desktop entry. A clean non-root Docker test installed the public npm package through Pi and verified desktop ownership, the native window icon, SVG favicon, GUI, PTY, Pi RPC, single-instance forwarding and the active renderer sandbox. Public-runtime upgrade/rollback was also verified.
+
+To upgrade an existing Pi installation, run `pi install npm:spi-agent-gui@0.1.1`. Save any unsent work, close the old sPi window and reopen it to see the new icon; Pi authentication, sessions and sPi preferences are preserved.
 
 Release preparation upgraded Electron to 45.2.3 and electron-builder to 26.18.0. No high/critical npm audit findings remain; six moderate build-toolchain entries remain around minimatch. The release workflow continues to block high/critical advisories.
 

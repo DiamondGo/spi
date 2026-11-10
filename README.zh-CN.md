@@ -16,7 +16,9 @@
 
 源码仓库：[DiamondGo/spi](https://github.com/DiamondGo/spi)。npm 包为 **[`spi-agent-gui`](https://www.npmjs.com/package/spi-agent-gui)**，可执行命令仍为 **`spi`**；公开默认值集中在 `release.config.json`。
 
-**Linux 桌面 Release [v0.1.1](https://github.com/DiamondGo/spi/releases/tag/v0.1.1) 已发布，包含女间谍新图标和受归属保护的 Linux 桌面入口。匹配的 npm 包仍待发布，npm latest 目前仍为 `0.1.0`。** 之前版本的公开 Pi 安装流程已通过干净非 root Docker 验收；新版公开运行包另已通过升级/回滚、原生窗口图标、GUI、PTY、Pi RPC 和 sandbox 检查，待 npm 发布后再验证 `0.1.1` 的公开 npm 安装。
+**Linux 桌面 Release [v0.1.1](https://github.com/DiamondGo/spi/releases/tag/v0.1.1) 和 npm 包 `spi-agent-gui@0.1.1` 均已发布，npm latest 已指向 `0.1.1`。** 新版包含女间谍图标和受归属保护的 Linux 桌面入口。已在干净非 root Docker 环境中通过 Pi 安装公开 npm 包，并验证桌面入口归属、原生窗口图标、SVG favicon、GUI、PTY、Pi RPC、单实例转发和启用中的 renderer sandbox；公开运行包的升级/回滚也已通过。
+
+已有安装可执行 `pi install npm:spi-agent-gui@0.1.1` 更新。请先保存未发送内容，关闭旧 sPi 窗口后重新打开，才能看到新图标；Pi 认证、会话和 sPi 偏好设置会保留。
 
 发布准备已升级到 Electron 45.2.3 和 electron-builder 26.18.0，high/critical 审计告警已清除；仍有六条 minimatch 构建工具链 moderate 审计条目。发布流水线继续拦截 high/critical 问题。
 

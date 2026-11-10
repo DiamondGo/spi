@@ -80,7 +80,7 @@ async function archive(){
   const stage=fs.mkdtempSync(path.join(os.tmpdir(),'spi-runtime-archive-')), appDir=path.join(stage,'app')
   try{
     fs.cpSync(from,appDir,{recursive:true,dereference:false})
-    const entry=t.startsWith('darwin')?'app/sPi.app/Contents/MacOS/sPi':t.startsWith('win32')?'app/spi.exe':'app/spi'
+    const entry=t.startsWith('darwin')?'app/sPi.app/Contents/MacOS/sPi':t.startsWith('win32')?'app/sPi.exe':'app/spi'
     const resources=t.startsWith('darwin')?path.join(appDir,'sPi.app/Contents/Resources'):path.join(appDir,'resources')
     if(!fs.existsSync(path.join(stage,entry))||!fs.existsSync(path.join(resources,'spi-permission-extension.mjs')))throw Error('Incomplete runtime')
     // Abort instead of publishing local build paths or user data hidden inside the ASAR.

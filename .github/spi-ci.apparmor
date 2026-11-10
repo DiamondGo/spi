@@ -1,0 +1,8 @@
+abi <abi/4.0>,
+include <tunables/global>
+
+# Ephemeral CI allowlist only: preserve Chromium's namespace sandbox on Ubuntu 24+.
+# Never installed by the end-user installer and never disables Chromium sandboxing.
+profile spi-native-ci /tmp/spi-native-install-*/runtime/releases/*/*/app/spi flags=(unconfined) {
+  userns,
+}

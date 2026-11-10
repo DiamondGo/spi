@@ -22,8 +22,8 @@ jobs:
             executable: dist/linux-arm64-unpacked/spi
           - runner: windows-2022
             target: win32-x64
-            executable: dist/win-unpacked/spi.exe
-          - runner: macos-14
+            executable: dist/win-unpacked/sPi.exe
+          - runner: macos-15
             target: darwin-arm64
             executable: dist/mac-arm64/sPi.app/Contents/MacOS/sPi
     runs-on: ${{ matrix.runner }}
@@ -41,6 +41,14 @@ jobs:
       - name: Install private GUI test display
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y xvfb
+      - name: Allow the native test binary to create sandbox user namespaces
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ] && [ "$(cat /proc/sys/kernel/apparmor_restrict_unprivileged_userns)" = 1 ]; then
+            sudo install -m 644 .github/spi-ci.apparmor /etc/apparmor.d/spi-native-ci
+            sudo apparmor_parser -r /etc/apparmor.d/spi-native-ci
+          fi
       - run: npm ci
       - run: node scripts/distribution.cjs prepare --production
       - run: npm install --global --ignore-scripts @earendil-works/pi-coding-agent@1.5.0

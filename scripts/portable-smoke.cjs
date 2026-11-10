@@ -30,6 +30,17 @@ function descendants(pid){try{return fs.readFileSync('/proc/'+pid+'/task/'+pid+'
   const evaluate=async expression=>{const r=await send('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});if(r.exceptionDetails){fs.writeFileSync(path.join(tmp,'renderer-exception.json'),JSON.stringify(r.exceptionDetails,null,2));throw Error('Renderer evaluation failed; see isolated renderer-exception.json')};return r.result.value}
   await wait(()=>evaluate('!!document.querySelector(".titlebar")'),'real packaged UI')
   console.log('PASS isolated packaged GUI')
+  if(process.platform==='linux'&&process.env.SPI_ASSERT_RENDERER_SANDBOX==='1'){
+    const sandboxed=descendants(app.pid).some(pid=>{
+      try{
+        if(!fs.readFileSync('/proc/'+pid+'/cmdline','utf8').includes('--type=renderer'))return false
+        const status=fs.readFileSync('/proc/'+pid+'/status','utf8')
+        return /^NoNewPrivs:\s+1$/m.test(status)&&/^Seccomp:\s+2$/m.test(status)
+      }catch{return false}
+    })
+    assert.ok(sandboxed,'Chromium renderer must retain its own seccomp sandbox')
+    console.log('PASS Chromium renderer seccomp sandbox is active')
+  }
   const pi=await evaluate('window.spi.findPi()')
   if(pi){
     const second=child(exe,[...headless,'--user-data-dir='+profile,'--cwd='+workspace],env)

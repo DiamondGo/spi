@@ -20,12 +20,6 @@ jobs:
           - runner: ubuntu-24.04-arm
             target: linux-arm64
             executable: dist/linux-arm64-unpacked/spi
-          - runner: windows-2022
-            target: win32-x64
-            executable: dist/win-unpacked/sPi.exe
-          - runner: macos-15
-            target: darwin-arm64
-            executable: dist/mac-arm64/sPi.app/Contents/MacOS/sPi
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
@@ -106,6 +100,7 @@ jobs:
       - name: Verify public assets before publishing npm
         run: node scripts/verify-release.cjs
       - name: Publish light npm package with Trusted Publishing
+        if: vars.SPI_NPM_TRUSTED_PUBLISHING == 'true'
         working-directory: dist/npm-package
         run: |
           npm install --global npm@^11.5.1

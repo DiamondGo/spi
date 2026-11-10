@@ -1,0 +1,11 @@
+**
+!scripts/
+scripts/*
+!scripts/with-display.cjs
+!scripts/portable-smoke.cjs
+!tests/
+tests/*
+!tests/clean-install/
+tests/clean-install/*
+!tests/clean-install/Dockerfile
+!tests/clean-install/verify.cjs

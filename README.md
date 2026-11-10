@@ -16,7 +16,7 @@ A desktop GUI for your existing **Pi coding agent**. sPi runs an independent Pi 
 
 Source: [DiamondGo/spi](https://github.com/DiamondGo/spi). The fixed, planned npm package name is **`spi-agent-gui`**; the executable is **`spi`**. These public defaults are stored in `release.config.json`.
 
-**The npm package and desktop Release have not been published yet.** The commands below become usable after the first publication; an npm 404 currently means the package has not been released, not that you need to substitute a package name. The installer also requires publicly downloadable GitHub Release assets; the source repository is now public.
+**Linux desktop Release [v0.1.0](https://github.com/DiamondGo/spi/releases/tag/v0.1.0) is published. The npm package is still awaiting its first publication.** The Pi/npm commands below become usable after that publication; a current npm 404 does not mean you need to substitute a package name. The public runtime installer can already download the Linux Release.
 
 Release preparation upgraded Electron to 45.2.3 and electron-builder to 26.18.0. No high/critical npm audit findings remain; six moderate build-toolchain entries remain around minimatch. The release workflow continues to block high/critical advisories.
 

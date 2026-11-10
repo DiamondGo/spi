@@ -16,7 +16,7 @@
 
 源码仓库：[DiamondGo/spi](https://github.com/DiamondGo/spi)。计划发布的 npm 包名固定为 **`spi-agent-gui`**，可执行命令仍为 **`spi`**；公开默认值集中在 `release.config.json`。
 
-**目前尚未发布 npm 包和桌面 Release。** 下方命令在首次发布后才能使用；现在出现 npm 404 表示尚未发布，不需要用户寻找或替换包名。安装器还要求 GitHub Release 附件可公开下载，源码仓库现已公开。
+**Linux 桌面 Release [v0.1.0](https://github.com/DiamondGo/spi/releases/tag/v0.1.0) 已发布，npm 包仍待首次发布。** 下方 Pi/npm 命令要等 npm 发布后才能使用；当前 npm 404 不是要求用户寻找或替换包名。公开运行包安装器已经可以下载 Linux Release。
 
 发布准备已升级到 Electron 45.2.3 和 electron-builder 26.18.0，high/critical 审计告警已清除；仍有六条 minimatch 构建工具链 moderate 审计条目。发布流水线继续拦截 high/critical 问题。
 

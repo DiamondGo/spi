@@ -1,5 +1,13 @@
 # Distribution verification / 分发验收
 
+## Linux v0.1.0 release acceptance
+
+- Public desktop Release: https://github.com/DiamondGo/spi/releases/tag/v0.1.0 — Linux x64 and arm64 only.
+- Both Linux targets passed native tag-build installation, native PTY, GUI and real Pi RPC checks. Publication recovered the immutable tag's verified artifacts without retagging; the recovery workflow verified all anonymously downloadable asset checksums successfully.
+- A fresh non-root Docker environment (no host mounts/config/authentication, Node/Pi prerequisites only) installed the public Release through its verified installer. Native PTY, actual Electron GUI, real Pi RPC, repeated cwd forwarding and active renderer seccomp sandbox all passed.
+- This Docker run was a **runtime preflight**, not the final public npm installation test. `pi install npm:spi-agent-gui@0.1.0` must still be tested after the package is actually published. The full clean public-install harness is in `tests/clean-install/` and does not embed an application binary or credentials.
+- Windows/macOS are deferred. Docker validation was x64; arm64 validation ran natively in GitHub Actions, not emulated by x64 Docker.
+
 ## Release preparation update
 
 Electron was upgraded from 33.4.11 to **45.2.3**, electron-builder to **26.18.0**, and node-pty rebuilt. Full npm audit now reports **0 high, 0 critical, 6 moderate** entries propagated through the minimatch build toolchain; older audit counts below describe the initial implementation, not the release candidate. The repository is now public. The upgraded runtime passed local unit suites and deterministic permissions/UI 27, settings 12 and terminal 13 checks. Linux GUI tests now use a private Xvfb server because the newer Chromium Ozone headless backend exits before renderer startup; no shared-desktop fallback or sandbox-disabling flag is used. Native multi-platform validation and publication status will be updated after release acceptance.

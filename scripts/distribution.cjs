@@ -37,7 +37,7 @@ async function prepare(){
   fs.writeFileSync(path.join(release,'install.sh'),bootstrap,{mode:0o755})
   console.log('Prepared light npm package and bootstrap (no desktop binaries in npm)')
 }
-function keepPty(directory){
+function keepPty(directory,platform=process.platform,arch=process.arch){
   if(!fs.existsSync(directory))return
   for(const name of fs.readdirSync(directory))if(!['lib','package.json','LICENSE','LICENSE.txt','build','prebuilds'].includes(name))fs.rmSync(path.join(directory,name),{recursive:true,force:true})
   const buildDir=path.join(directory,'build')
@@ -54,8 +54,11 @@ function keepPty(directory){
   }
   runtimeOnly(path.join(buildDir,'Release'))
   const prebuilt=path.join(directory,'prebuilds')
+  // node-pty loads build/Release first. Do not ship unused upstream macOS
+  // prebuilds (which can contain their producer's absolute build paths).
+  if(platform==='darwin'&&fs.existsSync(path.join(buildDir,'Release/pty.node'))&&fs.existsSync(path.join(buildDir,'Release/spawn-helper')))fs.rmSync(prebuilt,{recursive:true,force:true})
   if(fs.existsSync(prebuilt))for(const name of fs.readdirSync(prebuilt)){
-    if(name!==process.platform+'-'+process.arch)fs.rmSync(path.join(prebuilt,name),{recursive:true,force:true})
+    if(name!==platform+'-'+arch)fs.rmSync(path.join(prebuilt,name),{recursive:true,force:true})
     else runtimeOnly(path.join(prebuilt,name))
   }
 }
@@ -74,7 +77,7 @@ async function sanitizeRuntime(resources){
 }
 async function archive(){
   const cfg=config(), args=process.argv, from=path.resolve(args[args.indexOf('--from')+1]||''), t=args[args.indexOf('--target')+1]
-  if(!args.includes('--from')||!args.includes('--target')||!['linux-x64','linux-arm64','win32-x64','darwin-arm64'].includes(t))throw Error('archive --from DIR --target PLATFORM-ARCH')
+  if(!args.includes('--from')||!args.includes('--target')||!['linux-x64','linux-arm64','win32-x64','darwin-arm64','darwin-x64'].includes(t))throw Error('archive --from DIR --target PLATFORM-ARCH')
   if(t!==process.platform+'-'+process.arch)throw Error('Build/archive on the native target runner; architecture mismatch')
   const release=path.join(root,'dist/release');fs.mkdirSync(release,{recursive:true})
   const stage=fs.mkdtempSync(path.join(os.tmpdir(),'spi-runtime-archive-')), appDir=path.join(stage,'app')
@@ -107,4 +110,4 @@ function manifest(){
   fs.writeFileSync(path.join(release,'SHA256SUMS'),files.map(n=>crypto.createHash('sha256').update(fs.readFileSync(path.join(release,n))).digest('hex')+'  '+n).join('\n')+'\n')
 }
 if(require.main===module)(async()=>{const cmd=process.argv[2];if(cmd==='prepare')await prepare();else if(cmd==='archive')await archive();else if(cmd==='manifest')manifest();else throw Error('prepare | archive | manifest')})().catch(e=>{console.error(e.message);process.exitCode=1})
-module.exports={config,prepare,archive,manifest,sanitizeRuntime}
+module.exports={config,prepare,archive,manifest,sanitizeRuntime,keepPty}

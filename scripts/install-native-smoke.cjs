@@ -7,6 +7,7 @@ if(!item)throw Error('Native target missing from manifest')
 const api=require('../dist/npm-package/dist/spi.cjs')
 ;(async()=>{
   const installed=await api.install({version:data.version,manifest,archive:path.join(root,'dist/release',item.file),installDir:path.join(tmp,'runtime'),binDir:path.join(tmp,'bin')})
+  if(process.platform==='darwin')require('./macos-verify.cjs').verifyMac(installed.entryPath)
   execFileSync(process.execPath,[path.join(__dirname,'portable-smoke.cjs'),installed.entryPath],{stdio:'inherit',timeout:120000})
   console.log('PASS extracted native archive',target)
 })().catch(error=>{console.error(error.message);process.exitCode=1})

@@ -1,0 +1,97 @@
+name: macOS release packages
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native:
+    name: Native ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            target: darwin-arm64
+            executable: dist/mac-arm64/sPi.app/Contents/MacOS/sPi
+          - runner: macos-15-intel
+            target: darwin-x64
+            executable: dist/mac/sPi.app/Contents/MacOS/sPi
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    env:
+      SPI_RELEASE_REPOSITORY: ${{ github.repository }}
+      SPI_ASSERT_APP_ICON: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Assert native runner identity
+        run: node -e "if(process.platform+'-'+process.arch!==process.argv[1])process.exit(1)" '${{ matrix.target }}'
+      - name: Install locked build tools without unrelocated addon postinstall
+        run: npm ci --ignore-scripts
+      - run: npm audit --audit-level=high
+      - run: npm run typecheck && npm run test:launch && npm run test:icons && npm run test:native-build && npm run check:privacy
+      - name: Install Pi for isolated RPC integration
+        run: npm install --global --ignore-scripts @earendil-works/pi-coding-agent@1.5.0
+      - name: Build native app, sanitize before signing, archive and scan
+        run: npm run dist -- --production
+      - name: Verify native binaries, bundle icon and ad-hoc signatures
+        run: node scripts/macos-verify.cjs '${{ matrix.executable }}' 'dist/release/macos-build-${{ matrix.target }}.txt'
+      - name: Install ZIP and test real native PTY, GUI, RPC and single instance
+        run: node scripts/install-native-smoke.cjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac-native-${{ matrix.target }}
+          path: |
+            dist/release/spi-*-darwin-*.zip
+            dist/release/darwin-*.json
+            dist/release/macos-build-*.txt
+          if-no-files-found: error
+          retention-days: 14
+  assemble:
+    name: Assemble verified macOS candidates
+    needs: native
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: mac-native-darwin-*
+          merge-multiple: true
+          path: dist/release
+      - name: Verify source identity and assemble version-bound installer and manifest
+        id: identity
+        run: |
+          node - <<'NODE'
+          const fs=require('node:fs'),assert=require('node:assert/strict');
+          for(const target of ['darwin-arm64','darwin-x64']){
+            const report=JSON.parse(fs.readFileSync('dist/release/macos-build-'+target+'.txt'));
+            assert.equal(report.sourceCommit,process.env.GITHUB_SHA);assert.equal(report.target,target);
+            assert.equal(report.signature,'ad-hoc');assert.equal(report.notarized,false);
+          }
+          fs.appendFileSync(process.env.GITHUB_OUTPUT,'version='+require('./package.json').version+'\n');
+          NODE
+          node scripts/distribution.cjs prepare --production
+          node scripts/distribution.cjs manifest
+          node scripts/privacy.cjs dist/release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: spi-macos-${{ steps.identity.outputs.version }}-build-${{ github.run_number }}
+          path: dist/release/*
+          if-no-files-found: error
+          retention-days: 30
+      - name: Candidate status (no public Release or npm mutation)
+        run: |
+          echo 'Both native macOS ZIPs verified. Ad-hoc signed; NOT Developer ID signed or notarized.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Candidate artifacts only. Existing public Linux releases and npm versions were not modified.' >> "$GITHUB_STEP_SUMMARY"

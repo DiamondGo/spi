@@ -19,7 +19,7 @@ function fail(message) { throw new Error(message) }
 function version(v) { if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(v)) fail('Invalid version'); return v }
 function target() {
   const t = process.platform + '-' + process.arch
-  if (!['linux-x64','linux-arm64','win32-x64','darwin-arm64'].includes(t)) fail('Unsupported platform: ' + t)
+  if (!['linux-x64','linux-arm64','win32-x64','darwin-arm64','darwin-x64'].includes(t)) fail('Unsupported platform: ' + t)
   if (process.platform === 'linux' && !process.report.getReport().header.glibcVersionRuntime) fail('Linux requires glibc; musl is not supported')
   return t
 }
@@ -186,7 +186,7 @@ function readCurrent(root) {
   if(readJSON(path.join(root,'.spi-owned.json')).owner!==OWNER)fail('Not an sPi install')
   const current=readJSON(path.join(root,'current.json'))
   version(current.version)
-  if(!['linux-x64','linux-arm64','win32-x64','darwin-arm64'].includes(current.target))fail('Invalid install target')
+  if(!['linux-x64','linux-arm64','win32-x64','darwin-arm64','darwin-x64'].includes(current.target))fail('Invalid install target')
   if(current.directory!=='releases/'+current.version+'/'+current.target)fail('Invalid install record')
   safeName(current.entry);safeName(current.permissionExtension)
   const dir=path.join(root,current.directory)

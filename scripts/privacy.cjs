@@ -14,15 +14,16 @@ function scanBuffer(buffer,label,binary=false){
   if(!binary)for(const [category,pattern]of patterns)if(pattern.test(text))throw Error('Privacy check: '+category+' in '+label)
 }
 function scanTree(dir,{binary=false}={}){
-  for(const e of fs.readdirSync(dir,{withFileTypes:true})){
-    const file=path.join(dir,e.name)
+  function visit(current){for(const e of fs.readdirSync(current,{withFileTypes:true})){
+    const file=path.join(current,e.name)
     if(e.isSymbolicLink())continue
-    if(e.isDirectory()){scanTree(file,{binary});continue}
+    if(e.isDirectory()){visit(file);continue}
     if(e.name==='app.asar'){
       const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'spi-privacy-asar-'))
       try{asar.extractAll(file,tmp);scanTree(tmp,{binary:true})}finally{fs.rmSync(tmp,{recursive:true,force:true})}
     }else scanBuffer(fs.readFileSync(file),path.relative(dir,file),binary&&!/\.(?:[cm]?js|json|html|css|txt|md|map)$/.test(e.name))
-  }
+  }}
+  visit(dir)
 }
 function repo(){
   const root=path.resolve(__dirname,'..'), files=execFileSync('git',['ls-files','--cached','--others','--exclude-standard','-z'],{cwd:root}).toString().split('\0').filter(Boolean)

@@ -15,6 +15,7 @@
     "build": "electron-vite build",
     "build:icons": "node scripts/icons.cjs",
     "test:icons": "node scripts/icons.test.cjs",
+    "test:native-build": "node scripts/native-build.test.cjs",
     "start": "electron-vite preview",
     "dist": "node scripts/build-portable.cjs",
     "dist:linux": "node scripts/build-portable.cjs",

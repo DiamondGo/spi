@@ -13,8 +13,14 @@ function child(command,args,childEnv){const c=spawn(command,args,{env:childEnv,s
 async function wait(fn,label,timeout=30000){const until=Date.now()+timeout;while(Date.now()<until){const r=await fn();if(r)return r;await new Promise(r=>setTimeout(r,100))}throw Error('Timed out: '+label)}
 async function exit(c){await wait(()=>c.done,'owned child exit');assert.equal(c.exitCode,0,c.log)}
 let app,ws
-function start(pid){try{const s=fs.readFileSync('/proc/'+pid+'/stat','utf8');return s.slice(s.lastIndexOf(')')+2).split(' ')[19]}catch{return null}}
-function descendants(pid){try{return fs.readFileSync('/proc/'+pid+'/task/'+pid+'/children','utf8').trim().split(/\s+/).filter(Boolean).flatMap(p=>[+p,...descendants(+p)])}catch{return[]}}
+function start(pid){try{if(process.platform==='darwin')return execFileSync('/bin/ps',['-p',String(pid),'-o','lstart='],{encoding:'utf8'}).trim()||null;const s=fs.readFileSync('/proc/'+pid+'/stat','utf8');return s.slice(s.lastIndexOf(')')+2).split(' ')[19]}catch{return null}}
+function descendants(pid){try{
+  if(process.platform==='darwin'){
+    const rows=execFileSync('/bin/ps',['-axo','pid=,ppid='],{encoding:'utf8'}).trim().split('\n').map(line=>line.trim().split(/\s+/).map(Number))
+    const collect=parent=>rows.filter(row=>row[1]===parent).flatMap(row=>[row[0],...collect(row[0])]);return collect(pid)
+  }
+  return fs.readFileSync('/proc/'+pid+'/task/'+pid+'/children','utf8').trim().split(/\s+/).filter(Boolean).flatMap(p=>[+p,...descendants(+p)])
+}catch{return[]}}
 ;(async()=>{
   const native=child(exe,[probe],{...env,ELECTRON_RUN_AS_NODE:'1'});try{await exit(native);console.log('PASS packaged native PTY')}finally{if(!native.done)native.kill('SIGKILL')}
   if(process.platform==='linux'&&process.env.SPI_TEST_VIRTUAL_DISPLAY!=='1')throw Error('Use scripts/with-display.cjs for isolated GUI tests')
@@ -22,7 +28,7 @@ function descendants(pid){try{return fs.readFileSync('/proc/'+pid+'/task/'+pid+'
   const args=[...headless,'--user-data-dir='+profile,'--remote-debugging-port=0']
   app=child(exe,args,env)
   const endpoint=await wait(()=>{if(app.done)throw Error(app.log);return app.log.match(/DevTools listening on (ws:\/\/\S+)/)?.[1]},'GUI endpoint')
-  const pages=await(await fetch('http://'+new URL(endpoint).host+'/json/list')).json(),page=pages.find(p=>p.type==='page')
+  const page=await wait(async()=>{try{const pages=await(await fetch('http://'+new URL(endpoint).host+'/json/list')).json();return pages.find(p=>p.type==='page'&&p.webSocketDebuggerUrl)}catch{return false}},'GUI debugger page')
   ws=new WebSocket(page.webSocketDebuggerUrl);await new Promise((r,j)=>{ws.onopen=r;ws.onerror=j})
   let seq=0;const pending=new Map()
   ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.id){const p=pending.get(m.id);if(!p)return;pending.delete(m.id);m.error?p.reject(Error(m.error.message)):p.resolve(m.result)}}
@@ -55,7 +61,7 @@ function descendants(pid){try{return fs.readFileSync('/proc/'+pid+'/task/'+pid+'
       },'custom native window icon')}
       finally{fs.writeFileSync(path.join(tmp,'native-icon-query.txt'),nativeIcon.slice(0,2000))}
     }
-    console.log('PASS custom packaged window icon and SVG favicon')
+    console.log('PASS packaged icon and SVG favicon'+(process.platform==='linux'?' and native window icon':''))
   }
   if(process.platform==='linux'&&process.env.SPI_ASSERT_RENDERER_SANDBOX==='1'){
     const sandboxed=descendants(app.pid).some(pid=>{
@@ -89,8 +95,8 @@ function descendants(pid){try{return fs.readFileSync('/proc/'+pid+'/task/'+pid+'
 })().catch(e=>{if(app)fs.writeFileSync(path.join(tmp,'failure.log'),app.log);console.error(e.message);process.exitCode=1}).finally(()=>{
   ws?.close()
   if(app&&!app.done){
-    if(process.platform==='linux'&&(!app.started||start(app.pid)!==app.started)){app.stdout.destroy();app.stderr.destroy();return}
-    if(process.platform==='linux'){const own=descendants(app.pid).map(pid=>[pid,start(pid)]);for(const[pid,s]of own.reverse())if(s&&start(pid)===s)try{process.kill(pid,'SIGKILL')}catch{}}
+    if(['linux','darwin'].includes(process.platform)&&(!app.started||start(app.pid)!==app.started)){app.stdout.destroy();app.stderr.destroy();return}
+    if(['linux','darwin'].includes(process.platform)){const own=descendants(app.pid).map(pid=>[pid,start(pid)]);for(const[pid,s]of own.reverse())if(s&&start(pid)===s)try{process.kill(pid,'SIGKILL')}catch{}}
     app.kill('SIGKILL')
     app.stdout.destroy(); app.stderr.destroy()
   }

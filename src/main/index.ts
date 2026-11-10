@@ -16,6 +16,10 @@ import { randomUUID } from 'crypto'
 
 // Keep userData stable regardless of the npm launcher's scoped package name.
 app.setName('spi')
+if (process.platform === 'linux') app.setDesktopName('spi.desktop')
+const appIcon = app.isPackaged
+  ? join(process.resourcesPath, 'icon.png')
+  : join(__dirname, '../../build/icons/icon.png')
 const ownsInstance = app.requestSingleInstanceLock()
 let launchRequest: { id: string; cwd: string } | null = null
 function queueLaunch(argv: string[], cwd: string): void {
@@ -118,6 +122,7 @@ function createWindow(): void {
     width: 1280,
     height: 800,
     show: false,
+    icon: appIcon,
     backgroundColor: chrome.background,
     // 自定义标题栏：隐藏原生标题栏，Win/Linux 用 overlay 保留最小化/最大化/关闭
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'hidden',
@@ -231,6 +236,7 @@ ipcMain.handle('session:commands', (_e, id: string) => manager?.getCommands(id))
 
 app.whenReady().then(() => {
   if (!ownsInstance) { app.exit(0); return }
+  if (process.platform === 'darwin') app.dock?.setIcon(appIcon)
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

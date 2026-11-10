@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">sPi — Nightfall</title>
+  <desc id="desc">An original ivory silhouette of a female spy in profile, with a tilted fedora, flowing hair and a raised trench-coat collar. Vermilion accents on a midnight background.</desc>
+  <defs>
+    <linearGradient id="night" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#24243e"/>
+      <stop offset="1" stop-color="#111522"/>
+    </linearGradient>
+  </defs>
+  <rect x="32" y="32" width="960" height="960" rx="216" fill="url(#night)"/>
+  <g fill="#f7eedf">
+    <!-- Long hair: the outer contour remains readable at small icon sizes. -->
+    <path d="M533 298C421 278 324 366 326 497c2 116-26 184-78 245 32 21 74 28 111 19-14 29-32 49-58 62 79 36 160 12 198-42l42-130c-56-12-90-44-101-96-15-66 15-121 60-151Z"/>
+    <!-- Shoulders and trench coat, with no fine strokes or lettering. -->
+    <path d="m448 726 51-31 53 29 34 41 46-51c74 26 127 80 160 144-166 94-366 94-532 1 48-65 111-109 188-133Z"/>
+    <!-- Forehead, nose, lips, chin and long neck form a single profile. -->
+    <path d="M492 384c64-39 137-28 168 30 13 25 10 48 23 72l46 48c7 8 3 15-8 17l-21 4-6 25 10 13-7 12 6 12-10 16c-3 25-19 40-46 43l-26 1 10 44-45 44-38-45 10-72c-57-32-82-76-82-133 0-39 7-77 16-121Z"/>
+  </g>
+  <g fill="#191c2c">
+    <!-- Swept fringe and a single negative-space wave in the hair. -->
+    <path d="M489 405c30 28 26 67 30 106 3 35 14 64 35 85-48-9-83-43-89-88-5-37 4-71 24-103Z"/>
+    <path d="M401 459c-25 73 26 129 20 201-4 58-27 96-64 121 61-20 93-64 91-125-1-68-44-120-22-186Z"/>
+    <!-- Winged eye, visible beneath the low brim. -->
+    <path d="M594 488c17-8 32-5 46 5l15-6-9 16c-17-9-31-12-52-15Z"/>
+    <!-- Graphic lapels separate the coat from the neck and hair. -->
+    <path d="m448 726 51-31 54 70-66 76-42-53-43 1Z"/>
+    <path d="m632 714-46 51 30 69 57-59-27-11 43-26Z"/>
+    <path d="m553 802 28 109h-43Z"/>
+  </g>
+  <g fill="#e65c67">
+    <path d="m688 582 17 11-10 8 8 8-19-2 7-10Z"/>
+    <circle cx="552" cy="617" r="9"/>
+  </g>
+  <!-- Fedora: broad brim, asymmetric crown and a restrained red hatband. -->
+  <path d="m337 360 41-130c4-17 15-23 30-16l67 27c12 5 18 3 27-8l33-32c10-10 20-8 29 2l94 116Z" fill="#f7eedf"/>
+  <path d="M350 323c95-30 189-45 286-35l23 31c-113 7-218 26-323 50Z" fill="#e65c67"/>
+  <path d="M214 426c62-39 151-71 258-95 119-28 252-44 332-31 25 4 26 13 7 23-76 43-174 78-273 102-133 32-242 48-316 35-29-5-33-18-8-34Z" fill="#f7eedf"/>
+</svg>

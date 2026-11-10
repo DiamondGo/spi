@@ -9,16 +9,24 @@ files:
 asarUnpack:
   - node_modules/node-pty/**
 extraResources:
+  - from: build/icons/icon.png
+    to: icon.png
   - from: out/main/permissionExtension.js
     to: spi-permission-extension.mjs
 linux:
+  icon: build/icons/icon.png
+  desktop:
+    entry:
+      StartupWMClass: spi
   target:
     - dir
   category: Development
 win:
+  icon: build/icons/icon.ico
   target:
     - dir
 mac:
+  icon: build/icons/icon.icns
   target:
     - dir
   category: public.app-category.developer-tools

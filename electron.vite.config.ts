@@ -1,6 +1,10 @@
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import react from '@vitejs/plugin-react'
 import { resolve } from 'path'
+import { execFileSync } from 'node:child_process'
+
+// Also covers direct Vite builds used by smoke tests and native release runners.
+execFileSync(process.execPath, [resolve(__dirname, 'scripts/icons.cjs')], { stdio: 'inherit' })
 
 export default defineConfig({
   main: {
@@ -23,6 +27,7 @@ export default defineConfig({
     }
   },
   renderer: {
+    publicDir: resolve(__dirname, 'resources'),
     plugins: [react()],
     resolve: {
       alias: {

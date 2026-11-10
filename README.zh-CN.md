@@ -1,6 +1,6 @@
 # sPi — Pi Coding Agent 桌面 GUI
 
-[English](README.md)
+[English](README.md) · [应用图标](docs/artwork.md)
 
 **sPi（Simple Pi Agent GUI）** 是基于 Electron + React 的 **Pi Coding Agent 桌面客户端**。每个打开的会话使用独立 Pi RPC 子进程，沿用用户的模型、认证、skills 和扩展。
 

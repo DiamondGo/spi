@@ -18,6 +18,7 @@ async function fixture(v){
   const dir=path.join(tmp,'fixture-'+v);fs.mkdirSync(path.join(dir,'app/resources'),{recursive:true})
   fs.writeFileSync(path.join(dir,'app/spi'),'#!/bin/sh\nexec '+JSON.stringify(process.execPath)+' "$@"\n',{mode:0o755})
   fs.writeFileSync(path.join(dir,'app/resources/spi-permission-extension.mjs'),'// deterministic test fixture\n')
+  fs.writeFileSync(path.join(dir,'app/resources/icon.png'),Buffer.from('89504e470d0a1a0a','hex'))
   const file='spi-'+v+'-'+platform+'.tar.gz', archive=path.join(tmp,file)
   await tar.c({cwd:dir,file:archive,gzip:true,portable:true},['app'])
   const item={file,size:fs.statSync(archive).size,sha256:crypto.createHash('sha256').update(fs.readFileSync(archive)).digest('hex'),entry:'app/spi',permissionExtension:'app/resources/spi-permission-extension.mjs'}
@@ -110,6 +111,29 @@ const server=http.createServer((req,res)=>{const data=routes.get(req.url);if(!da
     const o=opts();await api.install(o)
     await assert.rejects(api.install({...o,version:'8.8.8',archive:undefined,manifest:undefined}),/HTTP 404/)
     assert.equal(api.readCurrent(o.installDir).version,a.v);assert.ok(!fs.readdirSync(o.installDir).some(n=>n.startsWith('.staging-')))
+  })
+  await check('default Linux desktop icon follows update/rollback and owned uninstall',async()=>{
+    if(process.platform!=='linux')return
+    const saved=process.env.XDG_DATA_HOME;process.env.XDG_DATA_HOME=path.join(tmp,'desktop data')
+    try{
+      const o={...opts(),installDir:path.join(process.env.XDG_DATA_HOME,'spi')},file=path.join(process.env.XDG_DATA_HOME,'applications/spi.desktop')
+      await api.install(o);assert.ok(fs.readFileSync(file,'utf8').includes('/releases/0.1.0/'))
+      await api.install({...o,version:b.v,archive:b.archive,manifest:b.manifest});assert.ok(fs.readFileSync(file,'utf8').includes('/releases/0.2.0/'))
+      await api.rollback(o);const original=fs.readFileSync(file,'utf8');assert.ok(original.includes('/releases/0.1.0/'))
+      fs.appendFileSync(file,'# user change\n');await assert.rejects(api.uninstall(o),/modified desktop/)
+      assert.ok(fs.existsSync(path.join(o.binDir,'spi')))
+      fs.writeFileSync(file,original);await api.uninstall(o);assert.ok(!fs.existsSync(file))
+    }finally{if(saved===undefined)delete process.env.XDG_DATA_HOME;else process.env.XDG_DATA_HOME=saved}
+  })
+  await check('unowned Linux desktop entries never prevent CLI install and are not removed',async()=>{
+    if(process.platform!=='linux')return
+    const saved=process.env.XDG_DATA_HOME;process.env.XDG_DATA_HOME=path.join(tmp,'unowned desktop data')
+    try{
+      const o={...opts(),installDir:path.join(process.env.XDG_DATA_HOME,'spi')},file=path.join(process.env.XDG_DATA_HOME,'applications/spi.desktop')
+      fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,'USER ENTRY')
+      await api.install(o);assert.equal(fs.readFileSync(file,'utf8'),'USER ENTRY')
+      await api.uninstall(o);assert.equal(fs.readFileSync(file,'utf8'),'USER ENTRY')
+    }finally{if(saved===undefined)delete process.env.XDG_DATA_HOME;else process.env.XDG_DATA_HOME=saved}
   })
   await check('postinstall only recognizes an explicit personal Pi npm prefix',()=>{
     const saved={...process.env};try{

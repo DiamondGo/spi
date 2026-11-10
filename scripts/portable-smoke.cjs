@@ -1,5 +1,5 @@
 // Native probe + isolated GUI/second-instance check; no model requests or real user profile.
-const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),assert=require('node:assert/strict'),{spawn}=require('node:child_process')
+const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),assert=require('node:assert/strict'),{spawn,execFileSync}=require('node:child_process')
 const binary=process.argv[2]||process.env.SPI_SMOKE_EXECUTABLE
 if(!binary)throw Error('Usage: node scripts/portable-smoke.cjs /path/to/native/spi')
 const exe=path.resolve(binary),tmp=fs.mkdtempSync(path.join(os.tmpdir(),'spi-portable-smoke-'))
@@ -30,6 +30,30 @@ function descendants(pid){try{return fs.readFileSync('/proc/'+pid+'/task/'+pid+'
   const evaluate=async expression=>{const r=await send('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});if(r.exceptionDetails){fs.writeFileSync(path.join(tmp,'renderer-exception.json'),JSON.stringify(r.exceptionDetails,null,2));throw Error('Renderer evaluation failed; see isolated renderer-exception.json')};return r.result.value}
   await wait(()=>evaluate('!!document.querySelector(".titlebar")'),'real packaged UI')
   console.log('PASS isolated packaged GUI')
+  if(process.env.SPI_ASSERT_APP_ICON==='1'){
+    assert.deepEqual(fs.readFileSync(path.join(resources,'icon.png')),fs.readFileSync(path.join(__dirname,'../build/icons/icon.png')))
+    assert.ok(await evaluate('!!document.querySelector(\'link[rel="icon"][type="image/svg+xml"]\')'))
+    if(process.platform==='linux'){
+      let nativeIcon=''
+      try{await wait(()=>{
+        try{
+          const options={env,encoding:'utf8',maxBuffer:16*1024*1024,stdio:['ignore','pipe','pipe']}
+          const tree=execFileSync('xwininfo',['-root','-tree'],options)
+          nativeIcon='Owned browser PID: '+app.pid+'\n'+tree+'\n'
+          for(const match of tree.matchAll(/^\s*(0x[0-9a-f]+)\s/gm)){
+            const properties=execFileSync('xprop',['-id',match[1],'-f','_NET_WM_ICON','32c','_NET_WM_PID','_NET_WM_ICON'],options)
+            nativeIcon+=properties.slice(0,400)+'\n'
+            if(!properties.includes('= '+app.pid+'\n'))continue
+            // The packaged PNG matches the generated artwork above; verify its native 512px representation.
+            if(/_NET_WM_ICON\(CARDINAL\) = 512, 512,/.test(properties))return true
+          }
+          return false
+        }catch(error){nativeIcon=String(error.stderr||error.message);return false}
+      },'custom native window icon')}
+      finally{fs.writeFileSync(path.join(tmp,'native-icon-query.txt'),nativeIcon.slice(0,2000))}
+    }
+    console.log('PASS custom packaged window icon and SVG favicon')
+  }
   if(process.platform==='linux'&&process.env.SPI_ASSERT_RENDERER_SANDBOX==='1'){
     const sandboxed=descendants(app.pid).some(pid=>{
       try{

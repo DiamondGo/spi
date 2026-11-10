@@ -9,6 +9,7 @@ const { spawn } = require('node:child_process')
 const { pipeline } = require('node:stream/promises')
 const tar = require('tar')
 const yauzl = require('yauzl')
+const { syncDesktopEntry, assertDesktopOwned, removeDesktopEntry } = require('./desktop.cjs')
 const BUILD = typeof __SPI_RELEASE__ === 'undefined'
   ? { version: require('../../../package.json').version, repository: require('../../../release.config.json').repository, packageName: require('../../../release.config.json').npmPackage }
   : __SPI_RELEASE__
@@ -223,7 +224,11 @@ function register(root, options={}) {
   const temp=dest+'.'+crypto.randomUUID()+'.tmp'
   fs.writeFileSync(temp,text,{mode:0o755});fs.renameSync(temp,dest)
   const shims=(oldState.shims||[]).filter(s=>s.path!==dest);shims.push({path:dest,sha256:hash(dest)})
-  atomicJSON(path.join(root,'install-state.json'),{owner:OWNER,shims,launcher:{sha256:hash(cli)}})
+  let desktop=oldState.desktop
+  if(process.platform==='linux'&&root===path.resolve(defaultRoot()))try{
+    desktop=syncDesktopEntry({enabled:true,dataHome:process.env.XDG_DATA_HOME||path.join(os.homedir(),'.local/share'),root,command:dest,entryPath:cur.entryPath,previous:desktop})
+  }catch(error){console.warn('[sPi] Desktop entry unchanged: '+error.message)}
+  atomicJSON(path.join(root,'install-state.json'),{owner:OWNER,shims,desktop,launcher:{sha256:hash(cli)}})
   console.log('sPi command: '+dest)
   if(!(process.env.PATH||'').split(path.delimiter).some(d=>path.resolve(d)===dir))console.log('Add this directory to your PATH: '+dir+' (shell configuration was not changed)')
 }
@@ -329,9 +334,11 @@ async function uninstall(options) {
     if(fs.existsSync(launcher)&&fs.lstatSync(launcher).isSymbolicLink())fail('Refusing symlink launcher')
     const cli=path.join(launcher,'spi.cjs')
     if(fs.existsSync(cli)&&(!state.launcher||hash(cli)!==state.launcher.sha256||fs.lstatSync(cli).isSymbolicLink()))fail('Refusing modified launcher')
+    assertDesktopOwned(state.desktop)
     for(const s of state.shims||[])if(fs.existsSync(s.path)){
       if(fs.lstatSync(s.path).isSymbolicLink()||hash(s.path)!==s.sha256)fail('Refusing to remove a modified command')
     }
+    removeDesktopEntry(state.desktop)
     for(const s of state.shims||[])fs.rmSync(s.path,{force:true})
     // Remove only installer-owned paths, never an arbitrary user-supplied directory tree.
     for(const dir of owned)fs.rmSync(dir,{recursive:true,force:true})

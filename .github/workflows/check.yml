@@ -19,6 +19,7 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y xvfb
       - run: npm ci
       - run: npm run typecheck
+      - run: npm run test:icons
       - run: npm run check:privacy
       - run: npm run test:sessions && npm run test:launch && npm run test:settings && npm run test:permissions && npm run test:terminal
       - run: npm run test:installer && npm run test:distribution

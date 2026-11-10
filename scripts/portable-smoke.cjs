@@ -17,7 +17,8 @@ function start(pid){try{const s=fs.readFileSync('/proc/'+pid+'/stat','utf8');ret
 function descendants(pid){try{return fs.readFileSync('/proc/'+pid+'/task/'+pid+'/children','utf8').trim().split(/\s+/).filter(Boolean).flatMap(p=>[+p,...descendants(+p)])}catch{return[]}}
 ;(async()=>{
   const native=child(exe,[probe],{...env,ELECTRON_RUN_AS_NODE:'1'});try{await exit(native);console.log('PASS packaged native PTY')}finally{if(!native.done)native.kill('SIGKILL')}
-  const headless=process.platform==='linux'?['--ozone-platform=headless','--ozone-override-screen-size=1280,800','--disable-gpu']:[]
+  if(process.platform==='linux'&&process.env.SPI_TEST_VIRTUAL_DISPLAY!=='1')throw Error('Use scripts/with-display.cjs for isolated GUI tests')
+  const headless=process.platform==='linux'?['--ozone-platform=x11','--disable-gpu']:[]
   const args=[...headless,'--user-data-dir='+profile,'--remote-debugging-port=0']
   app=child(exe,args,env)
   const endpoint=await wait(()=>{if(app.done)throw Error(app.log);return app.log.match(/DevTools listening on (ws:\/\/\S+)/)?.[1]},'GUI endpoint')

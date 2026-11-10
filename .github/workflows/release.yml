@@ -38,6 +38,9 @@ jobs:
         run: |
           node -e "if(process.platform+'-'+process.arch!==process.argv[1])process.exit(1)" '${{ matrix.target }}'
           node -e "if(process.env.GITHUB_REF_TYPE==='tag'&&process.env.GITHUB_REF_NAME!=='v'+require('./package.json').version)process.exit(1)"
+      - name: Install private GUI test display
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y xvfb
       - run: npm ci
       - run: node scripts/distribution.cjs prepare --production
       - run: npm install --global --ignore-scripts @earendil-works/pi-coding-agent@1.5.0
@@ -45,7 +48,7 @@ jobs:
       - name: Build complete native runtime (no AppImage)
         run: npm run dist -- --production
       - name: Native PTY, GUI, Pi RPC and single-instance smoke
-        run: node scripts/install-native-smoke.cjs
+        run: node scripts/with-display.cjs scripts/install-native-smoke.cjs
       - name: Full isolated Pi installation checks (Linux x64)
         if: matrix.target == 'linux-x64'
         run: npm run test:distribution

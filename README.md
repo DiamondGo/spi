@@ -16,9 +16,9 @@ A desktop GUI for your existing **Pi coding agent**. sPi runs an independent Pi 
 
 Source: [DiamondGo/spi](https://github.com/DiamondGo/spi). The fixed, planned npm package name is **`spi-agent-gui`**; the executable is **`spi`**. These public defaults are stored in `release.config.json`.
 
-**The npm package and desktop Release have not been published yet.** The commands below become usable after the first publication; an npm 404 currently means the package has not been released, not that you need to substitute a package name. The installer also requires publicly downloadable GitHub Release assets (the source repository is currently private).
+**The npm package and desktop Release have not been published yet.** The commands below become usable after the first publication; an npm 404 currently means the package has not been released, not that you need to substitute a package name. The installer also requires publicly downloadable GitHub Release assets; the source repository is now public.
 
-The existing pinned Electron/build toolchain still has known dependency advisories. The release workflow blocks high/critical advisories; review and upgrade these before publishing. No unreviewed major dependency upgrade was made as part of this distribution change.
+Release preparation upgraded Electron to 45.2.3 and electron-builder to 26.18.0. No high/critical npm audit findings remain; six moderate build-toolchain entries remain around minimatch. The release workflow continues to block high/critical advisories.
 
 Linux x64 is the locally validated target. Linux arm64, Windows x64 and macOS arm64 have native CI jobs but are not claimed to have passed on this machine. A platform is installable only when present in the published manifest. Linux archives state their build glibc baseline; a graphical desktop and system Electron libraries are required. Windows/macOS releases are not notarized/Developer-ID signed by default (macOS uses ad-hoc signing); OS security warnings are possible. Do not disable OS protections.
 
@@ -114,9 +114,9 @@ Development installs compile node-pty for the pinned Electron version and need t
 ```bash
 npm run dist                 # Native runner only; output: dist/release/
 npm run test:distribution    # Complete Linux install/Pi-package checks when a local release exists
-node scripts/portable-smoke.cjs dist/linux-unpacked/spi
+node scripts/with-display.cjs scripts/portable-smoke.cjs dist/linux-unpacked/spi
 ```
 
-The deterministic permission/settings/terminal GUI suites are also available. Basic/advanced smoke tests use real configured model providers and are not public CI defaults. Tests use temporary profiles and only clean up their own processes.
+The deterministic permission/settings/terminal GUI suites are also available. Basic/advanced smoke tests use real configured model providers and are not public CI defaults. Tests use temporary profiles and only clean up their own processes. Linux GUI tests require Xvfb (`SPI_XVFB_BINARY` can select a private copy), never the shared desktop. End-user installs do not require Xvfb.
 
 See [publishing](docs/releasing.md) and [verification](docs/verification.md). Runtime archives belong to GitHub Releases, never Git or the lightweight npm tarball. No source open-source license has been selected; project metadata is `UNLICENSED`. Distributed third-party licenses are retained.

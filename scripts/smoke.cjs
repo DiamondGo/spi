@@ -74,8 +74,8 @@ async function launch() {
   if (process.argv.includes('--terminal')) env.HISTFILE = path.join(artifacts, 'terminal-shell-history')
   const executable = process.platform === 'win32' ? 'electron.exe' : 'electron'
   const installed = process.env.SPI_SMOKE_EXECUTABLE
-  const isolatedDisplay = process.platform === 'linux' && process.argv.includes('--terminal')
-    ? ['--ozone-platform=headless', '--ozone-override-screen-size=1920,1080', '--disable-gpu'] : []
+  if (process.platform === 'linux' && process.env.SPI_TEST_VIRTUAL_DISPLAY !== '1') throw new Error('Use scripts/with-display.cjs for isolated GUI tests')
+  const isolatedDisplay = process.platform === 'linux' ? ['--ozone-platform=x11', '--disable-gpu'] : []
   const child = spawn(installed || path.join(repo, 'node_modules/electron/dist', executable), [
     ...(installed ? [] : [repo]), ...isolatedDisplay, `--user-data-dir=${profile}`, '--remote-debugging-port=0'
   ], { cwd: repo, env, stdio: ['ignore', 'pipe', 'pipe'] })
@@ -95,8 +95,11 @@ async function launch() {
   const debug = await waitFor(() => app.log.match(/DevTools listening on (ws:\/\/[^\s]+)/)?.[1], 'debug endpoint')
   const origin = 'http://' + new URL(debug).host
   const page = await waitFor(async () => {
-    const targets = await (await fetch(origin + '/json/list', { signal: AbortSignal.timeout(3000) })).json()
-    return targets.find(t => t.type === 'page')
+    // New Chromium versions can announce CDP just before its HTTP endpoint accepts connections.
+    try {
+      const targets = await (await fetch(origin + '/json/list', { signal: AbortSignal.timeout(3000) })).json()
+      return targets.find(t => t.type === 'page')
+    } catch { return null }
   }, 'Electron renderer')
   const ws = app.ws = new WebSocket(page.webSocketDebuggerUrl)
   await new Promise((resolve, reject) => { ws.onopen = resolve; ws.onerror = reject })

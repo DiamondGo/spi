@@ -16,9 +16,9 @@
 
 源码仓库：[DiamondGo/spi](https://github.com/DiamondGo/spi)。计划发布的 npm 包名固定为 **`spi-agent-gui`**，可执行命令仍为 **`spi`**；公开默认值集中在 `release.config.json`。
 
-**目前尚未发布 npm 包和桌面 Release。** 下方命令在首次发布后才能使用；现在出现 npm 404 表示尚未发布，不需要用户寻找或替换包名。安装器还要求 GitHub Release 附件可公开下载（源码仓库当前为私有）。
+**目前尚未发布 npm 包和桌面 Release。** 下方命令在首次发布后才能使用；现在出现 npm 404 表示尚未发布，不需要用户寻找或替换包名。安装器还要求 GitHub Release 附件可公开下载，源码仓库现已公开。
 
-当前固定的 Electron/构建工具链仍有已知依赖安全告警，发布流水线会拦截 high/critical 问题；正式发布前须评估并升级。本轮没有擅自执行未经审核的大版本依赖升级。
+发布准备已升级到 Electron 45.2.3 和 electron-builder 26.18.0，high/critical 审计告警已清除；仍有六条 minimatch 构建工具链 moderate 审计条目。发布流水线继续拦截 high/critical 问题。
 
 Linux x64 为本机验收目标。Linux arm64、Windows x64、macOS arm64 提供原生 CI 任务，但不声称已在本机通过；只有实际发布 manifest 中的目标才可安装。Linux 要求图形桌面、系统 Electron 依赖和归档记录的 glibc 基线。Windows/macOS 默认没有发行商签名/公证（macOS 为 ad-hoc 签名），可能出现系统警告，不应关闭系统保护来绕过。
 
@@ -116,9 +116,9 @@ npm run check:privacy
 ```bash
 npm run dist                 # 必须在对应原生平台构建，输出 dist/release/
 npm run test:distribution    # 有本地 Linux Release 时验证完整 Pi 包/脚本安装链
-node scripts/portable-smoke.cjs dist/linux-unpacked/spi
+node scripts/with-display.cjs scripts/portable-smoke.cjs dist/linux-unpacked/spi
 ```
 
-另有确定性权限/设置/终端 GUI 测试。基础/高级 smoke 会使用真实模型和现有认证，不作为公开 CI 默认任务。测试使用临时 profile，仅清理本次拥有的进程。
+另有确定性权限/设置/终端 GUI 测试。基础/高级 smoke 会使用真实模型和现有认证，不作为公开 CI 默认任务。测试使用临时 profile，仅清理本次拥有的进程。Linux GUI 测试要求 Xvfb（可用 `SPI_XVFB_BINARY` 指定私有副本），不接管共享桌面；用户正常安装/运行不需要 Xvfb。
 
 参见[发布说明](docs/releasing.md)与[验收记录](docs/verification.md)。二进制压缩包只放 GitHub Releases，不进 Git 或轻量 npm 包。项目尚未选择开源授权，元数据为 `UNLICENSED`；分发时保留第三方许可证。

@@ -7,9 +7,9 @@ Source hosting, Git commits/pushes and desktop/npm publication are separate oper
 ## Configure / 配置
 
 1. Review `.gitignore`, run privacy checks and manually inspect the candidate/staged source. Choose a project license; metadata remains `UNLICENSED` until a license is explicitly selected.
-2. The public defaults in `release.config.json` are `DiamondGo/spi` and `spi-agent-gui`. Verify npm publishing rights for that name; it is planned but not yet published/reserved by this repository. Forks can override the defaults using local configuration or environment. Public Release assets are required for this bootstrap; the currently private repository's assets are not anonymously installable.
+2. The public defaults in `release.config.json` are `DiamondGo/spi` and `spi-agent-gui`. Verify npm publishing rights for that name; it is planned but not yet published/reserved by this repository. Forks can override the defaults using local configuration or environment. Public Release assets are required for this bootstrap; the repository is now public, but draft/private assets are not anonymously installable.
 3. Optionally override repository variable `SPI_NPM_PACKAGE` (default `spi-agent-gui`), configure a protected GitHub environment named `release`, and npm Trusted Publishing for `.github/workflows/release.yml`. No npm token belongs in the repository. Review workflow permissions and require approval for the release environment.
-4. Run the **full** `npm audit`, not only `--omit=dev`. The pinned Electron/build toolchain currently has known high/critical advisories. Review/upgrade before releasing; the publish job deliberately blocks these, and the runtime Electron must not be dismissed as "dev-only". Major dependency upgrades require a separate compatibility pass.
+4. Run the **full** `npm audit`, not only `--omit=dev`. Release preparation upgraded the runtime/build toolchain and cleared high/critical advisories; six moderate minimatch build-chain audit entries remain. The publish job still blocks high/critical issues, and runtime Electron must not be dismissed as "dev-only". Future major dependency upgrades require a compatibility pass.
 5. Update root `package.json`/lockfile version. A `v<version>` tag must match it. The generated npm package binds to that exact desktop version.
 
 配置真实仓库/包名、受保护的 release environment 和 npm OIDC。先选择明确的代码授权。公开下载不能依赖发布者的私有 token；版本以根 package.json 为准，npm 包和 Release 一一对应。
@@ -41,7 +41,7 @@ Linux x64 CI builds on Ubuntu 22.04; arm64 CI uses Ubuntu 24.04. Each archive re
 
 ## Verification and ordering / 验收与发布顺序
 
-1. Run `scripts/portable-smoke.cjs` against the packed native executable: native PTY, real GUI, real isolated Pi handshake, cwd forwarding and second-instance reuse.
+1. Run `node scripts/with-display.cjs scripts/portable-smoke.cjs` against the packed native executable: native PTY, real GUI, real isolated Pi handshake, cwd forwarding and second-instance reuse.
 2. On Linux x64 run `npm run test:distribution`: a temporary registry/Release server tests actual Pi installation, manual commands, global spi placement, local installs, disabled scripts and the standalone bootstrap. No real user Pi config is written.
 3. Review the light npm tarball (`npm pack ./dist/npm-package --dry-run --ignore-scripts`) and public archive contents; `.gitignore` alone does not constrain npm/Release contents.
 4. All native jobs must pass before uploading target artifacts. The publish job merges their descriptors, creates the final checksums and a draft Release, uploads the allowlisted assets, then makes the Release visible.

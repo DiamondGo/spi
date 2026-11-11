@@ -12,6 +12,10 @@ const api=require('../dist/npm-package/dist/spi.cjs')
   if(process.env.SPI_ASSERT_WORKSPACE_UI==='1'){
     execFileSync(process.execPath,[path.join(__dirname,'with-display.cjs'),path.join(__dirname,'smoke.cjs'),'--workspace-ui'],{stdio:'inherit',timeout:240000,env:{...process.env,SPI_SMOKE_EXECUTABLE:installed.entryPath}})
     console.log('PASS extracted-runtime editable queue and workspace interaction',target)
+    if(process.platform!=='win32'){
+      execFileSync(process.execPath,[path.join(__dirname,'with-display.cjs'),path.join(__dirname,'smoke.cjs'),'--runtime-env'],{stdio:'inherit',timeout:180000,env:{...process.env,SPI_SMOKE_EXECUTABLE:installed.entryPath}})
+      console.log('PASS extracted-runtime sparse desktop PATH, new/history sessions and manual Node settings',target)
+    }
   }
   console.log('PASS extracted native archive',target)
 })().catch(error=>{console.error(error.message);process.exitCode=1})

@@ -1,5 +1,9 @@
 # Configuration and privacy / 配置与隐私
 
+## Node.js runtime / 运行环境
+
+0.1.4 adds **Settings → Node.js runtime**: optional absolute executable path, Browse/Save/Clear to automatic. It is validated before atomic private saving as `nodePath` in sPi's own `spi-config.json`; Pi/model/auth/shell configuration and the global PATH are unchanged. It applies to new/reopened sessions without restarting existing ones. Invalid saved paths fail explicitly. [Automatic detection, probes and launcher semantics](runtime-node.md).
+
 ## Public metadata / 公开发布信息
 
 `release.config.json` contains the project's fixed public defaults: repository **`DiamondGo/spi`**, npm package **`spi-agent-gui`**. These identifiers are not credentials, and users do not need to find or substitute a package name. Linux desktop/npm 0.1.3 are public with verified version-pinned/latest clean Pi installs. This fixes 0.1.2's slow-network timeout and adds live percentage output; [download behavior and limits](downloads.md). Future publications still require the maintainer's npm publishing authorization.

@@ -1,5 +1,12 @@
 # Distribution verification / 分发验收
 
+## 0.1.4 desktop Node startup fix (release preparation)
+
+- Reproduced the actual old 0.1.3 packaged GUI failing with `session:open … pi process exited` when desktop PATH has no Node but a private synthetic login shell can supply one. This tests the environment variant missed by earlier Node-on-PATH containers, not a claim that the earlier session tests did not run.
+- Fixed automatic child-only Node environment resolution and added private manual Node settings. The new installed/extracted x64 runtime passes all 9 real GUI/Pi checks: fresh session, loopback/read roundtrip, saved history reopen, subsequent fresh session, invalid manual input, manual fallback without login lookup, removed-path error while existing sessions live, restart/persistence/history, and clear-to-auto. Tests never load real user history/auth/extensions.
+- Native release acceptance and the clean public-install harness now require this additional sparse-desktop-PATH/manual-settings suite, alongside the existing 8 workspace checks. Version is 0.1.4 because four-part 0.1.3.1 is invalid npm SemVer; no immutable 0.1.3 package/asset is replaced.
+- Typecheck, expanded launch/manual-config units, 4 process-exit diagnostic units, existing sessions/settings/YOLO/extension/outbox/terminal/icon/native-build/installer tests, full 9-case isolated distribution, and real settings/terminal/YOLO GUI regressions passed locally. [Lookup order, settings and trust limits](runtime-node.md).
+
 ## Linux v0.1.3 public release and clean-install acceptance
 
 - Desktop Release: https://github.com/DiamondGo/spi/releases/tag/v0.1.3; Linux x64/arm64 only. Immutable tag points to `357b64831cff5ede3474e4b9e27c13fe6f545e9c`.

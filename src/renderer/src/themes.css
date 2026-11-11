@@ -127,5 +127,12 @@ html, body, #root { background: var(--bg); color: var(--fg); }
 .settings-checkbox-row { margin-top: 24px; }
 .settings-checkbox-row input { width: 18px; height: 18px; }
 .settings-help { color: var(--muted); line-height: 1.6; font-size: 12px; margin: 10px 0; }
+.node-settings { margin: 18px 0 0; padding: 12px; border: 1px solid var(--border); min-width: 0; }
+.node-settings legend { padding: 0 5px; }
+.node-settings label { display: block; margin-bottom: 7px; }
+.node-settings input { box-sizing: border-box; width: 100%; padding: 7px 9px; background: var(--input); color: var(--fg); border: 1px solid var(--border); border-radius: 5px; font: inherit; }
+.node-settings-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.node-settings button { padding: 5px 9px; color: var(--fg); background: var(--input); border: 1px solid var(--border); border-radius: 5px; cursor: pointer; }
+.node-settings .settings-error { overflow-wrap: anywhere; }
 .app-settings-dialog :disabled { opacity: .6; cursor: default; }
 :root[data-theme="high-contrast"] .app-settings-dialog { border-width: 2px; }

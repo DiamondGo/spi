@@ -69,19 +69,20 @@ async function stop(app) {
   app.child.stderr.destroy()
   await Promise.race([new Promise(r => app.child.once('exit', r)), delay(2000)])
 }
-async function launch() {
+async function launch(options = {}) {
   const index = apps.length + 1
   const env = { ...process.env }
   delete env.ELECTRON_RUN_AS_NODE
   delete env.ELECTRON_VITE_DEV_SERVER_URL
   if (process.argv.includes('--terminal')) env.HISTFILE = path.join(artifacts, 'terminal-shell-history')
-  if (['--yolo','--settings','--terminal','--extension-ui','--workspace-ui'].some(flag => process.argv.includes(flag))) {
+  if (['--yolo','--settings','--terminal','--extension-ui','--workspace-ui','--runtime-env'].some(flag => process.argv.includes(flag))) {
     env.PI_CODING_AGENT_DIR = path.join(artifacts, 'agent')
     env.HOME = path.join(artifacts, 'home')
     env.XDG_CONFIG_HOME = path.join(artifacts, 'xdg-config')
     env.XDG_CACHE_HOME = path.join(artifacts, 'xdg-cache')
     for (const dir of [env.HOME, env.XDG_CONFIG_HOME, env.XDG_CACHE_HOME, path.join(env.HOME, 'fixture-a'), path.join(env.HOME, 'fixture-b')]) fs.mkdirSync(dir, { recursive: true })
   }
+  Object.assign(env, options.env || {})
   const executable = process.platform === 'win32' ? 'electron.exe' : 'electron'
   const installed = process.env.SPI_SMOKE_EXECUTABLE
   if (process.platform === 'linux' && process.env.SPI_TEST_VIRTUAL_DISPLAY !== '1') throw new Error('Use scripts/with-display.cjs for isolated GUI tests')
@@ -141,7 +142,7 @@ async function launch() {
   }
   await app.send('Runtime.enable')
   await app.send('Log.enable')
-  await waitFor(() => app.eval(`!!document.querySelector('textarea')`), 'restored session input', 30000)
+  await waitFor(() => app.eval(options.waitForSession === false ? `!!document.querySelector('.titlebar')` : `!!document.querySelector('textarea')`), 'restored session input', 30000)
   assert.equal(await app.eval('location.protocol'), 'file:')
   const layout = await app.eval('window.spi.loadLayout()')
   assert.equal(layout.selectedDir, workspace, 'Must use isolated profile')
@@ -162,7 +163,7 @@ const text = (app, selector) => app.eval(`document.querySelector(${JSON.stringif
 
 async function main() {
   console.log('ARTIFACTS', artifacts)
-  if (process.argv.includes('--yolo') || process.argv.includes('--settings') || process.argv.includes('--terminal') || process.argv.includes('--extension-ui') || process.argv.includes('--workspace-ui')) {
+  if (process.argv.includes('--yolo') || process.argv.includes('--settings') || process.argv.includes('--terminal') || process.argv.includes('--extension-ui') || process.argv.includes('--workspace-ui') || process.argv.includes('--runtime-env')) {
     await require('./gui-fixture-smoke.cjs')({ launch, stop, waitFor, pass, fill, text, results, workspace, profile, repo, artifacts, descendants })
     return
   }

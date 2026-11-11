@@ -33,11 +33,21 @@ module.exports=async function(context){
   fs.mkdirSync(agent,{recursive:true})
   fs.writeFileSync(wrapper,`#!/bin/sh\nexec env PI_CODING_AGENT_DIR=${sh(agent)} ${sh(pi)} --no-extensions --extension ${sh(provider)} --extension ${sh(approvals)} "$@"\n`,{mode:0o700})
   const configFile=path.join(profile,'spi-config.json'),config=JSON.parse(fs.readFileSync(configFile));config.piPath=wrapper;fs.writeFileSync(configFile,JSON.stringify(config))
+  let launchOptions
+  if(process.argv.includes('--runtime-env')){
+    const sparse=path.join(artifacts,'desktop-bin'),nodeBin=path.join(artifacts,'login-node-bin'),loginShell=path.join(artifacts,'login-shell')
+    fs.mkdirSync(sparse);fs.mkdirSync(nodeBin)
+    fs.symlinkSync(fs.realpathSync(execFileSync('which',['env'],{encoding:'utf8'}).trim()),path.join(sparse,'env'))
+    fs.symlinkSync(process.execPath,path.join(nodeBin,'node'))
+    fs.writeFileSync(loginShell,`#!/bin/sh\nprintf '__SPI_NODE_PATH__%s\\n' ${sh(path.join(nodeBin,'node'))}\n`,{mode:0o700})
+    assert.throws(()=>execFileSync(path.join(sparse,'env'),['node','--version'],{env:{PATH:sparse},stdio:'ignore'}))
+    launchOptions={env:{PATH:sparse,SHELL:loginShell},waitForSession:false}
+  }
   let app
   try{
-    app=await launch()
-    const suite=process.argv.includes('--terminal')?'terminal-smoke.cjs':process.argv.includes('--settings')?'settings-smoke.cjs':process.argv.includes('--extension-ui')?'extension-ui-smoke.cjs':process.argv.includes('--workspace-ui')?'workspace-ui-smoke.cjs':'yolo-smoke.cjs'
-    await require('./'+suite)({...context,app,hashes,before})
+    app=await launch(launchOptions)
+    const suite=process.argv.includes('--runtime-env')?'runtime-env-smoke.cjs':process.argv.includes('--terminal')?'terminal-smoke.cjs':process.argv.includes('--settings')?'settings-smoke.cjs':process.argv.includes('--extension-ui')?'extension-ui-smoke.cjs':process.argv.includes('--workspace-ui')?'workspace-ui-smoke.cjs':'yolo-smoke.cjs'
+    await require('./'+suite)({...context,app,hashes,before,launchOptions})
     assert.deepEqual(hashes(),before);assert.deepEqual(errors,[])
   }catch(error){if(app&&!app.exited){try{fs.writeFileSync(path.join(artifacts,'gui-failure.json'),JSON.stringify(await app.eval('(async()=>({yolo:await window.spi.getYoloState(),events:window.__smokeEvents,body:document.body.innerText}))()')))}catch{}}throw error}
   finally{await stop(app);server.closeAllConnections();await new Promise(r=>server.close(r))}

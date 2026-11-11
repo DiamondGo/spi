@@ -27,7 +27,8 @@ export class PiManager {
     private extensionPath: string,
     private emitEvent: (e: PiEventPayload) => void,
     private emitClosed: (sessionId: string) => void,
-    private hasUi: () => boolean = () => false
+    private hasUi: () => boolean = () => false,
+    private nodePath: () => string | null = () => null
   ) {
     const canAnswer = (id: string) => {
       try { return this.sessions.has(id) && !this.closing.has(id) && !this.suspending.has(id) && this.hasUi() && this.yolo.isReady(id) }
@@ -86,7 +87,7 @@ export class PiManager {
     this.yolo.open(id)
     this.messages.open(id)
     let s: PiSession
-    try { s = new PiSession(id, cwd, sessionPath, this.piPath, this.extensionPath, token) }
+    try { s = new PiSession(id, cwd, sessionPath, this.piPath, this.extensionPath, token, this.nodePath()) }
     catch (error) { this.yolo.close(id); this.messages.close(id); throw error }
     let resolveReady!: () => void
     let rejectReady!: (error: Error) => void
@@ -126,7 +127,7 @@ export class PiManager {
     }
     s.onStderr = (t) => console.error(`[pi:${id.slice(0, 8)}] stderr:`, t)
     s.onExit = () => {
-      rejectReady(new Error('pi exited before permissions became ready'))
+      rejectReady(new Error(s.failureMessage || 'Pi exited before the session became ready'))
       this.closing.add(id)
       this.extensionUi.cancel(id)
       this.extensionUi.forget(id)

@@ -122,6 +122,9 @@ export interface IpcApi {
   getHome(): Promise<string>
   findPi(): Promise<string | null>
   setPiPath(p: string): Promise<void>
+  getNodePath(): Promise<string | null>
+  setNodePath(path: string | null): Promise<void>
+  chooseNodePath(): Promise<string | null>
   listDirs(path: string): Promise<string[]>
   scanSessions(cwd: string): Promise<SessionMeta[]>
   scanRecent(limit?: number): Promise<SessionMeta[]>

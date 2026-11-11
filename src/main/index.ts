@@ -2,7 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain, nativeTheme } from 'electron'
 import { join } from 'path'
 import os from 'os'
 import { readdir } from 'fs/promises'
-import { findPi, saveManualPiPath, loadPinned, togglePinned, loadLayout, saveLayout, type LayoutState } from './pi/piFinder'
+import { findPi, saveManualPiPath, loadManualNodePath, saveManualNodePath, loadPinned, togglePinned, loadLayout, saveLayout, type LayoutState } from './pi/piFinder'
 import { scanSessions, scanRecent } from './pi/sessionScanner'
 import { PiManager } from './pi/piManager'
 import { YoloPolicy } from './pi/yolo'
@@ -118,7 +118,8 @@ async function getManager(): Promise<PiManager> {
           terminalManager?.closeSession(sessionId)
           BrowserWindow.getAllWindows().forEach(w => w.webContents.send('session:closed', sessionId))
         },
-        () => BrowserWindow.getAllWindows().some(w => !w.webContents.isDestroyed() && !w.webContents.isCrashed() && w.webContents.getOSProcessId() > 0)
+        () => BrowserWindow.getAllWindows().some(w => !w.webContents.isDestroyed() && !w.webContents.isCrashed() && w.webContents.getOSProcessId() > 0),
+        loadManualNodePath
       )
       return manager
     })().catch(error => { managerPromise = null; throw error })
@@ -201,6 +202,14 @@ ipcMain.handle('yolo:set', (_e, id: string, enabled: boolean) => getYoloPolicy()
 ipcMain.handle('app:home', () => os.homedir())
 ipcMain.handle('pi:find', () => findPi())
 ipcMain.handle('pi:set-path', (_e, p: string) => saveManualPiPath(p))
+ipcMain.handle('node:get-path', () => loadManualNodePath())
+ipcMain.handle('node:set-path', (_e, p: unknown) => saveManualNodePath(p))
+ipcMain.handle('node:choose-path', async (event) => {
+  const owner = BrowserWindow.fromWebContents(event.sender)
+  if (!owner || owner.isDestroyed()) throw new Error('Node.js file selection requires its owning sPi window')
+  const result = await dialog.showOpenDialog(owner, { title: 'Select Node.js executable', properties: ['openFile'], ...(process.platform === 'win32' ? { filters: [{ name: 'Node.js', extensions: ['exe'] }] } : {}) })
+  return result.canceled ? null : result.filePaths[0] || null
+})
 
 ipcMain.handle('fs:list-dirs', async (_e, path: string) => {
   const entries = await readdir(path, { withFileTypes: true })

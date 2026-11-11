@@ -15,6 +15,8 @@
 
 **Linux desktop 0.1.2 workspace improvements:** [resizable sidebar split, active-session highlighting, `~` path labels and an editable/cancellable outbox](docs/workspace-ui.md). Busy Send queues messages in a fixed composer overlay: follow up appends to its tail, while every new steer inserts at the front of the unexecuted buffer. Already handed-off work is not rolled back.
 
+**0.1.4 fix in preparation:** [desktop/nvm Node detection and an optional manual Node path in Settings](docs/runtime-node.md). The old 0.1.3 packaged GUI was reproduced failing with no Node on desktop PATH; the new real-GUI regression checks fresh/history sessions, manual fallback and persistence. This source change is not a hot-update of an existing 0.1.3 window.
+
 ## Release status and requirements
 
 Source: [DiamondGo/spi](https://github.com/DiamondGo/spi). The npm package is **[`spi-agent-gui`](https://www.npmjs.com/package/spi-agent-gui)**; the executable is **`spi`**. These public defaults are stored in `release.config.json`.

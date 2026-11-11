@@ -4,6 +4,13 @@
 
 - macOS Apple Silicon/Intel candidates remain separate from public Linux releases. Developer ID signing and notarization are not configured.
 
+## 0.1.4
+
+- Fix new/history session startup when a desktop or already-running GUI has no usable Node on PATH (including stale nvm paths). Resolve compatible Node from PATH, adjacent/Pi-managed runtime locations or a bounded login-shell lookup, and prepend it only to the RPC child's environment without bypassing custom Pi launchers.
+- Add Settings → Node.js path: browse/type, validate version/executable, save privately, clear to automatic. Changes apply to subsequently opened sessions without restarting existing sessions. Invalid/removed configured paths fail explicitly rather than silently falling back.
+- Include exit code/signal and safe missing-Node/dependency classifications in startup errors; reject commands to already-exited children immediately. Do not put arbitrary extension stderr/credentials into IPC errors or pass RPC tokens to login/version probes.
+- Reproduce the old 0.1.3 generic failure in an actual packaged GUI with no desktop Node, then test new sessions, private loopback replies, saved history reopening, manual fallback, persistence/restart, stale-path rejection and clearing to automatic. Run this new regression on both native Linux targets and clean public install tests.
+
 ## 0.1.3
 
 - Show live runtime download percentage, transferred/total MiB and average speed every 10 seconds, followed by checksum/extraction/completion phases. Interactive npm lifecycle progress uses only its own controlling terminal when npm buffers script output; headless callers use stderr.

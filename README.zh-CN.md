@@ -16,6 +16,8 @@
 
 **Linux 桌面 0.1.2 新增：** [侧栏分隔线可拖动并保存、当前会话高亮、主目录显示为 `~`、忙时消息缓存且可编辑/取消](docs/workspace-ui.md)。待执行区固定在输入框上方，不随聊天滚动；follow up 追加末尾，steer 直接插到未执行缓冲区最前面，已交付 Pi 的那条不回滚。
 
+**0.1.4 修复准备中：** [桌面/nvm 环境的 Node 自动查找，以及设置里的手动 Node 路径](docs/runtime-node.md)。已用真实旧 0.1.3 运行包复现桌面 PATH 缺少 Node 时会话打不开，并新增真实 GUI 测试覆盖新建/历史会话、手动兜底和重启持久化；源码修复不会热更新已经运行的旧窗口。
+
 ## 发布状态与依赖
 
 源码仓库：[DiamondGo/spi](https://github.com/DiamondGo/spi)。npm 包为 **[`spi-agent-gui`](https://www.npmjs.com/package/spi-agent-gui)**，可执行命令仍为 **`spi`**；公开默认值集中在 `release.config.json`。

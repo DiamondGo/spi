@@ -1,6 +1,8 @@
 import { app } from 'electron'
 import { execFile } from 'child_process'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'fs'
+import { randomUUID } from 'crypto'
+import { validateNodePath } from './piInvocation'
 import { join } from 'path'
 
 // 手动指定的 pi 路径保存在 GUI 自己的本地文件里，不碰 ~/.pi
@@ -26,6 +28,24 @@ export function saveManualPiPath(p: string): void {
   } catch {}
   cfg.piPath = p
   writeFileSync(configPath(), JSON.stringify(cfg, null, 2))
+}
+
+export function loadManualNodePath(): string | null {
+  try { const value = JSON.parse(readFileSync(configPath(), 'utf8')).nodePath; return typeof value === 'string' && value ? value : null }
+  catch { return null }
+}
+
+export function saveManualNodePath(value: unknown): void {
+  if (value !== null && value !== '' && typeof value !== 'string') throw new Error('Invalid Node.js path')
+  const selected = value === null || value === '' ? null : validateNodePath(value)
+  const file = configPath()
+  let cfg: Record<string, unknown> = {}
+  try { const data = JSON.parse(readFileSync(file, 'utf8')); if (data && typeof data === 'object' && !Array.isArray(data)) cfg = data } catch {}
+  if (selected) cfg.nodePath = selected
+  else delete cfg.nodePath
+  const temp = file + '.' + randomUUID() + '.tmp'
+  try { writeFileSync(temp, JSON.stringify(cfg, null, 2), { mode: 0o600 }); renameSync(temp, file) }
+  finally { rmSync(temp, { force: true }) }
 }
 
 // pin 的会话路径列表（存 GUI 自己的配置，不碰 ~/.pi）

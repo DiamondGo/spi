@@ -25,7 +25,7 @@ npm run test:installer
 npm run dist -- --production
 ```
 
-The initial published platform matrix contains Linux x64 and arm64 only; Windows/macOS public releases are deferred. The independent [macOS candidate workflow](macos-build.md) now verifies native Apple Silicon/Intel ZIPs and uploads Actions artifacts without modifying public Release assets or npm. Build on the native target runner. `dist/release` contains a complete runtime archive, target descriptor, `release-manifest.json`, `SHA256SUMS`, the standalone installer, license notices and the version-bound shell bootstrap. `dist/npm-package` is the only npm publishing directory. The root and launcher source package are private.
+The canonical automatic-installer platform matrix contains Linux x64 and arm64 only; Windows distribution and automatic Mac installation remain deferred. The independent [Mac build workflow](macos-build.md) verifies native Apple Silicon/Intel ZIPs. A separate, explicitly dispatched publication workflow can add verified manual Mac downloads with independent metadata, without modifying the original installer manifest/assets or npm. Build on the native target runner. `dist/release` contains a complete runtime archive, target descriptor, `release-manifest.json`, `SHA256SUMS`, the standalone installer, license notices and the version-bound shell bootstrap. `dist/npm-package` is the only npm publishing directory. The root and launcher source package are private.
 
 Runtime archives:
 
@@ -56,6 +56,12 @@ Linux x64 CI builds on Ubuntu 22.04; arm64 CI uses Ubuntu 24.04. Each archive re
 Use a current npm CLI (11.15+ for staged publishing) in the maintainer's own interactive terminal. Account login and proof-of-presence for a particular publish are separate; never send passwords, OTPs or tokens through chat or commit them to source. A browser verification success alone does not establish public package availability.
 
 If npm reports `E409: Cannot publish over previously staged version`, do not retry uploading that version, bump the version to evade the conflict or automatically delete the staged package. Check `npm stage list spi-agent-gui` and the public registry. Review and approve a genuinely pending stage with `npm stage approve <stage-id>` in the maintainer's terminal. If the stage list is empty, approval may already have completed while public metadata is still propagating; perform a bounded availability check before taking further action. Completion requires the expected public version/latest tag and reviewed payload checksum, then a clean public Pi-install test.
+
+## Additive manual Mac downloads / 追加 Mac 手动下载
+
+After explicit authorization, `macos-publish.yml` can append verified native Mac ZIPs to an existing published version without changing its original installer contract. It requires a successful `macos-build.yml` run for the exact immutable tag commit, matching version/target/source/signing reports and archive sizes/hashes. The current manual-download contract is ad-hoc signed and unnotarized; it does not assert Apple trusted-publisher or Gatekeeper acceptance.
+
+Only two ZIPs, two native reports, `release-manifest-macos.json` and `SHA256SUMS-macos.txt` are added. The publisher never clobbers assets, verifies anonymous downloads, and checks every pre-existing asset's ID/name/size/digest before/after. It does not alter canonical `release-manifest.json`, `SHA256SUMS`, existing runtime/installer assets or npm. Normal automatic Mac installation still requires a new matching desktop/npm release with the appropriate signing/notarization/distribution gates. [Procedure and boundaries](macos-build.md).
 
 ## Maintenance / 维护
 

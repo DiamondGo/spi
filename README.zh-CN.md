@@ -32,9 +32,9 @@
 
 发布准备已升级到 Electron 45.2.3 和 electron-builder 26.18.0，high/critical 审计告警已清除；仍有六条 minimatch 构建工具链 moderate 审计条目。发布流水线继续拦截 high/critical 问题。
 
-首个版本只发布 **Linux x64 和 Linux arm64**，均已通过 GitHub 原生 runner 验证。Windows/macOS 尚未包含在公开 Release manifest 中，不声明支持公开安装；只有实际发布 manifest 中的目标才可安装。Linux 要求图形桌面、系统 Electron 依赖、归档记录的 glibc 基线及可用的 Chromium sandbox。Ubuntu 24+ 的 AppArmor 策略可能需要管理员允许应用创建 user namespace；安装器不会关闭 sandbox 或修改主机安全策略。Windows/macOS 默认没有发行商签名/公证（macOS 为 ad-hoc 签名），可能出现系统警告，不应关闭系统保护来绕过。
+正常 Pi/npm 自动安装目前只支持 **Linux x64 和 Linux arm64**，均已通过 GitHub 原生 runner 验证。Windows/macOS 尚未加入默认安装清单；只有清单中的目标才可自动安装。下面提供独立的 Mac 手动下载包，不覆盖已有安装清单。Linux 要求图形桌面、系统 Electron 依赖、归档记录的 glibc 基线及可用的 Chromium sandbox。Ubuntu 24+ 的 AppArmor 策略可能需要管理员允许应用创建 user namespace；安装器不会关闭 sandbox 或修改主机安全策略。Windows/macOS 默认没有发行商签名/公证（macOS 为 ad-hoc 签名），可能出现系统警告，不应关闭系统保护来绕过。
 
-**macOS 构建候选包：** Apple Silicon 和 Intel 两个 ZIP 均已通过 GitHub Actions 原生验收。[下载与构建说明](docs/macos-build.md)。当前是 ad-hoc 签名、未公证的候选制品，不替换已发布的 v0.1.1 资源，公开 `pi install` 暂不能安装这些 Mac 包。
+**macOS 0.1.5 手动下载包已公开：** [Apple Silicon ZIP](https://github.com/DiamondGo/spi/releases/download/v0.1.5/spi-0.1.5-darwin-arm64.zip) · [Intel ZIP](https://github.com/DiamondGo/spi/releases/download/v0.1.5/spi-0.1.5-darwin-x64.zip) · [校验文件、原生验收与限制](docs/macos-build.md)。两个架构均通过原生 PTY、GUI、Pi RPC 和签名完整性检查。当前为 **ad-hoc 签名，未完成 Apple Developer ID 签名和公证**，不保证 Gatekeeper 信任。已有 Linux 清单与 npm 包没有被改写，正常 `pi install` 暂不自动安装这两个 Mac ZIP。
 
 先安装 **Pi**，通过 Pi 配置认证和模型。引导脚本/Pi 安装流程要求 Node.js **22.19+**；安装后的 spi 可使用私有 Electron 的 Node 模式执行安装器命令。sPi 不会替用户安装或升级 Pi。
 

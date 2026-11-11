@@ -1,50 +1,61 @@
-# macOS release-candidate builds / macOS 发布候选包
+# macOS downloads / macOS 手动下载包
 
-The **macOS release packages** GitHub Actions workflow builds two independent, native targets:
+## Public 0.1.5 downloads / 已公开的 0.1.5 包
 
-| Target | Runner | Archive |
+**Both native Mac ZIPs are public downloads in Release v0.1.5. They are ad-hoc signed, NOT Apple Developer ID signed and NOT notarized.** Signature integrity and native execution do not establish Gatekeeper trust. Do not disable OS protections or remove quarantine attributes to work around a block.
+
+**Apple Silicon 与 Intel 两个包均已公开下载，但只有 ad-hoc 签名，未完成 Apple Developer ID 签名或公证。** 若系统阻止运行，不要关闭 Gatekeeper 或删除 quarantine 标记；正式公证发行需要另行配置受保护的 Apple 凭据。
+
+| Target | Native runner | Download |
 | --- | --- | --- |
-| Apple Silicon | `macos-26` (arm64) | `spi-0.1.1-darwin-arm64.zip` |
-| Intel | `macos-15-intel` (x64) | `spi-0.1.1-darwin-x64.zip` |
+| Apple Silicon | `macos-26` (arm64) | [spi-0.1.5-darwin-arm64.zip](https://github.com/DiamondGo/spi/releases/download/v0.1.5/spi-0.1.5-darwin-arm64.zip) |
+| Intel | `macos-15-intel` (x64) | [spi-0.1.5-darwin-x64.zip](https://github.com/DiamondGo/spi/releases/download/v0.1.5/spi-0.1.5-darwin-x64.zip) |
 
-## Verified build / 已通过的构建
+- [Mac SHA-256 checksums](https://github.com/DiamondGo/spi/releases/download/v0.1.5/SHA256SUMS-macos.txt)
+- [Independent Mac manifest](https://github.com/DiamondGo/spi/releases/download/v0.1.5/release-manifest-macos.json)
+- Native reports: [arm64](https://github.com/DiamondGo/spi/releases/download/v0.1.5/macos-build-darwin-arm64.txt), [x64](https://github.com/DiamondGo/spi/releases/download/v0.1.5/macos-build-darwin-x64.txt)
+- Native build/installed-ZIP verification: [43052789438](https://github.com/DiamondGo/spi/actions/runs/43052789438), source `a782168b29308f2a038eb7219a0f5d1873ad7216`, matching the immutable v0.1.5 tag and Linux app source. An Intel artifact-service timeout was retried without changing the source; both native jobs and assembly completed successfully.
+- Additive publication and anonymous public asset hash verification: [43058428609](https://github.com/DiamondGo/spi/actions/runs/43058428609). The ZIPs are byte-for-byte the native verified artifacts. All seven pre-existing Release asset IDs/names/sizes/digests were checked unchanged; no existing Linux archive, manifest, installer, checksum or npm version was replaced.
 
-- Actions run: [42892344373](https://github.com/DiamondGo/spi/actions/runs/42892344373), all three jobs successful.
-- Combined download: [spi-macos-0.1.1-build-8](https://github.com/DiamondGo/spi/actions/runs/42892344373/artifacts/13799037165), approximately 252 MB, retained for 30 days from creation.
-- Source commit: `c3230af5a4c148747ccf4f98f388746732e050cd`.
-- Both native targets passed architecture, executable mode, ICNS, ASAR hash and deep/strict ad-hoc signature checks, repeated after ZIP extraction. Real PTY, GUI, PNG/SVG favicon, Pi RPC, single-instance reuse and normal application quit passed.
-- Both bundles declare minimum macOS 13.0; actual native execution was tested on macOS 26 arm64 and macOS 15 Intel, not every intermediate OS version. The source commit also passed the Linux Checks workflow.
+Each ZIP contains `app/sPi.app`, including Electron, the permission extension, app icon and precompiled native PTY runtime. Choose the ZIP matching your Mac, verify its checksum, then extract and place `sPi.app` in your applications directory using normal macOS operations. Install/configure Pi first; sPi reuses its models/authentication. No recipient-side C++ build is required.
 
-These are source-commit-bound **candidate artifacts**, not additions to the immutable public v0.1.1 Release. The app version follows the current source version; the build report records the exact source commit. The published Linux Release and npm package were not replaced. The published npm install flow still points to the Linux-only public manifest; do not claim these candidates are already installable through public `pi install`.
+Both bundles declare macOS 13.0 minimum. Native execution was verified on the listed macOS 26 arm64 and macOS 15 Intel runners, not every intermediate OS version. The native Mac checks cover architecture, helper permissions, ICNS/ASAR/signature integrity before/after extraction, real PTY/GUI/Pi RPC, single-instance and application quit. The full new interaction/fault suites also ran on Linux; they are not presented as additional Mac-specific GUI evidence.
 
-## Build and download / 构建与下载
+## Installer boundary / 自动安装边界
 
-Trigger `.github/workflows/macos-build.yml` from GitHub Actions, or:
+**These are supplemental manual Mac downloads, not new automatic Pi/npm targets.** The immutable 0.1.5 `release-manifest.json` still lists Linux x64/arm64 only. Normal `pi install npm:spi-agent-gui@0.1.5` or `spi update` does not automatically install the Mac ZIPs. The independent `release-manifest-macos.json` documents the two Mac archives without rewriting that canonical manifest. Public npm latest remains the verified 0.1.5 package.
+
+目前 Mac 提供手动下载包；已有 npm/自动安装清单没有被偷偷改写。若要把 Mac 纳入正常自动安装，应在新的匹配桌面/npm 版本中发布完整清单，并完成相应签名、公证及分发门槛。
+
+## Reproducible build and additive publication / 构建与追加发布
+
+Build the exact release tag on both native runners:
 
 ```bash
-gh workflow run macos-build.yml --repo DiamondGo/spi --ref main
+gh workflow run macos-build.yml --repo DiamondGo/spi --ref v0.1.5
 ```
 
-Only after **both** native targets pass will the assembly job upload `spi-macos-<version>-build-<run-number>`. It contains both complete `.app` ZIPs, a two-target `release-manifest.json`, SHA256SUMS, the version-bound standalone installer/bootstrap, notices, descriptors and per-target build reports. Each ZIP contains `app/sPi.app`, including Electron, the permission extension and native PTY runtime; no compilation is required on the recipient's machine. Download the combined artifact into an empty directory, not just the intermediate single-architecture artifact. GitHub Actions artifact download may require GitHub login.
+Only after both native targets pass does assembly create `spi-macos-<version>-build-<run-number>`, containing both ZIPs, descriptors, native reports, notices and a candidate-only two-target manifest/bootstrap. Actions artifacts may require GitHub authentication and expire; the public Release downloads above do not.
+
+Explicitly publish verified manual downloads with the protected release workflow:
 
 ```bash
-gh run download 42892344373 --repo DiamondGo/spi \
-  --name spi-macos-0.1.1-build-8 --dir ./spi-macos-0.1.1-build-8
+gh workflow run macos-publish.yml --repo DiamondGo/spi --ref main \
+  -f release_tag=v0.1.5 -f source_run=43052789438
 ```
 
-## Native checks / 原生验收
+The publisher requires a successful `macos-build.yml` run from the exact immutable tag commit, validates both native reports and archive sizes/hashes, then uploads only the two ZIPs, two native reports, `release-manifest-macos.json` and `SHA256SUMS-macos.txt`. It never uses `--clobber`; an already-uploaded asset is accepted only if its anonymous bytes match. Pre-existing assets are compared before/after publication. It does not publish npm, alter platform defaults or claim notarization.
 
-- Node-pty is rebuilt from source for the runner's Electron ABI and architecture. Compiler source/debug/macro prefix maps remove the build home from compiled output. After rebuilding, unused vendor macOS prebuilds are removed; current Windows helper retention remains unchanged.
-- Runtime sanitization happens **before** signing. Original unpacked file modes are preserved: ASAR extraction otherwise drops the executable bit from `spawn-helper`. No system files are chmodded and no execute permission is granted to data files. Standard `strip -S` removes linker debug maps that compiler prefix maps do not cover. The original privacy scan remains enabled for the packed runtime, ASAR and native binaries; there is no home-path exception and no post-signing binary patching.
-- Archive staging preserves framework symlink text verbatim, instead of Node's default relative-to-absolute link rewriting. Unsafe absolute/escaping archive links remain rejected by the installer. Post-extraction containment compares canonical paths on both sides, accommodating the standard macOS `/var` → `/private/var` alias without allowing escapes. After ASAR cleanup, the signed plist's embedded ASAR hash is refreshed and checked against the final archive; integrity validation is not disabled.
-- Verify executable, `pty.node` and `spawn-helper` architectures, bundle identity/version, the generated ICNS icon and deep/strict code-signature integrity.
-- Install the archive through the actual safe ZIP installer into a temporary runtime root. Repeat bundle/signature checks after extraction, then run real native PTY, isolated GUI, packaged PNG/SVG favicon, Pi RPC and same-directory single-instance reuse checks. No external model request or personal Pi profile is used. Secondary processes exit immediately after losing the instance lock; shutdown uses the owning renderer's confirmation-aware application quit request, not macOS's window-only `window.close()` behavior.
-- Tests run in disposable hosted macOS machines, not the user's local desktop. Electron renderer sandbox settings are not disabled. The Linux `/proc` seccomp assertion is not presented as a macOS Seatbelt test.
+## Native integrity checks / 原生完整性验收
 
-## Signing boundary / 签名边界
+- Node-pty is rebuilt for the runner's Electron ABI/architecture. Compiler source/debug/macro prefix maps and `strip -S` remove build paths. Sanitization and privacy scans happen before ad-hoc signing, never by patching an already-signed binary.
+- Original ASAR unpacked executable modes are preserved, including `spawn-helper`; data files receive no execute permission. No system files are chmodded, no home-path privacy exception is added, and unused vendor Mac prebuilds are removed without changing Windows helpers.
+- Framework symlink text is preserved. Absolute/escaping archive links remain rejected; canonical parent aliases such as `/var` → `/private/var` do not permit containment escapes. The signed plist's ASAR hash is refreshed and checked against the final archive; integrity validation stays enabled.
+- Executable, `pty.node`, helper, bundle version/identity, ICNS and deep/strict signatures are checked before and after safe ZIP installation into a temporary runtime root. Tests use disposable runners and private Pi profiles without cloud model requests or personal credentials.
+- Normal owning-renderer application quit is tested; Linux `/proc` seccomp assertions are not misrepresented as Mac Seatbelt or Internet-download Gatekeeper tests.
 
-Current candidates are **ad-hoc signed, not Apple Developer ID signed and not notarized**. Deep signature verification checks integrity; it does not establish a trusted publisher or Gatekeeper acceptance. Native CI execution is not a substitute for Internet-download Gatekeeper validation.
+## Signing boundary and history / 签名边界与历史
 
-目前构建的是开发验收候选包，并不是已签名公证的正式 macOS 发行版。若 macOS 阻止运行，不要删除 quarantine 标记或关闭 Gatekeeper；正式推广需要配置合法 Developer ID 签名和 Apple 公证。证书、私钥与公证凭据只能通过受保护的 CI secrets 配置，不能进入源码、聊天或公开日志。
+Current downloads are ad-hoc signed, not Developer ID signed or notarized. Deep signature checks verify integrity, not a trusted publisher. Apple certificates/private keys/notarization credentials belong only in protected CI secrets, never source, chat or public logs. Gatekeeper acceptance of a quarantined Internet download is not claimed.
 
-Native execution targets macOS 26 on Apple Silicon and macOS 15 on Intel. The build report records the bundle-declared minimum OS, but this is not a claim of testing every older macOS release. Promote macOS support in a **new, matching desktop/npm release**, with a reviewed complete manifest, only after the signing/notarization and distribution gates are satisfied; never overwrite v0.1.1 assets to add these source changes.
+The earlier [0.1.1 candidate build 42892344373](https://github.com/DiamondGo/spi/actions/runs/42892344373), source `c3230af5a4c148747ccf4f98f388746732e050cd`, remains historical candidate evidence. Its Actions artifact retention and unchanged old public Linux assets are not substituted for the new 0.1.5 public Mac download verification above.

@@ -1,6 +1,6 @@
 # Session health and recovery / 会话健康检查与恢复
 
-**Included in published Linux desktop 0.1.5.** Matching npm publication awaits maintainer authentication; npm latest remains 0.1.4. Existing v0.1.4 archives do not contain this feature. [Release notes](releases/0.1.5.md).
+**Included in published Linux desktop/npm 0.1.5.** npm latest is 0.1.5. Existing v0.1.4 archives do not contain this feature. [Release notes](releases/0.1.5.md).
 
 ## 使用方式
 

@@ -1,6 +1,6 @@
 # Clean public-install test (Linux x64)
 
-**0.1.5 desktop assets are public; npm publication is still awaiting maintainer authentication.** The pinned/latest 0.1.5 npm checks below must wait for that publication. A fresh UID-1000 container has passed the public desktop bootstrap and all five GUI suites with the normal trash prerequisite installed; that desktop-only validation is not claimed as a public npm install.
+**0.1.5 desktop/npm are public; fixed-version and latest public Pi installs both passed in independent fresh UID-1000 containers.** Both ran all five GUI suites with the normal trash prerequisite installed, alongside GUI/PTY/Pi RPC, icon/desktop ownership, single-instance and active renderer sandbox checks. The earlier desktop-bootstrap-only result is recorded separately, not substituted for public npm acceptance.
 
 This image contains Node/Pi and desktop prerequisites, but **no sPi binary, package, configuration or npm/GitHub credentials**. Docker's build context is allowlisted to the Dockerfile and ten test scripts. The test installs the published package from the public npm registry and downloads binaries from the public GitHub Release.
 

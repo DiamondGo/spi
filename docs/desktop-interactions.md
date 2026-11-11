@@ -1,6 +1,6 @@
 # Desktop interactions / 桌面交互
 
-**Included in published Linux desktop 0.1.5.** Matching npm publication awaits maintainer authentication; npm latest remains 0.1.4. Existing v0.1.4 archives remain unchanged. [Release notes](releases/0.1.5.md).
+**Included in published Linux desktop/npm 0.1.5.** npm latest is 0.1.5. Existing v0.1.4 archives remain unchanged. [Release notes](releases/0.1.5.md).
 
 ## Terminal / 终端
 

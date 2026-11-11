@@ -1,7 +1,6 @@
 'use strict'
 // Bundled into a standalone installer/launcher. Never edit Pi's settings or execute archive scripts.
 const fs = require('node:fs')
-const fsp = require('node:fs/promises')
 const path = require('node:path')
 const os = require('node:os')
 const crypto = require('node:crypto')
@@ -10,6 +9,7 @@ const { pipeline } = require('node:stream/promises')
 const tar = require('tar')
 const yauzl = require('yauzl')
 const { syncDesktopEntry, assertDesktopOwned, removeDesktopEntry } = require('./desktop.cjs')
+const { download, trustedURL, status } = require('./download.cjs')
 const BUILD = typeof __SPI_RELEASE__ === 'undefined'
   ? { version: require('../../../package.json').version, repository: require('../../../release.config.json').repository, packageName: require('../../../release.config.json').npmPackage }
   : __SPI_RELEASE__
@@ -135,26 +135,6 @@ async function extractZip(file,dest) {
   for(const e of entries)if(e.type==='symlink') { const out=path.join(dest,e.name);fs.mkdirSync(path.dirname(out),{recursive:true});fs.symlinkSync(e.link,out) }
   checkExtractedLinks(entries,dest)
 }
-function trustedURL(value) {
-  const u=new URL(value)
-  if(u.username||u.password)fail('URL credentials are not supported')
-  const loopback=['127.0.0.1','localhost','[::1]'].includes(u.hostname)
-  if(process.env.SPI_ALLOW_TEST_HTTP==='1' && loopback && u.protocol==='http:')return u
-  if(u.protocol!=='https:' || !(u.hostname==='github.com'||u.hostname==='api.github.com'||u.hostname.endsWith('.githubusercontent.com')))fail('Only GitHub HTTPS release URLs are supported')
-  return u
-}
-async function download(url,file,max=MAX_ARCHIVE) {
-  let current=trustedURL(url), response
-  for(let n=0;n<6;n++) {
-    response=await fetch(current,{redirect:'manual',signal:AbortSignal.timeout(180000),headers:{'User-Agent':'sPi-installer','Accept':'application/octet-stream'}})
-    if([301,302,303,307,308].includes(response.status)){current=trustedURL(new URL(response.headers.get('location'),current));await response.body?.cancel();continue}
-    break
-  }
-  if(!response?.ok){await response?.body?.cancel();fail('Download failed: HTTP '+response?.status)}
-  if(Number(response.headers.get('content-length'))>max){await response.body.cancel();fail('Download size limit exceeded')}
-  const out=await fsp.open(file,'wx',0o600);let bytes=0
-  try{for await(const chunk of response.body){bytes+=chunk.length;if(bytes>max)fail('Download size limit exceeded');await out.writeFile(chunk)}}finally{await out.close()}
-}
 async function fetchJSON(url) {
   const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'spi-metadata-'))
   try{const f=path.join(tmp,'data.json');await download(url,f,2*1024*1024);return readJSON(f)}finally{fs.rmSync(tmp,{recursive:true,force:true})}
@@ -241,6 +221,7 @@ async function install(options={}) {
     const stage=fs.mkdtempSync(path.join(root,'.staging-'))
     try{
       const base=options.archive?null:baseURL(v)
+      if(base)status('Preparing sPi '+v+' ('+t+'); retrieving the release manifest.')
       const manifest=options.manifest?readJSON(options.manifest):await fetchJSON(base+'/release-manifest.json')
       const item=manifest.targets?.[t]
       if(manifest.schemaVersion!==1||manifest.version!==v||!item)fail('Release does not support this version/platform')
@@ -253,9 +234,10 @@ async function install(options={}) {
       }
       const archive=path.join(stage,item.file)
       if(options.archive){if(!fs.statSync(options.archive).isFile()||fs.statSync(options.archive).size!==item.size)fail('Archive size mismatch');fs.copyFileSync(options.archive,archive)}else {
-        for(let attempt=0;;attempt++)try{await download(base+'/'+item.file,archive,item.size);break}catch(error){fs.rmSync(archive,{force:true});if(attempt===2)throw error;await new Promise(r=>setTimeout(r,500*(attempt+1)))}
+        await download(base+'/'+item.file,archive,item.size,{resume:true,sha256:item.sha256,progress:true})
       }
       if(fs.statSync(archive).size!==item.size || hash(archive)!==item.sha256.toLowerCase())fail('Release checksum/size mismatch')
+      status('Checksum verified; extracting the runtime. Please wait.')
       if(item.file.endsWith('.tar.gz'))await extractTar(archive,stage);else await extractZip(archive,stage)
       for(const f of [item.entry,item.permissionExtension])if(!fs.statSync(path.join(stage,f)).isFile())fail('Release is incomplete')
       fs.rmSync(archive)
@@ -273,6 +255,7 @@ async function install(options={}) {
       try{register(root,options)}catch(error){if(previous)atomicJSON(path.join(root,'current.json'),previous);else fs.rmSync(path.join(root,'current.json'),{force:true});throw error}
       if(previous && previous.directory!==directory)atomicJSON(path.join(root,'previous.json'),previous)
       console.log('Installed sPi '+v+' ('+t+')')
+      if(process.env.npm_lifecycle_event==='postinstall'&&!process.stdout.isTTY)status('Installed sPi '+v+' ('+t+'). Close and reopen any old window to use the new runtime.')
       return readCurrent(root)
     }finally{fs.rmSync(stage,{recursive:true,force:true})}
   })

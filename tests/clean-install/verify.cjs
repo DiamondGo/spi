@@ -1,12 +1,13 @@
 // Only public registry/Release traffic. No host config, credentials, cache or app binaries are mounted.
 const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),assert=require('node:assert/strict')
 const {spawn,execFileSync}=require('node:child_process')
-const spec=process.env.SPI_VERIFY_PACKAGE||'spi-agent-gui@0.1.2'
-const expectedVersion=process.env.SPI_EXPECTED_VERSION||'0.1.2'
+const spec=process.env.SPI_VERIFY_PACKAGE||'spi-agent-gui@0.1.3'
+const expectedVersion=process.env.SPI_EXPECTED_VERSION||'0.1.3'
 function locate(name){return execFileSync('/bin/sh',['-c','command -v '+name],{encoding:'utf8'}).trim()}
 function run(command,args,options={}){return new Promise((resolve,reject)=>{
-  const child=spawn(command,args,{stdio:'inherit',env:process.env,...options})
-  const timer=setTimeout(()=>{child.kill('SIGKILL');reject(Error('Clean test child timed out'))},240000)
+  const {timeoutMs=240000,...spawnOptions}=options
+  const child=spawn(command,args,{stdio:'inherit',env:process.env,...spawnOptions})
+  const timer=setTimeout(()=>{child.kill('SIGKILL');reject(Error('Clean test child timed out'))},timeoutMs)
   child.once('error',error=>{clearTimeout(timer);reject(error)})
   child.once('exit',code=>{clearTimeout(timer);code===0?resolve():reject(Error('Clean test command failed: '+code))})
 })}
@@ -37,7 +38,7 @@ async function commands(pi){return new Promise((resolve,reject)=>{
   assert.throws(()=>locate('spi'))
   const pi=locate('pi')
   console.log('PASS clean non-root environment; no spi, settings or credentials')
-  await run(pi,['install','npm:'+spec])
+  await run(pi,['install','npm:'+spec],{timeoutMs:4500000,env:{...process.env,npm_config_foreground_scripts:'true'}})
   const spi=locate('spi')
   assert.equal(path.dirname(spi),path.dirname(pi),'spi must be globally visible beside the user-owned pi launcher')
   const version=execFileSync(spi,['--version'],{encoding:'utf8'}).trim()

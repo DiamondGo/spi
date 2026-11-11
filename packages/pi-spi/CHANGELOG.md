@@ -4,6 +4,13 @@
 
 - macOS Apple Silicon/Intel candidates remain separate from public Linux releases. Developer ID signing and notarization are not configured.
 
+## 0.1.3
+
+- Show live runtime download percentage, transferred/total MiB and average speed every 10 seconds, followed by checksum/extraction/completion phases. Interactive npm lifecycle progress uses only its own controlling terminal when npm buffers script output; headless callers use stderr.
+- Replace the 180-second large-archive deadline with a bounded 60-minute overall budget and a separate 60-second network-inactivity timeout. `SPI_DOWNLOAD_TIMEOUT_SECONDS` accepts 60–21600 seconds without changing npm/Pi settings.
+- Resume interrupted archive transfers within the current installation with validated HTTP Range/If-Range; safely restart if the server ignores Range. Always verify the complete manifest size/SHA-256 before extraction or switching versions. No permanent download cache or cross-process resume is implied.
+- Preserve previous installations on download/integrity failure. Add slow/stalled/disconnected-transfer, unsafe-response and real npm-buffered private-PTY progress regression tests; extend the public-install test's download allowance without extending GUI test timeouts.
+
 ## 0.1.2
 
 - Linux x64/arm64 release containing the actual new editable buffer UI (not only Pi's native queue-count status).

@@ -1,6 +1,6 @@
 # YOLO switch / YOLO 开关
 
-**Included in Linux desktop Release v0.1.2.** Matching npm 0.1.2 publication and public Pi-install acceptance are pending. Existing npm/desktop v0.1.1 and macOS build-8 artifacts do not contain this UI/behavior and were not replaced. A running old window must be fully closed and reopened after installation.
+**Included in Linux desktop Release v0.1.2.** Matching npm 0.1.2 is public, but slow-network installation failed its three-minute archive timeout; [0.1.3 source fix](downloads.md). Clean public Pi-install acceptance is still pending. Existing npm/desktop v0.1.1 and macOS build-8 artifacts do not contain this UI/behavior and were not replaced. A running old window must be fully closed and reopened after installation.
 
 The header now has **one checkbox named YOLO**, not a Permissions dropdown. It has exactly two states and no extra confirmation modal or sPi whitelist/settings panel.
 

@@ -20,9 +20,9 @@
 
 源码仓库：[DiamondGo/spi](https://github.com/DiamondGo/spi)。npm 包为 **[`spi-agent-gui`](https://www.npmjs.com/package/spi-agent-gui)**，可执行命令仍为 **`spi`**；公开默认值集中在 `release.config.json`。
 
-**Linux 桌面 Release [v0.1.2](https://github.com/DiamondGo/spi/releases/tag/v0.1.2) 已发布。匹配的 npm 包 `spi-agent-gui@0.1.2` 仍待发布，npm latest 目前仍为 `0.1.1`。** 两个 Linux 原生架构均已通过解压安装后的实际缓冲区操作测试，不只是接口存在检查。另一个全新非 root Docker 容器通过公开运行包 0.1.1 → 0.1.2 升级/回滚、消息修改取消、steer/follow up 顺序、GUI/PTY/Pi RPC、图标和 renderer sandbox 检查；待 registry 可用后再做公开 npm/Pi 安装验收。
+**Linux 桌面 Release [v0.1.2](https://github.com/DiamondGo/spi/releases/tag/v0.1.2) 和 npm 包 `spi-agent-gui@0.1.2` 均已公开，npm latest 为 0.1.2。** **已知安装问题：** 运行包三分钟下载超时不适合慢速连接，且 npm 隐藏了进度。[0.1.3 源码修复](docs/downloads.md) 已加入百分比/大小/速度、有限的一小时总时限和安全断点重试，正在准备补丁发布。 两个 Linux 原生架构均已通过解压安装后的实际缓冲区操作测试，不只是接口存在检查。另一个全新非 root Docker 容器通过公开运行包 0.1.1 → 0.1.2 升级/回滚、消息修改取消、steer/follow up 顺序、GUI/PTY/Pi RPC、图标和 renderer sandbox 检查；公开 npm/Pi 安装已进入后置下载脚本，但因慢速下载超时失败，不能计作完整验收通过。
 
-待 npm 0.1.2 公开后，执行 `pi install npm:spi-agent-gui@0.1.2` 更新。请先另存未完成/原生队列中的文字，并完全退出旧窗口后再打开：安装新版二进制不会热更新仍在运行的 0.1.1 窗口。Pi 认证、历史会话和 sPi 偏好设置会保留。
+不要重复安装 0.1.2 来获取下载修复：不会原地覆盖已发布的包。请等待匹配的 0.1.3 发布及验收后的更新命令。请先另存未完成/原生队列中的文字，并完全退出旧窗口后再打开：安装新版二进制不会热更新仍在运行的 0.1.1 窗口。Pi 认证、历史会话和 sPi 偏好设置会保留。
 
 发布准备已升级到 Electron 45.2.3 和 electron-builder 26.18.0，high/critical 审计告警已清除；仍有六条 minimatch 构建工具链 moderate 审计条目。发布流水线继续拦截 high/critical 问题。
 

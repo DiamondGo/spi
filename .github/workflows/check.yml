@@ -21,7 +21,7 @@ jobs:
       - run: npm run typecheck
       - run: npm run test:icons && npm run test:native-build
       - run: npm run check:privacy
-      - run: npm run test:sessions && npm run test:launch && npm run test:settings && npm run test:yolo && npm run test:extension-ui && npm run test:workspace-ui && npm run test:terminal && npm run test:session-health && npm run test:workspace-actions
+      - run: npm run test:sessions && npm run test:launch && npm run test:settings && npm run test:yolo && npm run test:extension-ui && npm run test:workspace-ui && npm run test:terminal && npm run test:session-health && npm run test:workspace-actions && node scripts/macos-public-assets.test.cjs
       - run: npm run test:installer && npm run test:distribution
       - name: Redacted secret scan of Git history
         run: docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.24.3 git /repo --redact --no-banner

@@ -1,0 +1,68 @@
+name: Publish verified macOS downloads
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing published release tag (additive manual Mac downloads only)
+        type: string
+        required: true
+      source_run:
+        description: Successful macos-build.yml run for the exact immutable tag commit
+        type: string
+        required: true
+permissions:
+  contents: read
+jobs:
+  publish:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    environment: release
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ inputs.release_tag }}
+      SOURCE_RUN: ${{ inputs.source_run }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node scripts/macos-public-assets.test.cjs
+      - name: Require successful native build provenance and exact tag version
+        shell: bash
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$SOURCE_RUN" =~ ^[0-9]+$ ]]
+          export EXPECTED_SHA="$(git rev-parse "$RELEASE_TAG^{commit}")"
+          git show "$RELEASE_TAG:package.json" > "$RUNNER_TEMP/tag-package.json"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN" > "$RUNNER_TEMP/mac-source-run.json"
+          gh api "repos/$GITHUB_REPOSITORY/actions/workflows/macos-build.yml" > "$RUNNER_TEMP/mac-workflow.json"
+          node - <<'NODE'
+          const fs=require('node:fs'),assert=require('node:assert/strict'),path=require('node:path');
+          const read=name=>JSON.parse(fs.readFileSync(path.join(process.env.RUNNER_TEMP,name)));
+          const run=read('mac-source-run.json'),workflow=read('mac-workflow.json'),pkg=read('tag-package.json');
+          assert.equal(run.status,'completed');assert.equal(run.conclusion,'success');
+          assert.equal(run.repository.full_name,process.env.GITHUB_REPOSITORY);assert.equal(run.workflow_id,workflow.id);
+          assert.equal(run.head_sha,process.env.EXPECTED_SHA);assert.equal(process.env.RELEASE_TAG,'v'+pkg.version);
+          assert.ok(Number.isSafeInteger(run.run_number)&&run.run_number>0);
+          fs.appendFileSync(process.env.GITHUB_ENV,`SOURCE_SHA=${run.head_sha}\nMAC_VERSION=${pkg.version}\nMAC_ARTIFACT=spi-macos-${pkg.version}-build-${run.run_number}\n`);
+          NODE
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.MAC_ARTIFACT }}
+          path: ${{ runner.temp }}/verified-macos
+          run-id: ${{ env.SOURCE_RUN }}
+          github-token: ${{ github.token }}
+      - name: Verify both ZIPs and native signing/source reports; prepare independent Mac metadata
+        run: node scripts/macos-public-assets.cjs prepare "$RUNNER_TEMP/verified-macos" "$RUNNER_TEMP/public-macos" "$MAC_VERSION" "$SOURCE_SHA"
+      - name: Add verified Mac assets without overwriting anything; verify anonymous downloads
+        run: node scripts/macos-public-assets.cjs publish "$GITHUB_REPOSITORY" "$RELEASE_TAG" "$RUNNER_TEMP/public-macos"
+      - name: State the signing and installer boundary
+        run: |
+          echo 'Both native Mac ZIPs are public manual downloads. Ad-hoc signed, NOT Developer ID signed or notarized.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'The original release-manifest.json, SHA256SUMS, Linux archives and npm version were not changed. Mac automatic installation is not promoted.' >> "$GITHUB_STEP_SUMMARY"

@@ -8,20 +8,20 @@
 
 - Directory/recent-session navigation, pinned history, independent tabs and drafts; repeated clicks activate the same session.
 - Streaming replies, thinking/tool output and Pi extension interaction.
-- **Unreleased source feature:** a session-local [YOLO checkbox](docs/extension-approvals.md). On: reply Allow once to compatible Pi tool approvals. Off: follow Pi's session settings without an added sPi approval layer. Published v0.1.1 does not include this.
+- **Linux desktop 0.1.2 feature:** a session-local [YOLO checkbox](docs/extension-approvals.md). On: reply Allow once to compatible Pi tool approvals. Off: follow Pi's session settings without an added sPi approval layer. Published v0.1.1 does not include this.
 - Model/thinking selectors, image attachments and file/command completion.
 - Embedded real PTY terminal per session, dark/light/high-contrast themes and English/Chinese UI.
 - Native precompiled desktop archives: **no AppImage, FUSE, or end-user C++ build**.
 
-**Unreleased workspace improvements:** [resizable sidebar split, active-session highlighting, `~` path labels and an editable/cancellable outbox](docs/workspace-ui.md). Busy Send queues messages in a fixed composer overlay: follow up appends to its tail, while every new steer inserts at the front of the unexecuted buffer. Already handed-off work is not rolled back.
+**Linux desktop 0.1.2 workspace improvements:** [resizable sidebar split, active-session highlighting, `~` path labels and an editable/cancellable outbox](docs/workspace-ui.md). Busy Send queues messages in a fixed composer overlay: follow up appends to its tail, while every new steer inserts at the front of the unexecuted buffer. Already handed-off work is not rolled back.
 
 ## Release status and requirements
 
 Source: [DiamondGo/spi](https://github.com/DiamondGo/spi). The npm package is **[`spi-agent-gui`](https://www.npmjs.com/package/spi-agent-gui)**; the executable is **`spi`**. These public defaults are stored in `release.config.json`.
 
-**Linux desktop Release [v0.1.1](https://github.com/DiamondGo/spi/releases/tag/v0.1.1) and npm package `spi-agent-gui@0.1.1` are published; npm latest is `0.1.1`.** The release includes the new spy icon and owned Linux desktop entry. A clean non-root Docker test installed the public npm package through Pi and verified desktop ownership, the native window icon, SVG favicon, GUI, PTY, Pi RPC, single-instance forwarding and the active renderer sandbox. Public-runtime upgrade/rollback was also verified.
+**Linux desktop Release [v0.1.2](https://github.com/DiamondGo/spi/releases/tag/v0.1.2) is published. Matching npm `spi-agent-gui@0.1.2` is awaiting publication; npm latest is still `0.1.1`.** Both native Linux architectures passed actual extracted-runtime editable-buffer tests, not just API presence. A fresh non-root Docker container also passed public-runtime 0.1.1 → 0.1.2 upgrade/rollback, editable messages, steer/follow-up order, GUI/PTY/Pi RPC, custom icon and active renderer sandbox. Public npm/Pi installation of 0.1.2 will be checked after registry availability.
 
-To upgrade an existing Pi installation, run `pi install npm:spi-agent-gui@0.1.1`. Save any unsent work, close the old sPi window and reopen it to see the new icon; Pi authentication, sessions and sPi preferences are preserved.
+Once npm 0.1.2 is public, upgrade with `pi install npm:spi-agent-gui@0.1.2`. Save unfinished/native-queued text and fully quit the old sPi window before reopening: installing new binaries does not hot-update a running 0.1.1 window. Pi authentication, sessions and sPi preferences are preserved.
 
 Release preparation upgraded Electron to 45.2.3 and electron-builder to 26.18.0. No high/critical npm audit findings remain; six moderate build-toolchain entries remain around minimatch. The release workflow continues to block high/critical advisories.
 
@@ -55,9 +55,9 @@ If another `spi` exists, or Pi's directory is read-only, explicitly choose `--bi
 Download `install.sh` from the **Release assets**, review it, then run:
 
 ```bash
-bash install.sh --version 0.1.1
+bash install.sh --version 0.1.2
 # Optional:
-bash install.sh --version 0.1.1 --install-dir /path/to/user-install --bin-dir /path/to/user-bin
+bash install.sh --version 0.1.2 --install-dir /path/to/user-install --bin-dir /path/to/user-bin
 ```
 
 The published bootstrap contains the repository/tag; it downloads and checks the standalone installer, then the matching runtime. The source checkout uses the same repository by default; forks can override it with `SPI_RELEASE_REPOSITORY`. Windows uses the Pi package/Node installer, not Bash.
@@ -66,7 +66,7 @@ For an offline install, prepare the installer first and supply a local archive a
 
 ```bash
 npm run dist:prepare
-bash install.sh --version 0.1.1 --archive /path/to/spi-0.1.1-linux-x64.tar.gz --manifest /path/to/release-manifest.json
+bash install.sh --version 0.1.2 --archive /path/to/spi-0.1.2-linux-x64.tar.gz --manifest /path/to/release-manifest.json
 ```
 
 SHA-256 detects mismatched/corrupt downloads; it is not an independent publisher-signature guarantee.

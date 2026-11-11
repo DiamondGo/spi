@@ -12,17 +12,17 @@
 - 每会话真实 PTY 终端；深色/浅色/高对比主题与英中界面。
 - 下载完整预编译目录，**无需 AppImage、FUSE 或用户现场编译 C++**。
 
-**源码新增，尚未发布：** 顶栏改为单一 [YOLO 开关](docs/extension-approvals.md)。选中时自动回复兼容 Pi 工具审批的单次 Allow；未选中时遵循 Pi 自己的会话设置，不再增加 sPi 审批。旧 sPi 权限模式/白名单面板已移除。已发布的 v0.1.1 和 Mac build-8 候选包尚不包含此改动。
+**Linux 桌面 0.1.2 新增：** 顶栏改为单一 [YOLO 开关](docs/extension-approvals.md)。选中时自动回复兼容 Pi 工具审批的单次 Allow；未选中时遵循 Pi 自己的会话设置，不再增加 sPi 审批。旧 sPi 权限模式/白名单面板已移除。已发布的 v0.1.1 和 Mac build-8 候选包尚不包含此改动。
 
-**源码新增，尚未发布：** [侧栏分隔线可拖动并保存、当前会话高亮、主目录显示为 `~`、忙时消息缓存且可编辑/取消](docs/workspace-ui.md)。待执行区固定在输入框上方，不随聊天滚动；follow up 追加末尾，steer 直接插到未执行缓冲区最前面，已交付 Pi 的那条不回滚。
+**Linux 桌面 0.1.2 新增：** [侧栏分隔线可拖动并保存、当前会话高亮、主目录显示为 `~`、忙时消息缓存且可编辑/取消](docs/workspace-ui.md)。待执行区固定在输入框上方，不随聊天滚动；follow up 追加末尾，steer 直接插到未执行缓冲区最前面，已交付 Pi 的那条不回滚。
 
 ## 发布状态与依赖
 
 源码仓库：[DiamondGo/spi](https://github.com/DiamondGo/spi)。npm 包为 **[`spi-agent-gui`](https://www.npmjs.com/package/spi-agent-gui)**，可执行命令仍为 **`spi`**；公开默认值集中在 `release.config.json`。
 
-**Linux 桌面 Release [v0.1.1](https://github.com/DiamondGo/spi/releases/tag/v0.1.1) 和 npm 包 `spi-agent-gui@0.1.1` 均已发布，npm latest 已指向 `0.1.1`。** 新版包含女间谍图标和受归属保护的 Linux 桌面入口。已在干净非 root Docker 环境中通过 Pi 安装公开 npm 包，并验证桌面入口归属、原生窗口图标、SVG favicon、GUI、PTY、Pi RPC、单实例转发和启用中的 renderer sandbox；公开运行包的升级/回滚也已通过。
+**Linux 桌面 Release [v0.1.2](https://github.com/DiamondGo/spi/releases/tag/v0.1.2) 已发布。匹配的 npm 包 `spi-agent-gui@0.1.2` 仍待发布，npm latest 目前仍为 `0.1.1`。** 两个 Linux 原生架构均已通过解压安装后的实际缓冲区操作测试，不只是接口存在检查。另一个全新非 root Docker 容器通过公开运行包 0.1.1 → 0.1.2 升级/回滚、消息修改取消、steer/follow up 顺序、GUI/PTY/Pi RPC、图标和 renderer sandbox 检查；待 registry 可用后再做公开 npm/Pi 安装验收。
 
-已有安装可执行 `pi install npm:spi-agent-gui@0.1.1` 更新。请先保存未发送内容，关闭旧 sPi 窗口后重新打开，才能看到新图标；Pi 认证、会话和 sPi 偏好设置会保留。
+待 npm 0.1.2 公开后，执行 `pi install npm:spi-agent-gui@0.1.2` 更新。请先另存未完成/原生队列中的文字，并完全退出旧窗口后再打开：安装新版二进制不会热更新仍在运行的 0.1.1 窗口。Pi 认证、历史会话和 sPi 偏好设置会保留。
 
 发布准备已升级到 Electron 45.2.3 和 electron-builder 26.18.0，high/critical 审计告警已清除；仍有六条 minimatch 构建工具链 moderate 审计条目。发布流水线继续拦截 high/critical 问题。
 
@@ -56,9 +56,9 @@ npx --package spi-agent-gui spi install
 从 **GitHub Release 附件**下载并检查 `install.sh` 后执行：
 
 ```bash
-bash install.sh --version 0.1.1
+bash install.sh --version 0.1.2
 # 可选覆盖目录：
-bash install.sh --version 0.1.1 --install-dir /path/to/user-install --bin-dir /path/to/user-bin
+bash install.sh --version 0.1.2 --install-dir /path/to/user-install --bin-dir /path/to/user-bin
 ```
 
 发行版脚本已绑定仓库/tag，先下载和核验独立安装器，再下载匹配的运行包。源码脚本默认使用同一仓库，fork 可通过 `SPI_RELEASE_REPOSITORY` 覆盖。Windows 通过 Pi 包/Node 安装器安装，不要求 Bash。
@@ -67,7 +67,7 @@ bash install.sh --version 0.1.1 --install-dir /path/to/user-install --bin-dir /p
 
 ```bash
 npm run dist:prepare
-bash install.sh --version 0.1.1 --archive /path/to/spi-0.1.1-linux-x64.tar.gz --manifest /path/to/release-manifest.json
+bash install.sh --version 0.1.2 --archive /path/to/spi-0.1.2-linux-x64.tar.gz --manifest /path/to/release-manifest.json
 ```
 
 SHA-256 用于检测错包和损坏，不等同于独立的发布者签名认证。

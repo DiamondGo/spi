@@ -2,7 +2,7 @@
 
 ## Public metadata / 公开发布信息
 
-`release.config.json` contains the project's fixed public defaults: repository **`DiamondGo/spi`**, planned npm package **`spi-agent-gui`**. These identifiers are not credentials, and users do not need to find or substitute a package name. Version 0.1.1 is published with publicly downloadable Linux Release assets. Future publications still require the maintainer's npm publishing authorization.
+`release.config.json` contains the project's fixed public defaults: repository **`DiamondGo/spi`**, planned npm package **`spi-agent-gui`**. These identifiers are not credentials, and users do not need to find or substitute a package name. Linux desktop 0.1.2 is published with publicly downloadable Release assets; matching npm 0.1.2 publication is pending. Future publications still require the maintainer's npm publishing authorization.
 
 Only for a fork or local override, copy `release.config.example.json` to **`release.config.local.json`** and set identifiers you control. The local file is ignored. Precedence is environment (`SPI_RELEASE_REPOSITORY` / `SPI_NPM_PACKAGE`), local override, then public defaults. CI uses `github.repository` and an optional `SPI_NPM_PACKAGE` repository variable.
 
@@ -35,7 +35,7 @@ Defaults are documented in both READMEs. Shell profiles and PATH are never edite
 
 ## YOLO and Pi session policy / YOLO 与 Pi 会话设置
 
-The unreleased source UI has a boolean YOLO switch, default off per new/reopened session. Off follows Pi's session rules/mode and adds no sPi approval; off does not force Pi to ask if it already permits an operation. On automatically sends a one-time Allow for narrowly compatible Pi tool prompts, without changing Pi's mode, model profile or permission files. Other questions/direct blocks remain effective. [Details and trust boundary](extension-approvals.md).
+Linux desktop 0.1.2 has a boolean YOLO switch, default off per new/reopened session. Off follows Pi's session rules/mode and adds no sPi approval; off does not force Pi to ask if it already permits an operation. On automatically sends a one-time Allow for narrowly compatible Pi tool prompts, without changing Pi's mode, model profile or permission files. Other questions/direct blocks remain effective. [Details and trust boundary](extension-approvals.md).
 
 The previous sPi permission modes and rule editor are removed in source. Existing `spi-permissions.json` files are retained without reads/rewrites/deletion; they do not influence the new switch. No persistent YOLO default is saved. The session scanner respects `PI_CODING_AGENT_DIR`; without it, the normal personal Pi agent directory is used.
 

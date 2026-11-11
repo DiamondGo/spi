@@ -15,7 +15,7 @@
 
 **Linux desktop 0.1.2 workspace improvements:** [resizable sidebar split, active-session highlighting, `~` path labels and an editable/cancellable outbox](docs/workspace-ui.md). Busy Send queues messages in a fixed composer overlay: follow up appends to its tail, while every new steer inserts at the front of the unexecuted buffer. Already handed-off work is not rolled back.
 
-**0.1.4 fix in preparation:** [desktop/nvm Node detection and an optional manual Node path in Settings](docs/runtime-node.md). The old 0.1.3 packaged GUI was reproduced failing with no Node on desktop PATH; the new real-GUI regression checks fresh/history sessions, manual fallback and persistence. This source change is not a hot-update of an existing 0.1.3 window.
+**Linux desktop 0.1.4 fix published; matching npm publication is pending:** [desktop/nvm Node detection and an optional manual Node path in Settings](docs/runtime-node.md). The old 0.1.3 packaged GUI was reproduced failing with no Node on desktop PATH; the new real-GUI regression checks fresh/history sessions, manual fallback and persistence. This source change is not a hot-update of an existing 0.1.3 window.
 
 ## Release status and requirements
 
@@ -23,7 +23,7 @@ Source: [DiamondGo/spi](https://github.com/DiamondGo/spi). The npm package is **
 
 **Linux desktop Release [v0.1.3](https://github.com/DiamondGo/spi/releases/tag/v0.1.3) and npm `spi-agent-gui@0.1.3` are published; npm latest is `0.1.3`.** [Downloads](docs/downloads.md) now show live percentage/bytes/speed, use a bounded one-hour total budget and validate resumable retries, fixing the 0.1.2 slow-network timeout. Both native Linux architectures passed extracted-runtime acceptance. Two fresh non-root x64 containers independently installed the public version-pinned and latest npm package through Pi, completing slow downloads in about 11 minutes, then passed editable-message/steer/follow-up interaction, GUI/PTY/Pi RPC, custom icon/owned desktop entry, single-instance forwarding and enabled renderer sandbox checks. No host credentials/configuration/binaries were mounted. Older immutable releases remain unchanged.
 
-Upgrade with `pi install npm:spi-agent-gui@0.1.3` (or the unversioned command for latest). Do not reinstall 0.1.2 expecting it to contain the new downloader. Save unfinished/native-queued text and fully quit the old sPi window before reopening: installing new binaries does not hot-update a running 0.1.1 window. Pi authentication, sessions and sPi preferences are preserved.
+For the desktop Node/session-startup fix, wait for matching npm 0.1.4 publication and its verified update command. Reinstalling immutable 0.1.3 does not add the new Node recovery/manual setting. The 0.1.3 slow-download fix remains included. Save unfinished/native-queued text and fully quit the old sPi window before reopening: installing new binaries does not hot-update a running 0.1.1 window. Pi authentication, sessions and sPi preferences are preserved.
 
 Release preparation upgraded Electron to 45.2.3 and electron-builder to 26.18.0. No high/critical npm audit findings remain; six moderate build-toolchain entries remain around minimatch. The release workflow continues to block high/critical advisories.
 

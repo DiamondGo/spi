@@ -1,6 +1,10 @@
 # Distribution verification / 分发验收
 
-## 0.1.4 desktop Node startup fix (release preparation)
+## Linux desktop v0.1.4 Node startup fix (npm publication pending)
+
+- Public desktop Release: https://github.com/DiamondGo/spi/releases/tag/v0.1.4. Immutable source: `f660ab4640481b4bf275d381870a444ec44f6031`.
+- Native run [42963186319](https://github.com/DiamondGo/spi/actions/runs/42963186319) passed Linux x64, native arm64 and publication/anonymous public asset validation. Both extracted/installed architectures ran all 9 sparse-desktop-PATH/manual-Node checks and the existing workspace suite. Checks run 42963184103 passed.
+- Matching npm 0.1.4 is awaiting maintainer verification; latest remains 0.1.3. The reviewed seven-file candidate is 61374 bytes, SHA-1 `5ce9cec82644a225fb784f569b0c7b27ed45eb10`. Clean public version-pinned/latest installation of 0.1.4 is not yet claimed.
 
 - Reproduced the actual old 0.1.3 packaged GUI failing with `session:open … pi process exited` when desktop PATH has no Node but a private synthetic login shell can supply one. This tests the environment variant missed by earlier Node-on-PATH containers, not a claim that the earlier session tests did not run.
 - Fixed automatic child-only Node environment resolution and added private manual Node settings. The new installed/extracted x64 runtime passes all 9 real GUI/Pi checks: fresh session, loopback/read roundtrip, saved history reopen, subsequent fresh session, invalid manual input, manual fallback without login lookup, removed-path error while existing sessions live, restart/persistence/history, and clear-to-auto. Tests never load real user history/auth/extensions.

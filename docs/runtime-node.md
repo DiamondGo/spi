@@ -1,4 +1,4 @@
-# Pi startup and Node.js (0.1.4 release preparation)
+# Pi startup and Node.js (Linux desktop 0.1.4; matching npm pending)
 
 ## What failed and why older tests missed it
 

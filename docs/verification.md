@@ -1,10 +1,17 @@
 # Distribution verification / 分发验收
 
-## 0.1.3 download/progress fix (release preparation)
+## Linux v0.1.3 public release and clean-install acceptance
+
+- Desktop Release: https://github.com/DiamondGo/spi/releases/tag/v0.1.3; Linux x64/arm64 only. Immutable tag points to `357b64831cff5ede3474e4b9e27c13fe6f545e9c`.
+- Native release run [42952609306](https://github.com/DiamondGo/spi/actions/runs/42952609306) passed x64, arm64 and public anonymous asset verification/publication. Checks run 42952608002 passed. Both native extracted runtimes include real editable-outbox/workspace interaction coverage.
+- npm `spi-agent-gui@0.1.3` is public and latest is 0.1.3. Its reviewed seven-file tarball is 60376 bytes, SHA-1 `8723f86390679576fe9fabd397ce9c67c7e8835e`; public metadata matches.
+- Two independent fresh non-root x64 containers passed public `pi install npm:spi-agent-gui@0.1.3` and unversioned `pi install npm:spi-agent-gui`. Both completed on the first transfer attempt, displaying 0–100% progress through roughly 11-minute downloads instead of the former three-minute cutoff. Both processes exited 0.
+- Both validated command placement/version/doctor, owned desktop entry and custom/native window icon/favicon, Pi extension command registration without auto-GUI launch, native PTY/GUI/Pi RPC, repeated single-instance forwarding and enabled renderer seccomp sandbox. Both then passed all 8 actual workspace/outbox GUI checks: edit/cancel/lease correctness, newest-steer-front/follow-up-tail order, isolated outboxes, fixed composer overlay, active rows, path shortening and persisted divider.
+- No host configuration, credentials, cache or application binaries were mounted; UID 1000. The only relaxed layer was Docker's outer seccomp policy; actual renderer NoNewPrivs=1/Seccomp=2 was required. No `--no-sandbox` or shared desktop was used. These Docker results are x64 evidence; native arm64 evidence is the release workflow, not emulation.
 
 - A real published 0.1.2 archive was downloaded and installed by the new source downloader into a private temporary root in 707 seconds, with 0–100% percentage/bytes/speed output and complete size/SHA-256 verification. This is genuine slow-network coverage beyond the previous three-minute deadline, not a changed test timeout alone. No real installation/session was changed.
 - `test:installer` now includes 13 dedicated download/progress checks plus the existing 19 installer checks. An actual npm-buffered postinstall runs on a private PTY and must show its 50% progress while ordinary stderr remains buffered. Slow/stalled/dropped/short bodies, validated resume/fallback, range/validator/size/hash/redirect failures and exclusive files are covered.
-- Private-root/public-runtime proof is not published npm 0.1.3 acceptance; matching Linux desktop and npm publication plus fresh public installs remain required. [Behavior and bounds](downloads.md).
+- The earlier private-root/public-runtime proof was followed by the public npm/Pi installs recorded above; those distinct evidence levels are not conflated. [Behavior and bounds](downloads.md).
 
 ## Linux v0.1.2 publication status
 
@@ -12,7 +19,7 @@
 - Native release run [42927680923](https://github.com/DiamondGo/spi/actions/runs/42927680923) passed both native architectures and publication/public anonymous asset verification. Checks run 42927676468 also passed.
 - Both extracted/installed target runtimes passed the new packaged editable-outbox/Yolo/divider API checks and real deterministic editable-buffer interaction, including follow-up/steer order, not merely an executable/version check. GUI/PTY/Pi RPC, second instance, icon and enabled renderer sandbox checks also passed.
 - A fresh non-root x64 Docker container used only verified public Release assets to install 0.1.1, upgrade to 0.1.2, roll back and roll forward. Desktop identity, actual new GUI/API presence and all 8 loopback-only workspace/outbox checks passed. No host config/authentication/binary was mounted.
-- npm 0.1.2 is public and latest is 0.1.2. Its seven-file tarball is 57386 bytes, SHA-1 `f61e442ed901c57665296a705433947228061084`, matching the reviewed payload. Version-pinned/latest clean public installs timed out in postinstall archive download, and a real user installation reproduced the same old 180-second deadline. The Node-engine warning belonged to another existing extension and was not the cause. These failed attempts are not public Pi-install acceptance; the immutable 0.1.2 package/assets remain unchanged.
+- npm 0.1.2 is public (latest subsequently moved to 0.1.3). Its seven-file tarball is 57386 bytes, SHA-1 `f61e442ed901c57665296a705433947228061084`, matching the reviewed payload. Version-pinned/latest clean public installs timed out in postinstall archive download, and a real user installation reproduced the same old 180-second deadline. The Node-engine warning belonged to another existing extension and was not the cause. These failed attempts are not public Pi-install acceptance; the immutable 0.1.2 package/assets remain unchanged.
 
 ## Sidebar/outbox improvements (included in Linux desktop 0.1.2)
 

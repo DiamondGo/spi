@@ -1,6 +1,6 @@
 # Sidebar and editable outbox / 侧栏与待执行消息
 
-**Included in Linux desktop Release v0.1.2.** The matching npm 0.1.2 package is public, but slow-network installation failed its three-minute archive timeout; [0.1.3 source fix](downloads.md). Clean public Pi-install acceptance is still pending. Public v0.1.1 and macOS build-8 artifacts are unchanged.
+**Included in Linux desktop Release v0.1.2.** Current Linux desktop/npm 0.1.3 are public and have passed clean version-pinned/latest Pi installs with actual editable-buffer interaction and the [slow-download percentage/timeout fix](downloads.md). Public v0.1.1 and macOS build-8 artifacts are unchanged.
 
 ## Sidebar
 

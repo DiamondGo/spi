@@ -19,9 +19,9 @@
 
 Source: [DiamondGo/spi](https://github.com/DiamondGo/spi). The npm package is **[`spi-agent-gui`](https://www.npmjs.com/package/spi-agent-gui)**; the executable is **`spi`**. These public defaults are stored in `release.config.json`.
 
-**Linux desktop Release [v0.1.2](https://github.com/DiamondGo/spi/releases/tag/v0.1.2) and npm `spi-agent-gui@0.1.2` are public; npm latest is 0.1.2.** **Known installer issue:** its three-minute runtime download timeout fails on slow connections, and npm hides progress. The [0.1.3 source fix](docs/downloads.md) adds live percentage/bytes/speed, a bounded one-hour budget and validated resumable retries; release preparation is in progress. Both native Linux architectures passed actual extracted-runtime editable-buffer tests, not just API presence. A fresh non-root Docker container also passed public-runtime 0.1.1 → 0.1.2 upgrade/rollback, editable messages, steer/follow-up order, GUI/PTY/Pi RPC, custom icon and active renderer sandbox. Public npm/Pi installation attempts did reach the postinstall downloader but timed out; they are not counted as successful acceptance.
+**Linux desktop Release [v0.1.3](https://github.com/DiamondGo/spi/releases/tag/v0.1.3) and npm `spi-agent-gui@0.1.3` are published; npm latest is `0.1.3`.** [Downloads](docs/downloads.md) now show live percentage/bytes/speed, use a bounded one-hour total budget and validate resumable retries, fixing the 0.1.2 slow-network timeout. Both native Linux architectures passed extracted-runtime acceptance. Two fresh non-root x64 containers independently installed the public version-pinned and latest npm package through Pi, completing slow downloads in about 11 minutes, then passed editable-message/steer/follow-up interaction, GUI/PTY/Pi RPC, custom icon/owned desktop entry, single-instance forwarding and enabled renderer sandbox checks. No host credentials/configuration/binaries were mounted. Older immutable releases remain unchanged.
 
-Do not repeatedly reinstall 0.1.2 to obtain the timeout/progress fix: immutable published packages are not patched in place. Wait for the matching 0.1.3 release and verified update command. Save unfinished/native-queued text and fully quit the old sPi window before reopening: installing new binaries does not hot-update a running 0.1.1 window. Pi authentication, sessions and sPi preferences are preserved.
+Upgrade with `pi install npm:spi-agent-gui@0.1.3` (or the unversioned command for latest). Do not reinstall 0.1.2 expecting it to contain the new downloader. Save unfinished/native-queued text and fully quit the old sPi window before reopening: installing new binaries does not hot-update a running 0.1.1 window. Pi authentication, sessions and sPi preferences are preserved.
 
 Release preparation upgraded Electron to 45.2.3 and electron-builder to 26.18.0. No high/critical npm audit findings remain; six moderate build-toolchain entries remain around minimatch. The release workflow continues to block high/critical advisories.
 
@@ -55,9 +55,9 @@ If another `spi` exists, or Pi's directory is read-only, explicitly choose `--bi
 Download `install.sh` from the **Release assets**, review it, then run:
 
 ```bash
-bash install.sh --version 0.1.2
+bash install.sh --version 0.1.3
 # Optional:
-bash install.sh --version 0.1.2 --install-dir /path/to/user-install --bin-dir /path/to/user-bin
+bash install.sh --version 0.1.3 --install-dir /path/to/user-install --bin-dir /path/to/user-bin
 ```
 
 The published bootstrap contains the repository/tag; it downloads and checks the standalone installer, then the matching runtime. The source checkout uses the same repository by default; forks can override it with `SPI_RELEASE_REPOSITORY`. Windows uses the Pi package/Node installer, not Bash.
@@ -66,7 +66,7 @@ For an offline install, prepare the installer first and supply a local archive a
 
 ```bash
 npm run dist:prepare
-bash install.sh --version 0.1.2 --archive /path/to/spi-0.1.2-linux-x64.tar.gz --manifest /path/to/release-manifest.json
+bash install.sh --version 0.1.3 --archive /path/to/spi-0.1.3-linux-x64.tar.gz --manifest /path/to/release-manifest.json
 ```
 
 SHA-256 detects mismatched/corrupt downloads; it is not an independent publisher-signature guarantee.

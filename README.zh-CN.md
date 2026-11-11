@@ -20,9 +20,9 @@
 
 源码仓库：[DiamondGo/spi](https://github.com/DiamondGo/spi)。npm 包为 **[`spi-agent-gui`](https://www.npmjs.com/package/spi-agent-gui)**，可执行命令仍为 **`spi`**；公开默认值集中在 `release.config.json`。
 
-**Linux 桌面 Release [v0.1.2](https://github.com/DiamondGo/spi/releases/tag/v0.1.2) 和 npm 包 `spi-agent-gui@0.1.2` 均已公开，npm latest 为 0.1.2。** **已知安装问题：** 运行包三分钟下载超时不适合慢速连接，且 npm 隐藏了进度。[0.1.3 源码修复](docs/downloads.md) 已加入百分比/大小/速度、有限的一小时总时限和安全断点重试，正在准备补丁发布。 两个 Linux 原生架构均已通过解压安装后的实际缓冲区操作测试，不只是接口存在检查。另一个全新非 root Docker 容器通过公开运行包 0.1.1 → 0.1.2 升级/回滚、消息修改取消、steer/follow up 顺序、GUI/PTY/Pi RPC、图标和 renderer sandbox 检查；公开 npm/Pi 安装已进入后置下载脚本，但因慢速下载超时失败，不能计作完整验收通过。
+**Linux 桌面 Release [v0.1.3](https://github.com/DiamondGo/spi/releases/tag/v0.1.3) 和 npm 包 `spi-agent-gui@0.1.3` 均已发布，npm latest 为 `0.1.3`。** [下载器](docs/downloads.md) 已显示实时百分比/大小/速度，改为有限的一小时总预算并安全续传重试，修复 0.1.2 慢速下载超时。两个 Linux 原生架构均通过解压安装后的验收；两个全新非 root x64 容器分别从公开 registry 安装固定版本和 latest，约 11 分钟完成真实慢速下载，并通过消息编辑取消/steer/follow up、GUI/PTY/Pi RPC、图标/桌面入口归属、单实例转发及启用中的 renderer sandbox 检查。没有挂载主机凭据、配置或应用二进制；旧版本资源未被覆盖。
 
-不要重复安装 0.1.2 来获取下载修复：不会原地覆盖已发布的包。请等待匹配的 0.1.3 发布及验收后的更新命令。请先另存未完成/原生队列中的文字，并完全退出旧窗口后再打开：安装新版二进制不会热更新仍在运行的 0.1.1 窗口。Pi 认证、历史会话和 sPi 偏好设置会保留。
+更新可执行 `pi install npm:spi-agent-gui@0.1.3`，或使用无版本号命令安装 latest。不要重复安装 0.1.2 来期待获得新版下载器。请先另存未完成/原生队列中的文字，并完全退出旧窗口后再打开：安装新版二进制不会热更新仍在运行的 0.1.1 窗口。Pi 认证、历史会话和 sPi 偏好设置会保留。
 
 发布准备已升级到 Electron 45.2.3 和 electron-builder 26.18.0，high/critical 审计告警已清除；仍有六条 minimatch 构建工具链 moderate 审计条目。发布流水线继续拦截 high/critical 问题。
 
@@ -56,9 +56,9 @@ npx --package spi-agent-gui spi install
 从 **GitHub Release 附件**下载并检查 `install.sh` 后执行：
 
 ```bash
-bash install.sh --version 0.1.2
+bash install.sh --version 0.1.3
 # 可选覆盖目录：
-bash install.sh --version 0.1.2 --install-dir /path/to/user-install --bin-dir /path/to/user-bin
+bash install.sh --version 0.1.3 --install-dir /path/to/user-install --bin-dir /path/to/user-bin
 ```
 
 发行版脚本已绑定仓库/tag，先下载和核验独立安装器，再下载匹配的运行包。源码脚本默认使用同一仓库，fork 可通过 `SPI_RELEASE_REPOSITORY` 覆盖。Windows 通过 Pi 包/Node 安装器安装，不要求 Bash。
@@ -67,7 +67,7 @@ bash install.sh --version 0.1.2 --install-dir /path/to/user-install --bin-dir /p
 
 ```bash
 npm run dist:prepare
-bash install.sh --version 0.1.2 --archive /path/to/spi-0.1.2-linux-x64.tar.gz --manifest /path/to/release-manifest.json
+bash install.sh --version 0.1.3 --archive /path/to/spi-0.1.3-linux-x64.tar.gz --manifest /path/to/release-manifest.json
 ```
 
 SHA-256 用于检测错包和损坏，不等同于独立的发布者签名认证。

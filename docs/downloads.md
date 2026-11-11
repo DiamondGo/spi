@@ -1,4 +1,4 @@
-# Runtime downloads (0.1.3 source / release preparation)
+# Runtime downloads (published in 0.1.3)
 
 ## Why 0.1.2 can appear frozen
 
@@ -36,4 +36,4 @@ For interactive npm postinstall, progress uses only the process's **own controll
 
 - 13 deterministic download/progress tests: scaled slow transfer, increasing percentages through 100%, dropped/stalled/short bodies, Range/If-Range, ignored/malformed ranges, changed validators, size/hash failure, redirect restrictions, exclusive files and an actual npm-buffered private PTY.
 - A real public 0.1.2 archive downloaded and installed using the new source downloader into a private temporary root in **707 seconds** (about 12 minutes), on one uninterrupted attempt, with 0–100% progress and complete verification. This exceeds the old 180-second deadline and did not touch the user's formal installation or active GUI.
-- This source/private-root test is not a claim of published npm 0.1.3 acceptance. Fresh public version-pinned and latest Pi-install tests are still required after the matching desktop Release and npm package are public.
+- Matching Linux desktop and npm 0.1.3 are now public (latest 0.1.3). Two fresh non-root x64 Docker containers separately passed public `pi install npm:spi-agent-gui@0.1.3` and unversioned latest install, with slow downloads lasting about 11 minutes, visible 0–100% progress and no old three-minute abort. Installed GUI/PTY/Pi RPC, icon/desktop entry ownership, single-instance forwarding, enabled renderer sandbox and actual editable-outbox/steer/follow-up behavior all passed. No host configuration/credentials/binaries were mounted. Native arm64 acceptance passed separately in GitHub Actions.

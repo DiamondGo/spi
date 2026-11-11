@@ -2,6 +2,18 @@ import type { AppLanguage } from './types'
 
 // Only sPi-owned UI text is translated. Prompts, model output, paths and extension text stay verbatim.
 const english: Record<string, string> = {
+  '隐藏终端': 'Hide terminal', '粘贴': 'Paste', '全选': 'Select all', '清屏': 'Clear terminal',
+  '重命名会话': 'Rename session', 'AI 生成名称': 'Suggest name with AI', '删除会话': 'Delete session',
+  '会话名称': 'Session name', '保存名称': 'Save name', '处理中…': 'Working…', '移入回收站': 'Move to trash',
+  'AI 命名使用该会话当前模型和对话摘要，产生一次模型请求，不执行工具、不写入聊天；生成后可修改再保存。历史会话会先打开。': 'AI naming uses this session’s current model and a bounded conversation excerpt. It makes one model request without tools or chat entries. Edit the suggestion before saving. Closed sessions will first be opened.',
+  '确定删除会话“{name}”？': 'Delete session “{name}”?',
+  '会话历史将移入系统回收站；正在运行的 Pi 和终端会关闭，草稿及待发送消息将丢弃。项目文件不会删除。': 'History will be moved to the system trash. Its Pi process and terminal will close; drafts and pending messages will be discarded. Project files are not deleted.',
+  '检查连接': 'Check connection', '检查中…': 'Checking…', '恢复会话': 'Recover session',
+  '正在恢复会话…': 'Recovering session…', 'Pi RPC 正常（按需检查）': 'Pi RPC healthy (checked on demand)',
+  'Pi 进程已退出，可恢复原会话。': 'Pi has exited. You can recover this session.',
+  'Pi RPC 未响应，待发送队列已暂停。请检查或恢复会话。': 'Pi RPC is unresponsive. The outbox is paused. Check or recover the session.',
+  'Pi RPC 正常，但任务已超过两分钟没有新事件。可能在等待网络或工具；不会自动重启。': 'Pi RPC is healthy, but no new task events arrived for over two minutes. It may be waiting for the network or a tool; no automatic restart will occur.',
+  '恢复将终止当前 Pi 进程并重新加载已保存的会话。草稿和待发送消息会保留，队列保持暂停，不会自动重发。外部工具可能仍在运行，请先检查。继续？': 'Recovery terminates the current Pi process and reloads the saved session. Drafts and the outbox are preserved, paused, and never automatically resent. External tools may still be running; check them first. Continue?',
   '终端': 'Terminal', '终端：{cwd}': 'Terminal: {cwd}',
   '打开当前会话终端': 'Open session terminal', '聚焦当前会话终端': 'Focus session terminal',
   '正在打开终端…': 'Starting terminal…', '使用默认 shell 在 {cwd} 打开终端': 'Open default shell in {cwd}',

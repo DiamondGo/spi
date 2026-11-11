@@ -1,8 +1,8 @@
 // Only public registry/Release traffic. No host config, credentials, cache or app binaries are mounted.
 const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),assert=require('node:assert/strict')
 const {spawn,execFileSync}=require('node:child_process')
-const spec=process.env.SPI_VERIFY_PACKAGE||'spi-agent-gui@0.1.4'
-const expectedVersion=process.env.SPI_EXPECTED_VERSION||'0.1.4'
+const spec=process.env.SPI_VERIFY_PACKAGE||'spi-agent-gui@0.1.5'
+const expectedVersion=process.env.SPI_EXPECTED_VERSION||'0.1.5'
 function locate(name){return execFileSync('/bin/sh',['-c','command -v '+name],{encoding:'utf8'}).trim()}
 function run(command,args,options={}){return new Promise((resolve,reject)=>{
   const {timeoutMs=240000,...spawnOptions}=options
@@ -65,7 +65,9 @@ async function commands(pi){return new Promise((resolve,reject)=>{
   console.log('PASS published editable outbox, follow-up/steer order, active sidebar and path abbreviation')
   await run(process.execPath,['/opt/spi-test/with-display.cjs','/opt/spi-test/smoke.cjs','--runtime-env'],{env:{...process.env,SPI_SMOKE_EXECUTABLE:doctor.current.entryPath}})
   console.log('PASS published sparse-desktop-PATH new/history sessions, manual Node settings and persistence')
-  const report={desktopNodeRecovery:true,manualNodeSettings:true,historyReopen:true,editableOutbox:true,steerFrontInsertion:true,resizableSidebar:true,activeSessionHighlight:true,homePathAbbreviation:true,package:spec,uid:process.getuid(),target:doctor.platform,version,sameBinDirectory:true,publicRegistry:true,hostConfigMounted:false,nativePty:true,gui:true,piRpc:true,singleInstance:true,rendererSandbox:true,customIcon:true,ownedDesktopEntry:true}
+  for(const suite of ['session-actions','session-health','terminal'])await run(process.execPath,['/opt/spi-test/with-display.cjs','/opt/spi-test/smoke.cjs','--'+suite],{env:{...process.env,SPI_SMOKE_EXECUTABLE:doctor.current.entryPath}})
+  console.log('PASS published session naming/trash/window placement, passive health/recovery and terminal context menus')
+  const report={sessionNaming:true,aiTitlePreview:true,sessionTrash:true,windowPlacement:true,passiveHealthChecks:true,sessionRecovery:true,terminalVisibility:true,terminalContextMenus:true,desktopNodeRecovery:true,manualNodeSettings:true,historyReopen:true,editableOutbox:true,steerFrontInsertion:true,resizableSidebar:true,activeSessionHighlight:true,homePathAbbreviation:true,package:spec,uid:process.getuid(),target:doctor.platform,version,sameBinDirectory:true,publicRegistry:true,hostConfigMounted:false,nativePty:true,gui:true,piRpc:true,singleInstance:true,rendererSandbox:true,customIcon:true,ownedDesktopEntry:true}
   fs.writeFileSync(path.join(os.homedir(),'clean-install-result.json'),JSON.stringify(report,null,2))
   console.log('CLEAN_INSTALL_RESULT '+JSON.stringify(report))
 })().catch(error=>{console.error(error.message);process.exitCode=1})

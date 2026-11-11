@@ -1,18 +1,21 @@
-import { app, BrowserWindow, dialog, ipcMain, nativeTheme } from 'electron'
-import { join } from 'path'
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme, screen, shell } from 'electron'
+import { join, resolve } from 'path'
+import { realpathSync } from 'fs'
 import os from 'os'
 import { readdir } from 'fs/promises'
 import { findPi, saveManualPiPath, loadManualNodePath, saveManualNodePath, loadPinned, togglePinned, loadLayout, saveLayout, type LayoutState } from './pi/piFinder'
 import { scanSessions, scanRecent } from './pi/sessionScanner'
 import { PiManager } from './pi/piManager'
 import { YoloPolicy } from './pi/yolo'
-import type { AppSettings, ImageRef, MessageSubmission } from '../shared/types'
+import type { AppSettings, ImageRef, MessageSubmission, SessionTarget, SessionCatalogChange } from '../shared/types'
 import { SettingsStore, themeChrome } from './settings'
 import { QuitController } from './quitController'
 import { translate } from '../shared/i18n'
 import { TerminalManager } from './terminalManager'
 import { launchDirectory } from './launchRequests'
 import { randomUUID } from 'crypto'
+import { loadWindowState, trackWindowState } from './windowState'
+import { checkedSessionFile, renameSessionFile, sessionName } from './pi/sessionFiles'
 
 // Keep userData stable regardless of the npm launcher's scoped package name.
 app.setName('spi')
@@ -131,9 +134,10 @@ function createWindow(): void {
   const settings = getSettings().get()
   nativeTheme.themeSource = settings.theme === 'light' ? 'light' : 'dark'
   const chrome = themeChrome[settings.theme]
+  const windowFile = join(app.getPath('userData'), 'spi-window.json')
+  const placement = loadWindowState(windowFile, screen.getAllDisplays().map(display => display.workArea))
   const win = new BrowserWindow({
-    width: 1280,
-    height: 800,
+    ...placement.bounds,
     show: false,
     icon: appIcon,
     backgroundColor: chrome.background,
@@ -149,7 +153,8 @@ function createWindow(): void {
       nodeIntegration: false
     }
   })
-  win.on('ready-to-show', () => win.show())
+  trackWindowState(win, windowFile)
+  win.on('ready-to-show', () => { if (placement.maximized) win.maximize(); win.show() })
   const owner = win.webContents.id
   win.on('closed', () => { traceLifecycle('closed'); terminalManager?.closeOwner(owner) })
   win.webContents.on('render-process-gone', () => terminalManager?.closeOwner(owner))
@@ -224,6 +229,55 @@ ipcMain.handle('fs:list-files', async (_e, path: string) => {
     .slice(0, 200)
 })
 
+function requireAppWindow(event: Electron.IpcMainInvokeEvent): void {
+  if (event.sender.isDestroyed() || !BrowserWindow.getAllWindows().some(win => win.webContents === event.sender) || event.senderFrame !== event.sender.mainFrame) throw new Error('Session operation requires the application window')
+}
+const sessionFileLocks = new Set<string>()
+function fileKey(file: string): string { try { return realpathSync(file) } catch { return resolve(file) } }
+function catalogChanged(change: SessionCatalogChange): void { for (const win of BrowserWindow.getAllWindows()) if (!win.webContents.isDestroyed()) win.webContents.send('sessions:changed', change) }
+function targetFile(target: SessionTarget): string {
+  if (!target || typeof target !== 'object') throw new Error('Invalid session target')
+  const file = target.sessionId ? manager?.sessionFile(target.sessionId) : target.path
+  if (typeof file !== 'string' || !file) throw new Error('Session has no saved history file')
+  return fileKey(file)
+}
+async function mutateSession(target: SessionTarget, action: (file: string) => Promise<void>): Promise<void> {
+  const file = targetFile(target)
+  if (sessionFileLocks.has(file)) throw new Error('Session file operation already in progress')
+  sessionFileLocks.add(file)
+  try { await action(file) } finally { sessionFileLocks.delete(file) }
+}
+ipcMain.handle('sessions:rename', async (event, target: SessionTarget, value: unknown) => {
+  requireAppWindow(event)
+  const name = sessionName(value)
+  await mutateSession(target, async file => {
+    const id = manager?.sessionForFile(file)
+    if (id && manager!.sessionInTransition(id)) throw new Error('Session operation in progress')
+    if (id && manager!.sessionAlive(id)) await manager!.renameSession(id, name)
+    else await renameSessionFile(await checkedSessionFile(file), name)
+    catalogChanged({ path: file, name })
+  })
+})
+ipcMain.handle('sessions:generate-name', async (event, id: string, language: unknown) => {
+  requireAppWindow(event)
+  if (language !== 'zh' && language !== 'en') throw new Error('Invalid language')
+  return (await getManager()).generateSessionName(id, language)
+})
+ipcMain.handle('sessions:delete', async (event, target: SessionTarget) => {
+  requireAppWindow(event)
+  await mutateSession(target, async file => {
+    await checkedSessionFile(file)
+    const remove = async () => { await checkedSessionFile(file); await shell.trashItem(file) }
+    if (manager) await manager.deleteSessionFile(file, remove)
+    else await remove()
+    try {
+      if (loadPinned().includes(file)) togglePinned(file)
+      const layout = loadLayout()
+      saveLayout({ ...layout, sessions: layout.sessions?.filter(session => !session.sessionPath || fileKey(session.sessionPath) !== file) })
+    } catch { console.error('[sPi] History was trashed, but session shortcuts could not be updated') }
+    catalogChanged({ path: file })
+  })
+})
 ipcMain.handle('sessions:scan', (_e, cwd: string) => scanSessions(cwd))
 ipcMain.handle('sessions:scan-recent', (_e, limit?: number) => scanRecent(limit ?? 50))
 ipcMain.handle('pins:get', () => loadPinned())
@@ -233,12 +287,15 @@ ipcMain.handle('layout:save', (_e, s: LayoutState) => saveLayout(s))
 
 ipcMain.handle('session:open', async (_e, opts: { cwd: string; sessionPath?: string }) => {
   const m = await getManager()
+  if (opts.sessionPath && sessionFileLocks.has(fileKey(opts.sessionPath))) throw new Error('Session file operation in progress')
   return m.open(opts.cwd, opts.sessionPath)
 })
 ipcMain.handle('session:close', (_e, id: string) => { terminalManager?.closeSession(id); return manager?.close(id) })
 ipcMain.handle('session:prompt', (_e, id: string, text: string, mode: 'normal' | 'steer' | 'followUp', images?: Array<{ data: string; mimeType: string }>) =>
   manager?.sendPrompt(id, text, mode, images)
 )
+ipcMain.handle('session:check', async (_e, id: string) => (await getManager()).checkSession(id))
+ipcMain.handle('session:recover', async (_e, id: string) => (await getManager()).recoverSession(id))
 ipcMain.handle('session:abort', (_e, id: string) => manager?.abort(id))
 ipcMain.handle('session:get-state', (_e, id: string) => manager?.getState(id))
 ipcMain.handle('session:get-messages', (_e, id: string) => manager?.getMessages(id))

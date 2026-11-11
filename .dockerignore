@@ -7,6 +7,9 @@ scripts/*
 !scripts/gui-fixture-smoke.cjs
 !scripts/workspace-ui-smoke.cjs
 !scripts/runtime-env-smoke.cjs
+!scripts/session-actions-smoke.cjs
+!scripts/session-health-smoke.cjs
+!scripts/terminal-smoke.cjs
 !tests/
 tests/*
 !tests/clean-install/

@@ -8,7 +8,11 @@ module.exports=async function(context){
   const server=http.createServer(async(req,res)=>{try{
     let raw='';for await(const chunk of req)raw+=chunk
     const body=JSON.parse(raw),last=body.messages.at(-1),chunks=[]
-    if(last.role==='user'){
+    // A private stalled-network fixture: killing Pi closes this request; no external tool is launched.
+    if(process.argv.includes('--session-health') && last.role==='user' && JSON.stringify(last.content).includes('SPI_HEALTH_HANG')) return
+    if(raw.includes('SPI_SESSION_TITLE')){
+      chunks.push({choices:[{index:0,delta:{role:'assistant',content:'会话操作与终端优化'},finish_reason:null}]},{choices:[{index:0,delta:{},finish_reason:'stop'}]})
+    }else if(last.role==='user'){
       const text=typeof last.content==='string'?last.content:last.content.filter(c=>c.type==='text').map(c=>c.text).join('\n'),match=text.match(/\{"tool":[\s\S]*\}/),action=JSON.parse(match[0])
       chunks.push({choices:[{index:0,delta:{role:'assistant',tool_calls:[{index:0,id:'call_'+Date.now(),type:'function',function:{name:action.tool,arguments:JSON.stringify(action.input)}}]},finish_reason:null}]},{choices:[{index:0,delta:{},finish_reason:'tool_calls'}]})
     }else chunks.push({choices:[{index:0,delta:{role:'assistant',content:'SPI_FIXTURE_DONE'},finish_reason:null}]},{choices:[{index:0,delta:{},finish_reason:'stop'}]})
@@ -46,7 +50,7 @@ module.exports=async function(context){
   let app
   try{
     app=await launch(launchOptions)
-    const suite=process.argv.includes('--runtime-env')?'runtime-env-smoke.cjs':process.argv.includes('--terminal')?'terminal-smoke.cjs':process.argv.includes('--settings')?'settings-smoke.cjs':process.argv.includes('--extension-ui')?'extension-ui-smoke.cjs':process.argv.includes('--workspace-ui')?'workspace-ui-smoke.cjs':'yolo-smoke.cjs'
+    const suite=process.argv.includes('--session-actions')?'session-actions-smoke.cjs':process.argv.includes('--session-health')?'session-health-smoke.cjs':process.argv.includes('--runtime-env')?'runtime-env-smoke.cjs':process.argv.includes('--terminal')?'terminal-smoke.cjs':process.argv.includes('--settings')?'settings-smoke.cjs':process.argv.includes('--extension-ui')?'extension-ui-smoke.cjs':process.argv.includes('--workspace-ui')?'workspace-ui-smoke.cjs':'yolo-smoke.cjs'
     await require('./'+suite)({...context,app,hashes,before,launchOptions})
     assert.deepEqual(hashes(),before);assert.deepEqual(errors,[])
   }catch(error){if(app&&!app.exited){try{fs.writeFileSync(path.join(artifacts,'gui-failure.json'),JSON.stringify(await app.eval('(async()=>({yolo:await window.spi.getYoloState(),events:window.__smokeEvents,body:document.body.innerText}))()')))}catch{}}throw error}

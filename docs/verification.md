@@ -1,5 +1,13 @@
 # Distribution verification / 分发验收
 
+## Linux 0.1.5 candidate — release verification pending
+
+- Source adds passive send-triggered RPC diagnostics/recovery, terminal show/hide and clipboard context menus, manual/AI names, confirmed history trash and window placement/maximized-state restoration. [Release notes](releases/0.1.5.md).
+- Local typecheck/build, 15 health/recovery checks, 10 workspace/session/window checks, 7 bridge checks and existing unit suites passed. Real isolated Electron/Pi GUI suites passed: session controls/window restoration (6), terminal interaction (14), editable workspace (8) and passive RPC fault/recovery (5).
+- Release workflow now gates both native Linux architectures on the additional units and extracted/installed-runtime session/terminal/recovery GUI suites. Public pinned/latest clean-install tests include these suites too.
+- Local x64 production archive was extracted by the actual installer and passed GUI/PTY/Pi RPC/icon/single-instance/active renderer sandbox plus workspace (8), Node recovery/manual settings (9), session controls/window placement (6), passive RPC recovery (5), and terminal/context-menu (14) GUI checks. The full 9-case private registry/Pi installation suite also passed.
+- Full npm audit: 0 high/critical, 6 moderate build-toolchain findings. Native arm64/publication, public npm checksum and clean-install results will be recorded only after they actually pass.
+
 ## Linux v0.1.4 public release and desktop Node regression acceptance
 
 - Public desktop Release: https://github.com/DiamondGo/spi/releases/tag/v0.1.4. Immutable source: `f660ab4640481b4bf275d381870a444ec44f6031`.

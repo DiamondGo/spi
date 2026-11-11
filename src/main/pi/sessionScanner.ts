@@ -1,4 +1,6 @@
-import { readdir, readFile, stat } from 'fs/promises'
+import { readdir, stat } from 'fs/promises'
+import { createReadStream } from 'fs'
+import { createInterface } from 'readline'
 import { join } from 'path'
 import os from 'os'
 import type { SessionMeta } from '../../shared/types'
@@ -21,15 +23,17 @@ interface Header {
 async function parseSessionFile(path: string, fallbackCwd: string): Promise<SessionMeta | null> {
   try {
     const st = await stat(path)
-    const buf = await readFile(path)
-    const text = buf.subarray(0, READ_CAP).toString('utf8')
-
     let header: Header = {}
     let name: string | undefined
     let title: string | undefined
 
-    for (const line of text.split('\n')) {
+    const stream = createReadStream(path)
+    const lines = createInterface({ input: stream, crlfDelay: Infinity })
+    let bytes = 0
+    try { for await (const line of lines) {
+      bytes += Buffer.byteLength(line) + 1
       if (!line.trim()) continue
+      if (bytes > READ_CAP && !/"type"\s*:\s*"session_info"/.test(line.slice(0, 512))) continue
       let rec: Record<string, unknown>
       try {
         rec = JSON.parse(line)
@@ -44,12 +48,11 @@ async function parseSessionFile(path: string, fallbackCwd: string): Promise<Sess
         name = rec.name // 取最后一个
         continue
       }
-      if (rec.type === 'message' && !title) {
+      if (rec.type === 'message' && !title && bytes <= READ_CAP) {
         const msg = rec.message as { role?: string; content?: unknown } | undefined
         if (msg?.role === 'user') title = extractUserText(msg.content)
       }
-      if (header.id && name !== undefined && title !== undefined) break
-    }
+    } } finally { lines.close(); stream.destroy() }
 
     return {
       path,

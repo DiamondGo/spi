@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react'
 import type { TerminalInfo } from '../../shared/types'
 import { getStore } from './store'
 
-type TerminalView = TerminalInfo & { focusRequest: number }
+type TerminalView = TerminalInfo & { focusRequest: number; hidden: boolean }
 let state: { terminals: Record<string, TerminalView>; opening: Record<string, boolean>; errors: Record<string, string> } = { terminals: {}, opening: {}, errors: {} }
 const listeners = new Set<() => void>()
 const requests = new Map<string, Promise<void>>()
@@ -34,7 +34,7 @@ export function clearTerminalError(id: string): void {
 export function openSessionTerminal(id: string): Promise<void> {
   const current = state.terminals[id]
   if (current) {
-    state = { ...state, terminals: { ...state.terminals, [id]: { ...current, focusRequest: current.focusRequest + 1 } } }; emit()
+    state = { ...state, terminals: { ...state.terminals, [id]: { ...current, hidden: false, focusRequest: current.focusRequest + 1 } } }; emit()
     return Promise.resolve()
   }
   const pending = requests.get(id)
@@ -45,7 +45,7 @@ export function openSessionTerminal(id: string): Promise<void> {
       const info = await window.spi.openTerminal(id, 80, 12)
       if (!getStore().sessions[id]) { await window.spi.closeTerminal(id, info.terminalId); return }
       if (exited.has(info.terminalId)) throw new Error('The shell exited during startup')
-      state = { ...state, terminals: { ...state.terminals, [id]: { ...info, focusRequest: 1 } } }; emit()
+      state = { ...state, terminals: { ...state.terminals, [id]: { ...info, hidden: false, focusRequest: 1 } } }; emit()
     } catch (error) {
       if (getStore().sessions[id]) { state = { ...state, errors: { ...state.errors, [id]: String(error) } }; emit() }
     } finally {
@@ -55,6 +55,15 @@ export function openSessionTerminal(id: string): Promise<void> {
   })()
   requests.set(id, request)
   return request
+}
+export function hideSessionTerminal(id: string): void {
+  const current = state.terminals[id]
+  if (!current) return
+  state = { ...state, terminals: { ...state.terminals, [id]: { ...current, hidden: true } } }; emit()
+}
+export function toggleSessionTerminal(id: string): Promise<void> {
+  if (state.terminals[id] && !state.terminals[id].hidden) { hideSessionTerminal(id); return Promise.resolve() }
+  return openSessionTerminal(id)
 }
 export async function closeSessionTerminal(id: string, terminalId: string): Promise<void> {
   try {

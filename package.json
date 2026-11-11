@@ -1,6 +1,6 @@
 {
   "name": "spi",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "sPi - Simple Pi Agent GUI",
   "private": true,
   "license": "UNLICENSED",
@@ -29,6 +29,10 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "test:launch": "node scripts/launch.test.cjs && node scripts/pi-session.test.cjs",
     "test:sessions": "node scripts/sessions.test.cjs",
+    "test:session-health": "node scripts/session-health.test.cjs",
+    "test:workspace-actions": "node scripts/workspace-actions.test.cjs",
+    "test:session-actions-smoke": "electron-vite build && node scripts/with-display.cjs scripts/smoke.cjs --session-actions",
+    "test:session-health-smoke": "electron-vite build && node scripts/with-display.cjs scripts/smoke.cjs --session-health",
     "test:terminal": "node scripts/terminal.test.cjs",
     "test:terminal-smoke": "electron-vite build && node scripts/with-display.cjs scripts/smoke.cjs --terminal",
     "test:settings": "node scripts/settings.test.cjs",

@@ -15,5 +15,15 @@ const {PiSession}=mod.exports
   await assert.rejects(other,e=>e.message.includes('code 1')&&!e.message.includes('PRIVATE_EXTENSION'));console.log('PASS arbitrary extension stderr is not copied into IPC errors')
   const c=new PiSession('fixture','/fixture',undefined,'/fixture/pi','/fixture/ext','token'),failed=c.sendCommand('get_state');child.emit('error',new Error('ENOENT fixture launcher'));await assert.rejects(failed,/failed to launch pi.*ENOENT/);await assert.rejects(c.sendCommand('get_state'),/ENOENT/);console.log('PASS spawn failures retire pending and future commands')
   const d=new PiSession('fixture','/fixture',undefined,'/fixture/pi','/fixture/ext','token'),killed=d.sendCommand('get_state');child.emit('exit',null,'SIGTERM');await assert.rejects(killed,/signal SIGTERM/);console.log('PASS signal-based startup exit has a useful diagnostic')
-  console.log('RESULT PASS 4 process-startup diagnostic checks')
+  const e=new PiSession('fixture','/fixture',undefined,'/fixture/pi','/fixture/ext','token');child.stdin.destroyed=true
+  await assert.rejects(e.sendCommand('get_state'),/input stream unavailable/);child.emit('exit',0,null)
+  console.log('PASS destroyed RPC input rejects immediately')
+  const f=new PiSession('fixture','/fixture',undefined,'/fixture/pi','/fixture/ext','token');child.stdin.write=(_line,cb)=>{queueMicrotask(()=>cb(new Error('EPIPE fixture')));return false}
+  await assert.rejects(f.sendCommand('get_state'),/EPIPE/);assert.equal(f.pending.size,0);child.emit('exit',0,null)
+  console.log('PASS asynchronous pipe-write errors retire the command without waiting for timeout')
+  const g=new PiSession('fixture','/fixture',undefined,'/fixture/pi','/fixture/ext','token');const process=child;let killSent=false;process.kill=signal=>{assert.equal(signal,'SIGKILL');killSent=true;return true}
+  let terminated=false;const termination=g.terminate().then(()=>{terminated=true});await new Promise(r=>setImmediate(r));assert.equal(killSent,true);assert.equal(terminated,false)
+  process.emit('exit',null,'SIGKILL');await termination;assert.equal(g.hasExited,true);await g.terminate()
+  console.log('PASS force recovery waits for actual process exit, including a stopped process, and is idempotent after exit')
+  console.log('RESULT PASS 7 process/RPC diagnostic checks')
 })().catch(e=>{console.error(e);process.exitCode=1})

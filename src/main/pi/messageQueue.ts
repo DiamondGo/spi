@@ -9,6 +9,7 @@ interface Dependencies {
   state(id: string): Promise<PiState>
   deliver(id: string, message: PendingMessage): Promise<unknown>
   changed(snapshot: PendingMessagesSnapshot): void
+  failed?(id: string): void
 }
 const MAX_BYTES = 32 * 1024 * 1024
 function content(text: unknown, images: unknown): { text: string; images: ImageRef[] } {
@@ -27,6 +28,27 @@ export class MessageQueue {
   constructor(private deps: Dependencies) {}
   open(id: string): void { this.sessions.set(id, { items: [], version: 0, paused: false, draining: false, waiting: false, busy: false, activeRun: false, settled: 0, receipts: new Map() }) }
   close(id: string): void { this.sessions.delete(id) }
+  /** Detach in-flight drains so late acknowledgements cannot mutate a recovered queue. */
+  freeze(id: string): void {
+    const s = this.session(id)
+    const items = structuredClone(s.items).map(item => item.status === 'dispatching'
+      ? { ...item, status: 'failed' as const, revision: item.revision + 1, error: '交付未确认，请查看对话后再决定是否重试' }
+      : item)
+    this.sessions.set(id, { ...s, items, receipts: new Map(s.receipts), paused: true, draining: false, waiting: false, busy: false, activeRun: false })
+    this.emit(id)
+  }
+  /** A successful state probe can repair a missed settled event, but never resumes a paused queue. */
+  reconcile(id: string, state: PiState): void {
+    const s = this.session(id)
+    if (s.draining) return
+    s.busy = state.isStreaming || !!state.isCompacting
+    s.activeRun = state.isStreaming
+    if (!s.busy) { s.waiting = false; s.settled++; void this.drain(id, s) }
+  }
+  needsCalibration(id: string): boolean {
+    const s = this.session(id)
+    return !s.paused && !s.draining && (s.busy || s.waiting)
+  }
   get pendingCount(): number { return [...this.sessions.values()].reduce((n, s) => n + s.items.length, 0) }
   private session(id: string): QueueState { const s = this.sessions.get(id); if (!s) throw new Error('session not found'); return s }
   snapshot(id: string): PendingMessagesSnapshot { const s = this.session(id); return { sessionId: id, version: s.version, paused: s.paused, items: structuredClone(s.items) } }
@@ -105,16 +127,19 @@ export class MessageQueue {
           s.waiting = result?.disposition !== 'handled' && s.settled === settled
           if (!result?.disposition && !s.busy && s.waiting) {
             try { const current = await this.deps.state(id); if (!current.isStreaming && !current.isCompacting) s.waiting = false }
-            catch { s.paused = true; s.waiting = false }
+            catch {
+              if (this.sessions.get(id) !== s) return
+              s.paused = true; s.waiting = false; this.deps.failed?.(id)
+            }
           }
           this.emit(id)
         } catch {
           if (this.sessions.get(id) !== s) return
-          item.status = 'failed'; item.revision++; item.error = '交付未确认，请查看对话后再决定是否重试'; s.paused = true; this.emit(id); break
+          item.status = 'failed'; item.revision++; item.error = '交付未确认，请查看对话后再决定是否重试'; s.paused = true; this.emit(id); this.deps.failed?.(id); break
         }
       }
     } catch {
-      if (this.sessions.get(id) === s) { s.paused = true; this.emit(id) }
+      if (this.sessions.get(id) === s) { s.paused = true; this.emit(id); this.deps.failed?.(id) }
     } finally { s.draining = false }
   }
 }

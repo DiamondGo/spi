@@ -17,6 +17,8 @@
 
 **Linux desktop/npm 0.1.4 published and clean-install verified:** [desktop/nvm Node detection and an optional manual Node path in Settings](docs/runtime-node.md). The old 0.1.3 packaged GUI was reproduced failing with no Node on desktop PATH; the new real-GUI regression checks fresh/history sessions, manual fallback and persistence. This source change is not a hot-update of an existing 0.1.3 window.
 
+**0.1.5 release candidate (publication pending):** [session health checks, state reconciliation, fault alerts and explicit recovery](docs/session-recovery.md), preserving drafts and a paused outbox without automatically replaying work. Existing published archives are unchanged. Also included: [terminal visibility/context menus, manual/AI session naming, confirmed history deletion and window-placement restoration](docs/desktop-interactions.md).
+
 ## Release status and requirements
 
 Source: [DiamondGo/spi](https://github.com/DiamondGo/spi). The npm package is **[`spi-agent-gui`](https://www.npmjs.com/package/spi-agent-gui)**; the executable is **`spi`**. These public defaults are stored in `release.config.json`.

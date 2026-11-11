@@ -5,6 +5,7 @@ import { sessionRows } from '../sessionRows'
 import { usePathFormatter } from '../homePath'
 import { Icon, IconControl } from './IconControl'
 import { useT } from '../preferences'
+import { useSessionActions } from './SessionActions'
 
 interface Props {
   dir: string | null
@@ -13,8 +14,9 @@ interface Props {
 
 export function SessionList({ dir, onOpen }: Props) {
   const t = useT(), formatPath = usePathFormatter()
-  const { sessions, activeId } = useStore()
-  const openKey = Object.values(sessions).filter(s => s.cwd === dir).map(s => s.id + ':' + s.state?.sessionFile + ':' + s.items.some(x => x.kind === 'user')).join(',')
+  const { sessions, activeId, catalogRevision } = useStore()
+  const actions = useSessionActions()
+  const openKey = Object.values(sessions).filter(s => s.cwd === dir).map(s => s.id + ':' + s.state?.sessionFile + ':' + s.state?.sessionName + ':' + s.items.some(x => x.kind === 'user')).join(',')
   const [meta, setMeta] = useState<SessionMeta[]>([])
   const [error, setError] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
@@ -39,7 +41,7 @@ export function SessionList({ dir, onOpen }: Props) {
   useEffect(() => {
     void refresh()
     return () => { generation.current++ }
-  }, [refresh, openKey])
+  }, [refresh, openKey, catalogRevision])
 
   async function newSession(): Promise<void> {
     if (!dir || creating) return
@@ -69,8 +71,8 @@ export function SessionList({ dir, onOpen }: Props) {
       {error && <div className="session-error">{error}</div>}
       {sessionRows(meta, sessions, dir).length === 0 && <div className="placeholder">{t('该目录没有 pi 会话')}</div>}
       {sessionRows(meta, sessions, dir).map((m) => (
-        <div key={m.path} className={`session-item${m.liveId === activeId ? ' active' : ''}`} aria-current={m.liveId === activeId ? 'true' : undefined} data-session-path={m.path} title={formatPath(m.path)} tabIndex={0} onClick={() => m.liveId ? setActive(m.liveId) : onOpen(m)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (m.liveId) setActive(m.liveId); else onOpen(m) } }}>
-          <div className="session-item-title">{m.name || m.title || t('(无标题)')}</div>
+        <div key={m.path} className={`session-item${m.liveId === activeId ? ' active' : ''}`} aria-current={m.liveId === activeId ? 'true' : undefined} data-session-path={m.path} onContextMenu={event => actions.menu(event, { sessionId: m.liveId, path: m.path, cwd: m.cwd, label: m.name || m.title || '' })} title={formatPath(m.path)} tabIndex={0} onClick={() => m.liveId ? setActive(m.liveId) : onOpen(m)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (m.liveId) setActive(m.liveId); else onOpen(m) } }}>
+          <div className="session-item-title" onDoubleClick={event => { event.stopPropagation(); actions.rename({ sessionId: m.liveId, path: m.path, cwd: m.cwd, label: m.name || m.title || '' }) }}>{m.name || m.title || t('(无标题)')}</div>
           <div className="session-item-meta">{new Date(m.mtime).toLocaleString(document.documentElement.lang)}</div>
         </div>
       ))}

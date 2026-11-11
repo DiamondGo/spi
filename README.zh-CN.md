@@ -18,6 +18,8 @@
 
 **Linux 桌面/npm 0.1.4 已公开并通过干净安装验收：** [桌面/nvm 环境的 Node 自动查找，以及设置里的手动 Node 路径](docs/runtime-node.md)。已用真实旧 0.1.3 运行包复现桌面 PATH 缺少 Node 时会话打不开，并新增真实 GUI 测试覆盖新建/历史会话、手动兜底和重启持久化；源码修复不会热更新已经运行的旧窗口。
 
+**0.1.5 发布候选（待完成发布验证）：** [会话健康检查、状态校准、异常提醒与手动恢复](docs/session-recovery.md)。恢复保留草稿和暂停的待发送队列，不自动重发；已有发布包不包含此改动。另已加入[终端显示切换与右键菜单、手动/AI 会话命名、确认后删除历史及窗口位置恢复](docs/desktop-interactions.md)，包含在本次候选版本中。
+
 ## 发布状态与依赖
 
 源码仓库：[DiamondGo/spi](https://github.com/DiamondGo/spi)。npm 包为 **[`spi-agent-gui`](https://www.npmjs.com/package/spi-agent-gui)**，可执行命令仍为 **`spi`**；公开默认值集中在 `release.config.json`。

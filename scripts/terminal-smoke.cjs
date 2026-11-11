@@ -52,7 +52,13 @@ module.exports = async function ({ app, stop, waitFor, pass, fill, artifacts, wo
     assert.match(initial.history,/SPI_INTERACTIVE:[^\r\n]*i/)
     await evaluate(`document.querySelector('.terminal-toggle').click()`)
     assert.equal((await get(a)).terminalId,first.terminalId)
-    pass('real default shell opens in session cwd as an interactive PTY, between chat and input; reopen focuses same PTY')
+    await waitFor(()=>evaluate(`!document.querySelector('.terminal-panel:not([hidden])')`),'toggle hides terminal')
+    await write(first,"printf 'SPI_HIDDEN_OUTPUT\\n'\r")
+    await output(first,'SPI_HIDDEN_OUTPUT\r\n')
+    await evaluate(`document.querySelector('.terminal-toggle').click()`)
+    await waitFor(()=>evaluate(`!!document.querySelector('.terminal-panel:not([hidden])')`),'toggle shows same terminal')
+    assert.equal((await get(a)).terminalId,first.terminalId)
+    pass('real default shell toggles hidden/visible without restarting PTY or losing background output')
 
     await evaluate(`document.querySelector('.terminal-panel:not([hidden]) .xterm-helper-textarea').focus()`)
     for(const key of 'echo spiuiinputok') {
@@ -65,6 +71,18 @@ module.exports = async function ({ app, stop, waitFor, pass, fill, artifacts, wo
     await output(first,'\x1b[31mSPI_ANSI_OK\x1b[0m')
     await waitFor(()=>evaluate(`document.querySelector('.terminal-panel:not([hidden]) .xterm-screen').textContent.includes('SPI_ANSI_OK')`),'ANSI output rendered by xterm')
     pass('terminal keyboard input and ANSI output work through xterm, not a line-buffered fake console')
+
+    const context=async()=>evaluate(`(()=>{const e=document.querySelector('.terminal-panel:not([hidden]) .terminal-body'),r=e.getBoundingClientRect();e.dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true,clientX:r.x+30,clientY:r.y+20}))})()`)
+    const menu=async label=>{await waitFor(()=>evaluate(`!!document.querySelector('.context-menu')`),'terminal context menu');await evaluate(`Array.from(document.querySelectorAll('.context-menu button')).find(b=>b.textContent===${JSON.stringify(label)}).click()`)}
+    await context();await menu('全选');await context()
+    assert.equal(await evaluate(`Array.from(document.querySelectorAll('.context-menu button')).find(b=>b.textContent==='复制').disabled`),false)
+    await menu('复制')
+    await waitFor(()=>evaluate(`navigator.clipboard.readText().then(text=>text.includes('SPI_ANSI_OK'))`),'copied selected terminal output')
+    await evaluate(`navigator.clipboard.writeText("printf 'SPI_CONTEXT_PASTE\\\\n'")`)
+    await context();await menu('粘贴');await output(first,'SPI_CONTEXT_PASTE');await enter();await output(first,'SPI_CONTEXT_PASTE\r\n')
+    await context();await menu('隐藏终端');await waitFor(()=>evaluate(`!document.querySelector('.terminal-panel:not([hidden])')`),'context menu hides terminal')
+    await evaluate(`document.querySelector('.terminal-toggle').click()`)
+    pass('terminal context menu supports Select all, Copy, Paste and Hide on the same live shell')
 
     await write(first,'sleep 60\r')
     const sleepPid=await waitFor(()=>{

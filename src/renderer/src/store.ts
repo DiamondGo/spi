@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import type { ImageRef, PendingMessagesSnapshot, PiState } from '../../shared/types'
+import type { ImageRef, PendingMessagesSnapshot, PiState, SessionHealth, SessionCatalogChange } from '../../shared/types'
 import type { TextParams } from '../../shared/i18n'
 
 // ---- 展示项 ----
@@ -56,9 +56,11 @@ export interface SessionUI {
   sendMode: SendMode
   pendingImages: ImageRef[]
   error?: string
+  health?: SessionHealth
 }
 
 interface Store {
+  catalogRevision: number
   sessions: Record<string, SessionUI>
   activeId: string | null
   piPath: string | null
@@ -66,7 +68,7 @@ interface Store {
 
 // ---- store 基础设施 ----
 
-let store: Store = { sessions: {}, activeId: null, piPath: null }
+let store: Store = { catalogRevision: 0, sessions: {}, activeId: null, piPath: null }
 const listeners = new Set<() => void>()
 
 function setStore(patch: Partial<Store>): void {
@@ -163,6 +165,14 @@ export function removeSession(id: string): void {
   setStore({ sessions, activeId: store.activeId === id ? null : store.activeId })
 }
 
+export function refreshSessionCatalog(change: SessionCatalogChange = {}): void {
+  const sessions = { ...store.sessions }
+  if (change.name !== undefined && change.path) for (const [id, session] of Object.entries(sessions)) {
+    if (session.state?.sessionFile === change.path) sessions[id] = { ...session, state: { ...session.state, sessionName: change.name } }
+  }
+  setStore({ sessions, catalogRevision: store.catalogRevision + 1 })
+}
+
 export function setActive(id: string | null): void {
   setStore({ activeId: id })
 }
@@ -177,6 +187,7 @@ export function submitDraft(id: string, imageLabel: string): Promise<void> {
   if (pending) return pending
   const session = store.sessions[id]
   if (!session || (!session.draft.trim() && !session.pendingImages.length)) return Promise.resolve()
+  if (session.health && session.health.status !== 'healthy') return Promise.reject(new Error('Session unavailable; check or recover it first'))
   const draftRevision = session.draftRevision
   const text = session.draft, images = session.pendingImages, priority = session.sendMode === 'steer'
   const previous = nonces.get(id)
@@ -222,6 +233,19 @@ export function setPendingImages(id: string, update: ImageRef[] | ((images: Imag
   patchSession(id, (s) => ({ ...s, pendingImages: typeof update === 'function' ? update(s.pendingImages) : update }))
 }
 
+const recoveries = new Map<string, Promise<void>>()
+export function recoverSession(id: string): Promise<void> {
+  const pending = recoveries.get(id)
+  if (pending) return pending
+  const request = window.spi.recoverSession(id).then(() => {
+    // The backend publishes history + state in one ordered event; do not overwrite newer events with an IPC reply.
+    nonces.delete(id)
+    setSessionError(id, undefined)
+  }).catch(error => { setSessionError(id, String(error)); throw error }).finally(() => { recoveries.delete(id) })
+  recoveries.set(id, request)
+  return request
+}
+
 export function setSessionError(id: string, error: string | undefined): void {
   patchSession(id, (s) => ({ ...s, error }))
 }
@@ -238,6 +262,8 @@ export function loadHistory(id: string, items: Item[]): void {
 
 interface AgentMsg {
   role: string
+  stopReason?: string
+  errorMessage?: string
   content?: unknown
   toolName?: string
   toolCallId?: string
@@ -321,6 +347,22 @@ interface StreamEvent {
 export function applyEvent(id: string, event: Record<string, unknown>): void {
   const t = event.type
 
+  if (t === 'spi_session_health') {
+    const health = event.health as SessionHealth
+    const state = event.state as PiState | undefined
+    const messages = event.messages as unknown[] | undefined
+    patchSession(id, s => {
+      const resync = !!messages && (s.streaming || (s.health && s.health.status !== 'healthy'))
+      const items = resync ? messagesToItems(messages!) : s.items
+      return {
+        ...s, health, state: state ?? s.state,
+        streaming: state ? state.isStreaming : health.status === 'exited' || health.status === 'recovering' ? false : s.streaming,
+        items: (state && !state.isStreaming) || health.status === 'exited' || health.status === 'recovering'
+          ? items.map(it => it.kind === 'assistant' ? { ...it, done: true, blocks: it.blocks.map(b => ({ ...b, done: true })) } : it) : items
+      }
+    })
+    return
+  }
   if (t === 'spi_pending_messages') {
     updatePendingMessages(event as unknown as PendingMessagesSnapshot)
     return
@@ -342,6 +384,9 @@ export function applyEvent(id: string, event: Record<string, unknown>): void {
   if (t === 'message_start' || t === 'message_end') {
     const msg = event.message as AgentMsg | undefined
     if (!msg) return
+    if (t === 'message_end' && msg.role === 'assistant' && msg.stopReason === 'error') {
+      setSessionError(id, msg.errorMessage || 'Model request failed; check the network and try again')
+    }
     if (msg.role === 'user' && t === 'message_start') {
       const text = extractText(msg.content)
       if (text) patchSession(id, (s) => ({ ...s, items: [...s.items, { kind: 'user', text }] }))

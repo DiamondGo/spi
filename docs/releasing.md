@@ -20,6 +20,7 @@ Source hosting, Git commits/pushes and desktop/npm publication are separate oper
 npm ci
 npm run typecheck
 npm run check:privacy
+npm run test:session-health && npm run test:workspace-actions
 npm run test:installer
 npm run dist -- --production
 ```
@@ -42,7 +43,7 @@ Linux x64 CI builds on Ubuntu 22.04; arm64 CI uses Ubuntu 24.04. Each archive re
 
 ## Verification and ordering / 验收与发布顺序
 
-1. Run `node scripts/with-display.cjs scripts/portable-smoke.cjs` against the packed native executable: native PTY, real GUI, real isolated Pi handshake, cwd forwarding and second-instance reuse.
+1. Run `node scripts/with-display.cjs scripts/portable-smoke.cjs` against the packed native executable: native PTY, real GUI, real isolated Pi handshake, cwd forwarding and second-instance reuse. The native release workflow also requires installed-runtime workspace/Node-path, session-actions, session-health and terminal GUI suites. Session-actions uses Python 3/Xlib on its private Xvfb display to check native window placement; it never targets the user's desktop.
 2. On Linux x64 run `npm run test:distribution`: a temporary registry/Release server tests actual Pi installation, manual commands, global spi placement, local installs, disabled scripts and the standalone bootstrap. No real user Pi config is written.
 3. Review the light npm tarball (`npm pack ./dist/npm-package --dry-run --ignore-scripts`) and public archive contents; `.gitignore` alone does not constrain npm/Release contents.
 4. All native jobs must pass before uploading target artifacts. The publish job merges their descriptors, creates the final checksums and a draft Release, uploads the allowlisted assets, then makes the Release visible.

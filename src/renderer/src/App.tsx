@@ -3,18 +3,20 @@ import { DirectoryTree } from './components/DirectoryTree'
 import { SessionList } from './components/SessionList'
 import { RecentSessions } from './components/RecentSessions'
 import { ChatView } from './components/ChatView'
+import { SessionHealthBanner } from './components/SessionHealthBanner'
 import { InputBar } from './components/InputBar'
 import { SessionTabs } from './components/SessionTabs'
 import { TitleBar } from './components/TitleBar'
 import { TerminalDock } from './components/TerminalDock'
 import { forgetTerminalSession, subscribeTerminalState } from './terminals'
 import { Icon, IconControl } from './components/IconControl'
-import { applyEvent, getStore, openDirectory, openSession, removeSession, setActive, setPiPath, useStore } from './store'
+import { applyEvent, getStore, openDirectory, openSession, removeSession, refreshSessionCatalog, setActive, setPiPath, useStore } from './store'
 import type { SessionMeta } from '../../shared/types'
 import { useT } from './preferences'
 import { HomeDirectory } from './homePath'
 import { sidebarSplit } from './pathFormat'
 import { SidebarSplit } from './components/SidebarSplit'
+import { SessionActionsProvider } from './components/SessionActions'
 
 type ViewMode = 'dir' | 'recent'
 
@@ -55,6 +57,7 @@ export default function App() {
     window.spi.findPi().then((p) => setPiPath(p))
     const offTerminal = subscribeTerminalState()
     const offEvent = window.spi.onPiEvent(({ sessionId, event }) => applyEvent(sessionId, event))
+    const offCatalog = window.spi.onSessionsChanged?.(refreshSessionCatalog)
     const offClosed = window.spi.onSessionClosed((id) => {
       // 关闭活动会话时，自动切到另一个已打开的会话
       const s = getStore()
@@ -70,6 +73,7 @@ export default function App() {
       offTerminal()
       offEvent()
       offClosed()
+      offCatalog?.()
     }
   }, [])
 
@@ -167,7 +171,7 @@ export default function App() {
   }
 
   return (
-    <HomeDirectory.Provider value={homeDir}><div className="app-root">
+    <HomeDirectory.Provider value={homeDir}><SessionActionsProvider><div className="app-root">
       <TitleBar sidebarOpen={sidebarOpen} onToggleSidebar={() => setSidebarOpen((o) => !o)} />
       {openError && <div className="session-error" role="alert">{openError} <button onClick={() => setOpenError('')}>{t('关闭提示')}</button></div>}
       <div className="layout">
@@ -233,6 +237,7 @@ export default function App() {
             <SessionTabs onActivate={handleTabActivate} />
             {active ? (
               <>
+                <SessionHealthBanner key={active.id} session={active} />
                 <ChatView session={active} />
                 <TerminalDock activeId={activeId} />
                 <InputBar key={active.id} session={active} />
@@ -248,6 +253,6 @@ export default function App() {
         )}
       </main>
       </div>
-    </div></HomeDirectory.Provider>
+    </div></SessionActionsProvider></HomeDirectory.Provider>
   )
 }

@@ -349,6 +349,21 @@ body,
   color: #777;
 }
 
+.session-health {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--border, #444);
+  font-size: 12px;
+  color: var(--muted, #888);
+}
+.session-health.warning { color: var(--fg, #ddd); border-left: 3px solid var(--accent, #c88a23); }
+.session-health-actions { display: flex; gap: 6px; margin-left: auto; }
+.session-health .session-error { flex-basis: 100%; padding: 2px 0; }
+
 .session-error {
   padding: 6px 12px;
   color: #f88;
@@ -472,6 +487,7 @@ body,
 .state-dot.running {
   background: #4f8;
 }
+.state-dot.warning { background: #e7a33e; }
 
 .chat-messages {
   flex: 1;

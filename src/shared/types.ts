@@ -25,6 +25,15 @@ export interface PiState {
   pendingMessageCount?: number
 }
 
+export interface SessionHealth {
+  status: 'healthy' | 'unresponsive' | 'exited' | 'recovering'
+  checkedAt: number
+  stalled?: boolean
+}
+
+export interface SessionTarget { sessionId?: string; path?: string }
+export interface SessionCatalogChange { path?: string; name?: string }
+
 export interface SessionMeta {
   path: string
   id: string
@@ -128,6 +137,10 @@ export interface IpcApi {
   listDirs(path: string): Promise<string[]>
   scanSessions(cwd: string): Promise<SessionMeta[]>
   scanRecent(limit?: number): Promise<SessionMeta[]>
+  renameSession(target: SessionTarget, name: string): Promise<void>
+  generateSessionName(sessionId: string, language: AppLanguage): Promise<string>
+  deleteSession(target: SessionTarget): Promise<void>
+  onSessionsChanged(cb: (change: SessionCatalogChange) => void): () => void
   getPinned(): Promise<string[]>
   togglePin(p: string): Promise<string[]>
   loadLayout(): Promise<LayoutState>
@@ -136,6 +149,8 @@ export interface IpcApi {
   getCommands(sessionId: string): Promise<Array<{ name: string; description?: string; source: string }>>
   openSession(opts: { cwd: string; sessionPath?: string }): Promise<{ sessionId: string; state: PiState }>
   closeSession(sessionId: string): Promise<void>
+  checkSession(sessionId: string): Promise<SessionHealth>
+  recoverSession(sessionId: string): Promise<{ state: PiState; messages: unknown[] }>
   sendPrompt(sessionId: string, text: string, mode: 'normal' | 'steer' | 'followUp', images?: ImageRef[]): Promise<void>
   submitMessage(sessionId: string, message: MessageSubmission): Promise<{ id: string }>
   getPendingMessages(sessionId: string): Promise<PendingMessagesSnapshot>

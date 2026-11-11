@@ -1,11 +1,11 @@
 import { useRef, useState } from 'react'
 import type { SessionUI } from '../store'
-import { setDraft, setSendMode, setPendingImages, restoreQueuedMessages, submitDraft, type SendMode } from '../store'
+import { setDraft, setSendMode, setPendingImages, restoreQueuedMessages, submitDraft, setSessionError, type SendMode } from '../store'
 import type { ImageRef } from '../../../shared/types'
 import { useAutoHeightTextarea } from '../useAutoHeightTextarea'
 import { Icon, IconControl, IconSelect } from './IconControl'
 import { useT } from '../preferences'
-import { openSessionTerminal, useTerminals } from '../terminals'
+import { toggleSessionTerminal, useTerminals } from '../terminals'
 import { PendingMessages } from './PendingMessages'
 import { usePathFormatter } from '../homePath'
 
@@ -25,7 +25,7 @@ export function InputBar({ session }: Props) {
   const { sendMode: mode, pendingImages } = session
   const formatPath = usePathFormatter()
   const terminals = useTerminals()
-  const terminalOpen = Boolean(terminals.terminals[session.id])
+  const terminalOpen = Boolean(terminals.terminals[session.id] && !terminals.terminals[session.id].hidden)
   const [completion, setCompletion] = useState<Completion | null>(null)
   const taRef = useRef<HTMLTextAreaElement>(null)
   const fileCache = useRef<Record<string, Array<{ name: string; isDir: boolean }>>>({})
@@ -164,7 +164,7 @@ export function InputBar({ session }: Props) {
     try {
       const queue = await window.spi.abortSession(session.id)
       restoreQueuedMessages(session.id, [...queue.steering, ...queue.followUp])
-    } catch {}
+    } catch (error) { setSessionError(session.id, String(error)) }
   }
 
   return (
@@ -195,8 +195,8 @@ export function InputBar({ session }: Props) {
           <option value="steer">{t('插队（steer）')}</option>
           <option value="followUp">{t('排队（follow up）')}</option>
         </IconSelect>
-        <IconControl tooltip={terminals.opening[session.id] ? t('正在打开终端…') : terminalOpen ? t('聚焦当前会话终端') : t('使用默认 shell 在 {cwd} 打开终端', { cwd: formatPath(session.cwd) })}>
-          <button type="button" className={`terminal-toggle icon-button${terminalOpen ? ' active' : ''}`} aria-label={t('打开当前会话终端')} aria-pressed={terminalOpen} disabled={terminals.opening[session.id]} onClick={() => void openSessionTerminal(session.id)}><Icon name="terminal" /></button>
+        <IconControl tooltip={terminals.opening[session.id] ? t('正在打开终端…') : terminalOpen ? t('隐藏终端') : t('使用默认 shell 在 {cwd} 打开终端', { cwd: formatPath(session.cwd) })}>
+          <button type="button" className={`terminal-toggle icon-button${terminalOpen ? ' active' : ''}`} aria-label={t('打开当前会话终端')} aria-pressed={terminalOpen} disabled={terminals.opening[session.id]} onClick={() => void toggleSessionTerminal(session.id)}><Icon name="terminal" /></button>
         </IconControl>
         </div>
         <div className="input-message">
@@ -214,7 +214,7 @@ export function InputBar({ session }: Props) {
           onPaste={onPaste}
         />
         <IconControl tooltip={t(session.streaming ? '加入待执行队列 · Enter' : '发送消息 · Enter 发送，Shift+Enter 换行')}>
-          <button className="btn-send icon-button" aria-label={t(session.streaming ? '加入待执行队列' : '发送消息')} onClick={send} disabled={(!session.draft.trim() && pendingImages.length === 0) || session.submitting}><Icon name="send" /></button>
+          <button className="btn-send icon-button" aria-label={t(session.streaming ? '加入待执行队列' : '发送消息')} onClick={send} disabled={(!session.draft.trim() && pendingImages.length === 0) || session.submitting || (!!session.health && session.health.status !== 'healthy')}><Icon name="send" /></button>
         </IconControl>
         {session.streaming && (
           <IconControl tooltip={t('停止当前会话（保留未发送及排队文字）')}>

@@ -1,12 +1,13 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Terminal, type ITheme } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 import type { TerminalEvent, TerminalInfo } from '../../../shared/types'
 import { usePreferences, useT } from '../preferences'
-import { closeSessionTerminal } from '../terminals'
+import { closeSessionTerminal, hideSessionTerminal } from '../terminals'
 import { Icon, IconControl } from './IconControl'
 import { usePathFormatter } from '../homePath'
+import { ContextMenu, menuPosition, type MenuPosition } from './ContextMenu'
 
 function terminalTheme(): ITheme {
   const css = getComputedStyle(document.documentElement)
@@ -35,6 +36,13 @@ export default function TerminalPanel({ info, visible, error }: { info: Terminal
   visibleRef.current = visible
   const lastFocus = useRef(0)
   const [localError, setLocalError] = useState('')
+  const [menu, setMenu] = useState<{ position: MenuPosition; selection: string } | null>(null)
+  const closeMenu = useCallback(() => setMenu(null), [])
+  useEffect(() => { if (!visible) closeMenu() }, [visible, closeMenu])
+  async function paste(): Promise<void> {
+    try { const text = await navigator.clipboard.readText(); if (visibleRef.current) { terminal.current?.paste(text); terminal.current?.focus() } }
+    catch (error) { setLocalError(String(error)) }
+  }
 
   useEffect(() => {
     if (!host.current) return
@@ -132,10 +140,19 @@ export default function TerminalPanel({ info, visible, error }: { info: Terminal
         <strong>{t('终端')}</strong>
         <span className="terminal-shell" title={formatPath(info.shell)}>{info.shell.split(/[/\\]/).pop()}</span>
         <span className="terminal-cwd" title={formatPath(info.cwd)}>{formatPath(info.cwd)}</span>
+        <IconControl tooltip={t('隐藏终端')}><button type="button" className="terminal-hide" aria-label={t('隐藏终端')} onClick={() => hideSessionTerminal(info.sessionId)}>−</button></IconControl>
         <IconControl tooltip={t('关闭终端')}><button type="button" className="terminal-close" aria-label={t('关闭终端')} onClick={() => void closeSessionTerminal(info.sessionId, info.terminalId)}><Icon name="close" /></button></IconControl>
       </header>
       {(error || localError) && <div role="alert" className="terminal-error">{error || localError}</div>}
-      <div className="terminal-body" ref={host} />
+      <div className="terminal-body" ref={host} onContextMenu={event => { event.preventDefault(); setMenu({ position: menuPosition(event), selection: terminal.current?.getSelection() || '' }) }} />
+      {menu && visible && <ContextMenu position={menu.position} onClose={closeMenu} items={[
+        { label: t('复制'), disabled: !menu.selection, action: () => { void navigator.clipboard.writeText(menu.selection).then(() => { if (visibleRef.current) terminal.current?.focus() }).catch(error => setLocalError(String(error))) } },
+        { label: t('粘贴'), action: () => { void paste() } },
+        { label: t('全选'), action: () => { terminal.current?.selectAll(); terminal.current?.focus() } },
+        { label: t('清屏'), action: () => { terminal.current?.clear(); terminal.current?.focus() } },
+        { label: t('隐藏终端'), action: () => hideSessionTerminal(info.sessionId) },
+        { label: t('关闭终端'), danger: true, action: () => { void closeSessionTerminal(info.sessionId, info.terminalId) } }
+      ]} />}
     </section>
   )
 }

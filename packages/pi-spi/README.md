@@ -8,6 +8,8 @@ Runtime downloads show percentage, received/total MiB and average speed every 10
 
 If sessions cannot start because desktop PATH differs from your terminal, sPi detects compatible Node from PATH, Pi-managed runtime or login shell. Settings → Node.js runtime also accepts an optional absolute Node executable path, checked before private saving; clear it for automatic lookup. It applies to new/reopened sessions without restarting existing ones or changing Pi/shell configuration.
 
+Desktop 0.1.5 adds passive send-triggered RPC checks and explicit recovery, terminal visibility and clipboard context menus, manual/current-model AI session names, confirmed history trash and restored window placement/maximization. AI names are suggestions to review before saving; they incur a normal model request but run no tools and do not add chat entries. Recovery keeps the outbox paused and never blindly replays work. Save important drafts and fully quit the old GUI before reopening; installation does not hot-update a running window. [Feature details](https://github.com/DiamondGo/spi/blob/main/docs/desktop-interactions.md).
+
 `spi --help`, `spi doctor`, `spi update`, `spi rollback`, `spi uninstall`. Use `--bin-dir` if Pi's PATH directory is not writable or another spi command exists. No shell profile is edited. User preferences and Pi sessions survive uninstall. `pi remove` removes this package, not the independently installed desktop runtime.
 
 The installer requires Node.js 22.19+; the installed command can use its private Electron runtime's Node mode. Supported platforms are only those present in the verified Release manifest. Unsigned Windows/macOS binaries may trigger OS warnings; do not disable OS protections. Linux needs a glibc desktop environment.

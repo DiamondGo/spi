@@ -4,6 +4,15 @@
 
 - macOS Apple Silicon/Intel candidates remain separate from public Linux releases. Developer ID signing and notarization are not configured.
 
+## 0.1.5
+
+- Passive RPC diagnostics only on send failure, blocked busy submissions or manual checks; no periodic/focus/network-restoration polling. Retain exited tabs and recover saved history/drafts/outboxes without replaying unconfirmed work.
+- Toggle terminal visibility without restarting the PTY; add Copy/Paste/Select all/Clear/Hide/Close context menus while keeping OSC 52 clipboard writes blocked.
+- Manual and current-model AI session naming, preview before Save, synchronized directory/recent/tab labels and latest native metadata scanning. AI requests are bounded, use no tools and do not add chat entries.
+- Confirmed history deletion through the system trash, with project-file/path/header safeguards and no permanent-delete fallback. Failed trash retains the exited tab and its pending input for recovery.
+- Persist normal window position/size and maximized state; recover visible bounds after display changes. Add native installed-runtime and clean public-install coverage for the new controls.
+- Linux x64/arm64 only. Save important drafts and fully quit the previous window before reopening; installed binaries do not hot-update an already-running GUI.
+
 ## 0.1.4
 
 - Fix new/history session startup when a desktop or already-running GUI has no usable Node on PATH (including stale nvm paths). Resolve compatible Node from PATH, adjacent/Pi-managed runtime locations or a bounded login-shell lookup, and prepend it only to the RPC child's environment without bypassing custom Pi launchers.

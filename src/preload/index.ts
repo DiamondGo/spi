@@ -45,6 +45,14 @@ const api: IpcApi = {
   listDirs: (path) => ipcRenderer.invoke('fs:list-dirs', path),
   scanSessions: (cwd) => ipcRenderer.invoke('sessions:scan', cwd),
   scanRecent: (limit) => ipcRenderer.invoke('sessions:scan-recent', limit),
+  renameSession: (target, name) => ipcRenderer.invoke('sessions:rename', target, name),
+  generateSessionName: (id, language) => ipcRenderer.invoke('sessions:generate-name', id, language),
+  deleteSession: target => ipcRenderer.invoke('sessions:delete', target),
+  onSessionsChanged: cb => {
+    const listener = (_event: unknown, change: unknown) => cb(change as never)
+    ipcRenderer.on('sessions:changed', listener)
+    return () => ipcRenderer.removeListener('sessions:changed', listener)
+  },
   getPinned: () => ipcRenderer.invoke('pins:get'),
   togglePin: (p) => ipcRenderer.invoke('pins:toggle', p),
   loadLayout: () => ipcRenderer.invoke('layout:load'),
@@ -53,6 +61,8 @@ const api: IpcApi = {
   getCommands: (id) => ipcRenderer.invoke('session:commands', id),
   openSession: (opts) => ipcRenderer.invoke('session:open', opts),
   closeSession: (id) => ipcRenderer.invoke('session:close', id),
+  checkSession: id => ipcRenderer.invoke('session:check', id),
+  recoverSession: id => ipcRenderer.invoke('session:recover', id),
   sendPrompt: (id, text, mode, images) => ipcRenderer.invoke('session:prompt', id, text, mode, images),
   submitMessage: (id, message) => ipcRenderer.invoke('messages:submit', id, message),
   getPendingMessages: id => ipcRenderer.invoke('messages:get', id),

@@ -31,6 +31,8 @@ export class PiSession {
   private stderrTail = ''
   private exitFailure: Error | null = null
 
+  get hasExited(): boolean { return this.exited }
+
   get failureMessage(): string { return this.exitFailure?.message || 'Pi exited before the session became ready' }
 
   constructor(id: string, cwd: string, sessionPath: string | undefined, piPath: string, extensionPath: string, permissionToken: string, nodePath?: string | null) {
@@ -110,6 +112,7 @@ export class PiSession {
   /** 发一条命令，等对应响应（data 或抛错） */
   sendCommand(type: string, fields: Record<string, unknown> = {}, timeoutMs = 15000): Promise<unknown> {
     if (this.exited) return Promise.reject(this.exitFailure || new Error(this.failureMessage))
+    if (!this.child.stdin || this.child.stdin.destroyed || this.child.stdin.writableEnded || this.child.stdin.writable === false) return Promise.reject(new Error('Pi RPC input stream unavailable'))
     const id = randomUUID()
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
@@ -122,7 +125,12 @@ export class PiSession {
         else reject(new Error(r.error || `command failed: ${type}`))
       })
       try {
-        this.child.stdin?.write(JSON.stringify({ id, type, ...fields }) + '\n')
+        this.child.stdin!.write(JSON.stringify({ id, type, ...fields }) + '\n', error => {
+          if (!error) return
+          clearTimeout(timer)
+          this.pending.delete(id)
+          reject(error)
+        })
       } catch (e) {
         clearTimeout(timer)
         this.pending.delete(id)
@@ -139,6 +147,20 @@ export class PiSession {
     setTimeout(() => {
       if (!this.exited) this.child.kill()
     }, 3000)
+  }
+
+  /** Never open a second writer on a session file until the old process has exited. */
+  async terminate(): Promise<void> {
+    if (this.exited) return
+    await new Promise<void>((resolve, reject) => {
+      const done = () => { clearTimeout(timer); this.child.off('exit', done); resolve() }
+      const timer = setTimeout(() => {
+        this.child.off('exit', done)
+        reject(new Error('Pi process did not exit; recovery cancelled'))
+      }, 5000)
+      this.child.once('exit', done)
+      this.child.kill('SIGKILL')
+    })
   }
 
   kill(): void {

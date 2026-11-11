@@ -22,8 +22,9 @@ let count = 0
 const check = async (name, fn) => { await fn(); console.log('PASS', name); count++ }
 const tick = () => new Promise(resolve => setImmediate(resolve))
 
-async function testMainClose(language, confirmOnExit, answer, ownsInstance = true, viaIPC = false) {
+async function testMainClose(language, confirmOnExit, answer, ownsInstance = true, viaIPC = false, placement) {
   const home = fs.mkdtempSync(path.join(tmp, 'main-'))
+  if (placement) fs.writeFileSync(path.join(home, 'spi-window.json'), JSON.stringify(placement))
   const app = new EventEmitter()
   app.getPath = () => home
   app.isPackaged = false
@@ -41,7 +42,8 @@ async function testMainClose(language, confirmOnExit, answer, ownsInstance = tru
     static getFocusedWindow() { return windows[0] }
     setBackgroundColor(color) { this.background = color }
     setTitleBarOverlay(overlay) { this.overlay = overlay }
-    show() {}
+    maximize() { this.maximized = true }
+    show() { this.shown = true }
     loadFile() {}
     loadURL() {}
   }
@@ -54,7 +56,7 @@ async function testMainClose(language, confirmOnExit, answer, ownsInstance = tru
     closeAll() { stopped++ }
   }
   const electron = {
-    app, BrowserWindow: Window, ipcMain: { handle: (name, callback) => handlers.set(name, callback), on() {} }, nativeTheme: {},
+    app, screen: { getAllDisplays: () => [{ workArea: { x: 0, y: 0, width: 1920, height: 1080 } }] }, BrowserWindow: Window, ipcMain: { handle: (name, callback) => handlers.set(name, callback), on() {} }, nativeTheme: {},
     dialog: { showMessageBox: (...args) => { dialogCalls++; dialogOptions = args.at(-1); return new Promise(resolve => { resolveDialog = resolve }) } }
   }
   const filename = path.join(tmp, 'main-test.cjs')
@@ -64,6 +66,8 @@ async function testMainClose(language, confirmOnExit, answer, ownsInstance = tru
   mod.require = name => {
     if (name === 'electron') return electron
     if (name === './settings') return { SettingsStore, themeChrome }
+    if (name === './windowState') return { loadWindowState: load('src/main/windowState.ts').loadWindowState, trackWindowState() {} }
+    if (name === './pi/sessionFiles') return load('src/main/pi/sessionFiles.ts')
     if (name === './quitController') return { QuitController }
     if (name === './launchRequests') return load('src/main/launchRequests.ts')
     if (name === './terminalManager') return { TerminalManager: class {} }
@@ -89,6 +93,9 @@ async function testMainClose(language, confirmOnExit, answer, ownsInstance = tru
   assert.throws(() => handlers.get('yolo:set')({}, 'owned', 'all'), /boolean/)
   handlers.get('yolo:set')({}, 'owned', false)
   const win = windows[0]
+  for (const name of ['sessions:rename', 'sessions:delete', 'sessions:generate-name']) await assert.rejects(handlers.get(name)({sender:{isDestroyed:()=>false}},{}),/application window/)
+  win.emit('ready-to-show')
+  if (placement) { assert.equal(win.maximized, true); for (const key of ['x','y','width','height']) assert.equal(win.options[key], placement.bounds[key]); assert.equal(win.shown,true) }
   if (process.platform === 'linux') assert.equal(app.desktopName, 'spi.desktop')
   assert.ok(win.options.icon.endsWith(path.join('build', 'icons', 'icon.png')))
   if (process.platform !== 'darwin') assert.equal(win.overlay.color, themeChrome.light.color)
@@ -204,6 +211,7 @@ async function testMainClose(language, confirmOnExit, answer, ownsInstance = tru
   await check('real main close handler: English cancel retains window and sessions', () => testMainClose('en',true,false))
   await check('real main close handler: Chinese confirmation commits once', () => testMainClose('zh',true,true))
   await check('real main close handler: disabling confirmation exits immediately', () => testMainClose('en',false,true))
+  await check('real main startup restores normal bounds and maximizes before showing the window',()=>testMainClose('en',false,true,true,true,{bounds:{x:150,y:90,width:1000,height:700},maximized:true}))
   await check('renderer app quit validates its owning window and uses normal cleanup', () => testMainClose('en',false,true,true,true))
   console.log(`RESULT PASS ${count} checks ${tmp}`)
 })().catch(error => { console.error(error); process.exitCode=1 })

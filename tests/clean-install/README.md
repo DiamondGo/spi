@@ -1,5 +1,7 @@
 # Clean public-install test (Linux x64)
 
+**0.1.5 desktop assets are public; npm publication is still awaiting maintainer authentication.** The pinned/latest 0.1.5 npm checks below must wait for that publication. A fresh UID-1000 container has passed the public desktop bootstrap and all five GUI suites with the normal trash prerequisite installed; that desktop-only validation is not claimed as a public npm install.
+
 This image contains Node/Pi and desktop prerequisites, but **no sPi binary, package, configuration or npm/GitHub credentials**. Docker's build context is allowlisted to the Dockerfile and ten test scripts. The test installs the published package from the public npm registry and downloads binaries from the public GitHub Release.
 
 ```bash
@@ -9,6 +11,8 @@ docker run --rm --init --shm-size=512m --security-opt seccomp=unconfined spi-cle
 docker run --rm --init --shm-size=512m --security-opt seccomp=unconfined \
   -e SPI_VERIFY_PACKAGE=spi-agent-gui -e SPI_EXPECTED_VERSION=0.1.5 spi-clean-install
 ```
+
+Desktop prerequisites include `libglib2.0-bin` for the real Linux `gio` trash backend; missing trash support must fail safely, not permanently delete history. Python 3/Xlib are used only by the native window-placement test.
 
 The process runs as the non-root `node` user. There are no host mounts, host X sockets, authentication variables, privileged mode or additional capabilities. The outer Docker seccomp profile is relaxed solely to allow Chromium to create its own sandbox namespaces; **the application is not started with `--no-sandbox`**. The test explicitly asserts that an owned Chromium renderer has `NoNewPrivs=1` and its own `Seccomp=2` filter. Host policies may independently restrict user namespaces; do not disable the application's sandbox to make this test pass.
 

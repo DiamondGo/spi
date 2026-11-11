@@ -18,15 +18,17 @@
 
 **Linux 桌面/npm 0.1.4 已公开并通过干净安装验收：** [桌面/nvm 环境的 Node 自动查找，以及设置里的手动 Node 路径](docs/runtime-node.md)。已用真实旧 0.1.3 运行包复现桌面 PATH 缺少 Node 时会话打不开，并新增真实 GUI 测试覆盖新建/历史会话、手动兜底和重启持久化；源码修复不会热更新已经运行的旧窗口。
 
-**0.1.5 发布候选（待完成发布验证）：** [会话健康检查、状态校准、异常提醒与手动恢复](docs/session-recovery.md)。恢复保留草稿和暂停的待发送队列，不自动重发；已有发布包不包含此改动。另已加入[终端显示切换与右键菜单、手动/AI 会话命名、确认后删除历史及窗口位置恢复](docs/desktop-interactions.md)，包含在本次候选版本中。
+**Linux 桌面 0.1.5 已发布：** [会话健康检查、状态校准、异常提醒与手动恢复](docs/session-recovery.md)。恢复保留草稿和暂停的待发送队列，不自动重发；旧版本包保持不变。另已加入[终端显示切换与右键菜单、手动/AI 会话命名、确认后删除历史及窗口位置恢复](docs/desktop-interactions.md)，均已包含在本次桌面发布中。
 
 ## 发布状态与依赖
 
 源码仓库：[DiamondGo/spi](https://github.com/DiamondGo/spi)。npm 包为 **[`spi-agent-gui`](https://www.npmjs.com/package/spi-agent-gui)**，可执行命令仍为 **`spi`**；公开默认值集中在 `release.config.json`。
 
-**Linux 桌面 Release [v0.1.4](https://github.com/DiamondGo/spi/releases/tag/v0.1.4) 和 npm 包 `spi-agent-gui@0.1.4` 均已发布，npm latest 为 `0.1.4`。** 两个 Linux 原生架构均通过安装后验收；两个全新非 root x64 容器分别从公开 registry 安装固定版本和 latest，约 7 分钟完成，并通过新增的 9 项缺失桌面 Node/手动设置会话检查、8 项工作区/消息缓冲区检查，以及 GUI/PTY/Pi RPC、图标/桌面入口归属、单实例和启用中的 renderer sandbox 验证。[百分比、慢速下载和续传修复](docs/downloads.md) 仍保留。没有挂载主机凭据、配置或应用二进制；旧版本资源未覆盖。
+**最新桌面版本为 [v0.1.5](https://github.com/DiamondGo/spi/releases/tag/v0.1.5)，支持 Linux x64/arm64。** 两个原生架构均通过新增的安装包交互/恢复测试和匿名下载校验。**npm 0.1.5 尚未上传，等待维护者完成身份验证；npm latest 仍为 0.1.4。** 已有安装现在可用 `spi update` 获取 0.1.5。[发布验收](docs/verification.md)。
 
-执行 `pi install npm:spi-agent-gui@0.1.4` 更新，获得桌面 Node 自动兜底和设置里的手动路径选项。重复安装不可变的 0.1.3 不会添加这两项修复。请先另存未完成/原生队列中的文字，并完全退出旧窗口后再打开：安装新版二进制不会热更新仍在运行的 0.1.1 窗口。Pi 认证、历史会话和 sPi 偏好设置会保留。
+**前一版桌面/npm 0.1.4 的干净安装验收：** 两个 Linux 原生架构均通过安装后验收；两个全新非 root x64 容器分别从公开 registry 安装固定版本和 latest，约 7 分钟完成，并通过新增的 9 项缺失桌面 Node/手动设置会话检查、8 项工作区/消息缓冲区检查，以及 GUI/PTY/Pi RPC、图标/桌面入口归属、单实例和启用中的 renderer sandbox 验证。[百分比、慢速下载和续传修复](docs/downloads.md) 仍保留。没有挂载主机凭据、配置或应用二进制；旧版本资源未覆盖。
+
+在 npm 0.1.5 发布前，可通过 `spi update` 或上述 Release 中的校验制品获取桌面 0.1.5。重新安装不可变的 npm 0.1.4 仍会选择桌面 0.1.4，不会获得这些新功能。请先另存未完成/原生队列中的文字，并完全退出旧窗口后再打开：安装新版二进制不会热更新正在运行的窗口。Pi 认证、历史会话和 sPi 偏好设置会保留。
 
 发布准备已升级到 Electron 45.2.3 和 electron-builder 26.18.0，high/critical 审计告警已清除；仍有六条 minimatch 构建工具链 moderate 审计条目。发布流水线继续拦截 high/critical 问题。
 

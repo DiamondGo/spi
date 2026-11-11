@@ -1,12 +1,16 @@
 # Distribution verification / 分发验收
 
-## Linux 0.1.5 candidate — release verification pending
+## Linux v0.1.5 desktop published — npm awaiting maintainer authentication
 
+- Public desktop Release: https://github.com/DiamondGo/spi/releases/tag/v0.1.5. Immutable source tag: `a782168b29308f2a038eb7219a0f5d1873ad7216`.
+- Native release run [42980326586](https://github.com/DiamondGo/spi/actions/runs/42980326586) passed Linux x64, native arm64 and public anonymous asset verification. Source Checks run [42980175880](https://github.com/DiamondGo/spi/actions/runs/42980175880) passed.
+- Both architectures ran the actual extracted/installed-runtime workspace (8), Node recovery (9), session controls/window placement (6), passive RPC recovery (5) and terminal/context-menu (14) suites, plus GUI/PTY/Pi RPC/icon/single-instance/active renderer sandbox assertions.
 - Source adds passive send-triggered RPC diagnostics/recovery, terminal show/hide and clipboard context menus, manual/AI names, confirmed history trash and window placement/maximized-state restoration. [Release notes](releases/0.1.5.md).
 - Local typecheck/build, 15 health/recovery checks, 10 workspace/session/window checks, 7 bridge checks and existing unit suites passed. Real isolated Electron/Pi GUI suites passed: session controls/window restoration (6), terminal interaction (14), editable workspace (8) and passive RPC fault/recovery (5).
 - Release workflow now gates both native Linux architectures on the additional units and extracted/installed-runtime session/terminal/recovery GUI suites. Public pinned/latest clean-install tests include these suites too.
 - Local x64 production archive was extracted by the actual installer and passed GUI/PTY/Pi RPC/icon/single-instance/active renderer sandbox plus workspace (8), Node recovery/manual settings (9), session controls/window placement (6), passive RPC recovery (5), and terminal/context-menu (14) GUI checks. The full 9-case private registry/Pi installation suite also passed.
-- Full npm audit: 0 high/critical, 6 moderate build-toolchain findings. Native arm64/publication, public npm checksum and clean-install results will be recorded only after they actually pass.
+- Full npm audit: 0 high/critical, 6 moderate build-toolchain findings. npm 0.1.5 has not been uploaded: CLI authentication expired, and Trusted Publishing is not enabled. npm latest remains 0.1.4. The reviewed seven-file candidate tarball is 62120 bytes, SHA-1 `983897126f68e5f5cbece1dac1b60f36df39d340`; this is a local review hash, not a claim of public npm availability.
+- A first fresh public-desktop-bootstrap container downloaded and verified the actual 0.1.5 archive, passed existing GUI/workspace/Node checks and naming, then safely rejected history trash because the minimal image lacked `gio`/`gvfs-trash`. History/tab/input were preserved. The test image now includes the normal desktop trash prerequisite (`libglib2.0-bin`). A new non-root UID-1000 container then installed solely through the public 0.1.5 bootstrap/manifest/archive, verified version and active renderer sandbox, and passed all five GUI suites (workspace, Node recovery, session controls/window placement, passive RPC recovery and terminal menus). No host binaries/configuration/credentials were mounted. This is public desktop-bootstrap acceptance, not public npm/Pi install acceptance; pinned/latest npm checks are still blocked on publication. No runtime asset or tag was replaced.
 
 ## Linux v0.1.4 public release and desktop Node regression acceptance
 

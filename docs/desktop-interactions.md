@@ -1,6 +1,6 @@
 # Desktop interactions / 桌面交互
 
-**Prepared for Linux desktop/npm 0.1.5; publication pending verification.** Existing v0.1.4 archives remain unchanged. [Release notes](releases/0.1.5.md).
+**Included in published Linux desktop 0.1.5.** Matching npm publication awaits maintainer authentication; npm latest remains 0.1.4. Existing v0.1.4 archives remain unchanged. [Release notes](releases/0.1.5.md).
 
 ## Terminal / 终端
 
@@ -24,7 +24,7 @@ Delete opens a confirmation dialog. Cancellation changes nothing. Confirmation s
 
 Mutations are restricted to actual session JSONL files under the configured Pi session root. Arbitrary project files, non-session JSONL and invalid headers are rejected. Native live rename avoids directly modifying an active Pi tree; closed rename only appends metadata. sPi serializes its file operations and prevents reopening a file while it is being mutated. Other independently running Pi clients are not locked; do not edit the same history concurrently from multiple applications.
 
-There is **no permanent-delete fallback** if the system trash is unavailable. A trash failure leaves the file intact and preserves the exited tab/draft/outbox so it can be recovered. An empty, not-yet-saved session can be closed normally rather than deleted as history.
+On Linux, history trash requires a standard desktop trash backend such as `gio` (Debian/Ubuntu: `libglib2.0-bin`) or `gvfs-trash`. Minimal containers may have Electron libraries but no trash command; the feature then fails closed. There is **no permanent-delete fallback** if the system trash is unavailable. A trash failure leaves the file intact and preserves the exited tab/draft/outbox so it can be recovered. An empty, not-yet-saved session can be closed normally rather than deleted as history.
 
 ## Window placement / 窗口位置
 

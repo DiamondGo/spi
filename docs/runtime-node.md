@@ -1,4 +1,4 @@
-# Pi startup and Node.js (Linux desktop 0.1.4; matching npm pending)
+# Pi startup and Node.js (published in Linux desktop/npm 0.1.4)
 
 ## What failed and why older tests missed it
 
@@ -31,6 +31,6 @@ This changes subsequent new/reopened sessions, not the executable already runnin
 - Startup failures include exit code/signal and safe missing-Node/dependency classifications. Arbitrary extension stderr (which could contain credentials) is not copied into IPC errors. Commands sent after a child has already exited fail immediately instead of waiting for a timeout.
 - Unit coverage checks sparse/stale PATH, login/managed Node, exact argv/wrapper preservation, JS entries, manual priority, invalid paths, private atomic persistence/clear, probe token isolation and early-exit diagnostics.
 - Nine real GUI/Pi tests cover new sessions without desktop Node, a private loopback/read roundtrip, history reopening, another new session, invalid manual input, manual Node when login detection is unavailable, removal of a saved executable without killing existing sessions, app restart/history persistence, and clearing back to automatic lookup.
-- Tests use private HOME/XDG/agent/profile/workspace and a private Xvfb/loopback model, not real authentication/history/extensions. No user GUI or active queue is replaced. Both native Linux archives and clean public-install acceptance are required to run this regression.
+- Tests use private HOME/XDG/agent/profile/workspace and a private Xvfb/loopback model, not real authentication/history/extensions. No user GUI or active queue is replaced. Both native Linux archives passed this regression. Two fresh non-root x64 containers then passed the public pinned/latest Pi install with all 9 startup/manual-setting checks and existing workspace/GUI/PTY/RPC/sandbox coverage. No host credentials/configuration/binaries were mounted.
 
 The patch version is **0.1.4**, not four-component `0.1.3.1`, because npm requires valid three-component SemVer. Published 0.1.3 assets/npm are immutable and unchanged.

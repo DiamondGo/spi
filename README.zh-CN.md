@@ -16,15 +16,15 @@
 
 **Linux 桌面 0.1.2 新增：** [侧栏分隔线可拖动并保存、当前会话高亮、主目录显示为 `~`、忙时消息缓存且可编辑/取消](docs/workspace-ui.md)。待执行区固定在输入框上方，不随聊天滚动；follow up 追加末尾，steer 直接插到未执行缓冲区最前面，已交付 Pi 的那条不回滚。
 
-**Linux 桌面 0.1.4 修复已公开，匹配 npm 仍待发布：** [桌面/nvm 环境的 Node 自动查找，以及设置里的手动 Node 路径](docs/runtime-node.md)。已用真实旧 0.1.3 运行包复现桌面 PATH 缺少 Node 时会话打不开，并新增真实 GUI 测试覆盖新建/历史会话、手动兜底和重启持久化；源码修复不会热更新已经运行的旧窗口。
+**Linux 桌面/npm 0.1.4 已公开并通过干净安装验收：** [桌面/nvm 环境的 Node 自动查找，以及设置里的手动 Node 路径](docs/runtime-node.md)。已用真实旧 0.1.3 运行包复现桌面 PATH 缺少 Node 时会话打不开，并新增真实 GUI 测试覆盖新建/历史会话、手动兜底和重启持久化；源码修复不会热更新已经运行的旧窗口。
 
 ## 发布状态与依赖
 
 源码仓库：[DiamondGo/spi](https://github.com/DiamondGo/spi)。npm 包为 **[`spi-agent-gui`](https://www.npmjs.com/package/spi-agent-gui)**，可执行命令仍为 **`spi`**；公开默认值集中在 `release.config.json`。
 
-**Linux 桌面 Release [v0.1.3](https://github.com/DiamondGo/spi/releases/tag/v0.1.3) 和 npm 包 `spi-agent-gui@0.1.3` 均已发布，npm latest 为 `0.1.3`。** [下载器](docs/downloads.md) 已显示实时百分比/大小/速度，改为有限的一小时总预算并安全续传重试，修复 0.1.2 慢速下载超时。两个 Linux 原生架构均通过解压安装后的验收；两个全新非 root x64 容器分别从公开 registry 安装固定版本和 latest，约 11 分钟完成真实慢速下载，并通过消息编辑取消/steer/follow up、GUI/PTY/Pi RPC、图标/桌面入口归属、单实例转发及启用中的 renderer sandbox 检查。没有挂载主机凭据、配置或应用二进制；旧版本资源未被覆盖。
+**Linux 桌面 Release [v0.1.4](https://github.com/DiamondGo/spi/releases/tag/v0.1.4) 和 npm 包 `spi-agent-gui@0.1.4` 均已发布，npm latest 为 `0.1.4`。** 两个 Linux 原生架构均通过安装后验收；两个全新非 root x64 容器分别从公开 registry 安装固定版本和 latest，约 7 分钟完成，并通过新增的 9 项缺失桌面 Node/手动设置会话检查、8 项工作区/消息缓冲区检查，以及 GUI/PTY/Pi RPC、图标/桌面入口归属、单实例和启用中的 renderer sandbox 验证。[百分比、慢速下载和续传修复](docs/downloads.md) 仍保留。没有挂载主机凭据、配置或应用二进制；旧版本资源未覆盖。
 
-要修复桌面 Node/会话启动问题，请等待匹配的 npm 0.1.4 发布及验收后的更新命令。重复安装不可变的 0.1.3 不会添加 Node 自动兜底或手动设置；0.1.3 的慢速下载修复仍保留。请先另存未完成/原生队列中的文字，并完全退出旧窗口后再打开：安装新版二进制不会热更新仍在运行的 0.1.1 窗口。Pi 认证、历史会话和 sPi 偏好设置会保留。
+执行 `pi install npm:spi-agent-gui@0.1.4` 更新，获得桌面 Node 自动兜底和设置里的手动路径选项。重复安装不可变的 0.1.3 不会添加这两项修复。请先另存未完成/原生队列中的文字，并完全退出旧窗口后再打开：安装新版二进制不会热更新仍在运行的 0.1.1 窗口。Pi 认证、历史会话和 sPi 偏好设置会保留。
 
 发布准备已升级到 Electron 45.2.3 和 electron-builder 26.18.0，high/critical 审计告警已清除；仍有六条 minimatch 构建工具链 moderate 审计条目。发布流水线继续拦截 high/critical 问题。
 
@@ -58,9 +58,9 @@ npx --package spi-agent-gui spi install
 从 **GitHub Release 附件**下载并检查 `install.sh` 后执行：
 
 ```bash
-bash install.sh --version 0.1.3
+bash install.sh --version 0.1.4
 # 可选覆盖目录：
-bash install.sh --version 0.1.3 --install-dir /path/to/user-install --bin-dir /path/to/user-bin
+bash install.sh --version 0.1.4 --install-dir /path/to/user-install --bin-dir /path/to/user-bin
 ```
 
 发行版脚本已绑定仓库/tag，先下载和核验独立安装器，再下载匹配的运行包。源码脚本默认使用同一仓库，fork 可通过 `SPI_RELEASE_REPOSITORY` 覆盖。Windows 通过 Pi 包/Node 安装器安装，不要求 Bash。
@@ -69,7 +69,7 @@ bash install.sh --version 0.1.3 --install-dir /path/to/user-install --bin-dir /p
 
 ```bash
 npm run dist:prepare
-bash install.sh --version 0.1.3 --archive /path/to/spi-0.1.3-linux-x64.tar.gz --manifest /path/to/release-manifest.json
+bash install.sh --version 0.1.4 --archive /path/to/spi-0.1.4-linux-x64.tar.gz --manifest /path/to/release-manifest.json
 ```
 
 SHA-256 用于检测错包和损坏，不等同于独立的发布者签名认证。

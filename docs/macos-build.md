@@ -1,8 +1,18 @@
 # macOS downloads / macOS 手动下载包
 
-## Public 0.2.1 downloads / 已公开的 0.2.1 包
+## Public 0.3.0 downloads / 已公开的 0.3.0 包
 
-**Latest manual Mac downloads: [Apple Silicon ZIP](https://github.com/DiamondGo/spi/releases/download/v0.2.1/spi-0.2.1-darwin-arm64.zip) · [Intel ZIP](https://github.com/DiamondGo/spi/releases/download/v0.2.1/spi-0.2.1-darwin-x64.zip) · [SHA-256](https://github.com/DiamondGo/spi/releases/download/v0.2.1/SHA256SUMS-macos.txt).** Ad-hoc signed, NOT Developer ID signed or notarized; do not disable OS protections.
+**Latest manual Mac downloads: [Apple Silicon ZIP](https://github.com/DiamondGo/spi/releases/download/v0.3.0/spi-0.3.0-darwin-arm64.zip) · [Intel ZIP](https://github.com/DiamondGo/spi/releases/download/v0.3.0/spi-0.3.0-darwin-x64.zip) · [SHA-256](https://github.com/DiamondGo/spi/releases/download/v0.3.0/SHA256SUMS-macos.txt).** Ad-hoc signed, NOT Developer ID signed or notarized; do not disable OS protections.
+
+- Source: immutable v0.3.0, `26121e2ea67dca7f78ed4250dc1fff6b88d75d04`.
+- [Native build and installed-ZIP acceptance](https://github.com/DiamondGo/spi/actions/runs/43305763506): both macos-26 arm64 and macos-15-intel x64 passed. Includes pending invitation recovery, three-instance single-controller/read-only viewing and automatic takeover, and Previous/Next user-question GUI tests. Question navigation also passed against the extracted installed ZIP on both architectures.
+- Both installed ZIPs passed native architecture, signatures/ASAR/icon, real PTY/GUI/Pi RPC and single-instance/application-quit tests. Local startup with hosting off no longer probes Keychain; explicit remote use retains mandatory credential protection. Live Dev Tunnels testing of these new features is not claimed.
+- [Additive publication](https://github.com/DiamondGo/spi/actions/runs/43308412403) and anonymous hash verification passed; existing Linux assets and the canonical installer manifest were not replaced. Mac ZIPs remain manual downloads only. npm 0.3.0 awaits renewed maintainer authentication; public npm latest remains 0.2.1.
+- Remote protocol v2 requires both ends to update to 0.3.0; saved pairings are retained. Save drafts and quit old windows before reopening. [Release notes](releases/0.3.0.md).
+
+## Historical public 0.2.1 downloads / 历史 0.2.1 包
+
+**0.2.1 manual Mac downloads: [Apple Silicon ZIP](https://github.com/DiamondGo/spi/releases/download/v0.2.1/spi-0.2.1-darwin-arm64.zip) · [Intel ZIP](https://github.com/DiamondGo/spi/releases/download/v0.2.1/spi-0.2.1-darwin-x64.zip) · [SHA-256](https://github.com/DiamondGo/spi/releases/download/v0.2.1/SHA256SUMS-macos.txt).** Ad-hoc signed, NOT Developer ID signed or notarized; do not disable OS protections.
 
 - Source: immutable v0.2.1, `a7ddf900dd296bd9bf761ecb531616ec3edc00ab`.
 - [Native build and installed-ZIP acceptance](https://github.com/DiamondGo/spi/actions/runs/43244952768): both macos-26 arm64 and macos-15-intel x64 passed. Includes new two-instance loopback remote GUI coverage: configurable pairing lifetime (default 1 hour, maximum 60 days), prompt execution, remote PTY, reconnects and revocation.

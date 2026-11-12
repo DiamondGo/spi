@@ -1,5 +1,14 @@
 # Distribution verification / 分发验收
 
+## Linux 0.2.0 candidate — release verification pending
+
+- Source adds end-to-end encrypted remote access over Microsoft Dev Tunnels (requires a signed-in GitHub CLI on both computers), plus the AI naming and stale session-health alert fixes. [Release notes](releases/0.2.0.md).
+- Local typecheck, privacy check and all unit suites passed, including 19 remote access checks (Noise vectors, framing/tamper, pairing, RPC, gh provider redaction, host/client over loopback, relay drops, revocation, tunnel 404 recreation). The launch unit suite now loads the shared session-health module it depends on.
+- Two-instance remote GUI smoke passed on the loopback relay (8 steps, 10 consecutive runs) and against the live Dev Tunnels service with the maintainer's GitHub CLI account (9 steps, including deleted-tunnel recreation and label rediscovery). The live test deleted its tunnel and the account was confirmed to have no remaining `spi-remote` tunnels; no token was printed or stored.
+- Local x64 production archive was extracted by the actual installer and passed GUI/PTY/Pi RPC/icon/single-instance/active renderer sandbox, the new packaged remote access check (real relay loaded, remote access off, no identity created, dev-only relay override ignored), workspace (8), Node recovery/manual settings (9), session controls/window placement, passive RPC recovery and terminal GUI suites, using the CI-pinned Pi 1.5.0. The full 9-case private registry/Pi installation suite also passed. The npm tarball keeps the same seven files.
+- Release workflow now also gates both native Linux architectures on the remote unit suite, the loopback remote GUI smoke and the packaged remote access check.
+- Full npm audit: 0 high/critical; 8 moderate (minimatch build toolchain, and `uuid` via the Dev Tunnels SDK with no fixed version yet). Native arm64/publication, public npm checksum and clean-install results will be recorded only after they actually pass.
+
 ## Linux v0.1.5 public release and clean-install acceptance
 
 - Public desktop Release: https://github.com/DiamondGo/spi/releases/tag/v0.1.5. Immutable source tag: `a782168b29308f2a038eb7219a0f5d1873ad7216`.

@@ -2,7 +2,7 @@
 
 **Included in published Linux desktop/npm 0.1.5.** npm latest is 0.1.5. Existing v0.1.4 archives remain unchanged. [Release notes](releases/0.1.5.md).
 
-## Unreleased AI naming compatibility fix / 尚未发布的 AI 命名修复
+## AI naming compatibility fix in 0.2.0 / 0.2.0 的 AI 命名修复
 
 The source now uses Pi's provider-neutral `modelRegistry.streamSimple(...).result()` for naming, with low reasoning effort, a requested 4096-token output budget clipped to the model's configured limit, and no automatic retries. Pi's adapter handles provider-specific thinking-budget accounting. This avoids the raw `complete()` path's implicit `reasoning: none` on Responses models that reject that effort and gives reasoning output room. An older registry with only `complete()` gets an explicit low-effort physical-model fallback rather than silently changing provider/model.
 
@@ -10,7 +10,7 @@ The private bridge returns allowlisted error categories for busy/empty history, 
 
 The failure was reproduced against the locally selected reasoning-model configuration using a synthetic conversation, not real chat history: the old path returned HTTP 400 indicating incompatible reasoning; the new path returned a text title. Deterministic tests now include a real Pi/Electron Responses endpoint that rejects the old effort/budget, plus safe error display and no chat/name mutation.
 
-**These source fixes are not part of the immutable published 0.1.5 artifacts.** Reinstalling 0.1.5 does not obtain them. Build/restart the updated source or wait for a separately authorized new release.
+**These fixes ship in 0.2.0 and are not part of the immutable published 0.1.5 artifacts.** Reinstalling 0.1.5 does not obtain them. [0.2.0 release notes](releases/0.2.0.md).
 
 ## Terminal / 终端
 

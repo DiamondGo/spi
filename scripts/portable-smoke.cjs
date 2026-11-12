@@ -6,6 +6,8 @@ const exe=path.resolve(binary),tmp=fs.mkdtempSync(path.join(os.tmpdir(),'spi-por
 const profile=path.join(tmp,'profile'),agent=path.join(tmp,'agent'),workspace=path.join(tmp,'workspace with spaces')
 for(const d of [profile,agent,workspace])fs.mkdirSync(d)
 const env={...process.env,PI_CODING_AGENT_DIR:agent,HISTFILE:path.join(tmp,'history'),SPI_TEST_LIFECYCLE:'1'};delete env.ELECTRON_RUN_AS_NODE
+// A packaged build must ignore the dev-only relay override.
+if(process.env.SPI_ASSERT_REMOTE_ACCESS==='1')env.SPI_TEST_REMOTE='loopback'
 if(process.env.SPI_TEST_PI_PATH)fs.writeFileSync(path.join(profile,'spi-config.json'),JSON.stringify({piPath:process.env.SPI_TEST_PI_PATH}))
 const probe=path.join(tmp,'native.cjs'),resources=process.platform==='darwin'?path.resolve(exe,'../../Resources'):path.join(path.dirname(exe),'resources')
 fs.writeFileSync(probe,`const {createRequire}=require('node:module');const pty=createRequire(${JSON.stringify(path.join(resources,'app.asar/package.json'))})('node-pty');let output='';const p=pty.spawn(process.platform==='win32'?(process.env.ComSpec||'cmd.exe'):'/bin/sh',process.platform==='win32'?['/d','/c','echo SPI_NATIVE_OK']:['-c','printf SPI_NATIVE_OK'],{cwd:${JSON.stringify(workspace)},env:process.env,cols:80,rows:24});const timeout=setTimeout(()=>{p.kill();process.exitCode=1},10000);p.onData(d=>output+=d);p.onExit(e=>{clearTimeout(timeout);if(e.exitCode!==0||!output.includes('SPI_NATIVE_OK'))process.exitCode=1;else console.log('PASS packaged native PTY')});`)
@@ -73,6 +75,13 @@ function descendants(pid){try{
     })
     assert.ok(sandboxed,'Chromium renderer must retain its own seccomp sandbox')
     console.log('PASS Chromium renderer seccomp sandbox is active')
+  }
+  if(process.env.SPI_ASSERT_REMOTE_ACCESS==='1'){
+    const remote=await evaluate('window.spi.getRemoteStatus()')
+    assert.equal(remote.relay,'devtunnels','packaged builds ignore SPI_TEST_REMOTE')
+    assert.equal(remote.host.enabled,false);assert.equal(remote.host.state,'off');assert.deepEqual(remote.hosts,[])
+    assert.ok(!fs.existsSync(path.join(profile,'spi-remote-identity.json')),'no remote identity is created before remote access is used')
+    console.log('PASS packaged remote access loads the Dev Tunnels relay, starts off and ignores the test relay override')
   }
   const pi=await evaluate('window.spi.findPi()')
   if(pi){

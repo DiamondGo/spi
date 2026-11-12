@@ -4,6 +4,13 @@
 
 - macOS Apple Silicon/Intel candidates remain separate from public Linux releases. Developer ID signing and notarization are not configured.
 
+## 0.2.0
+
+- Remote access: open a window on one sPi desktop that drives another sPi host behind NAT/firewalls, relayed through Microsoft Dev Tunnels and end-to-end encrypted by sPi with Noise. One-time pairing codes, pinned keys, device revocation, reconnect with resync and automatic tunnel recreation. Requires the GitHub CLI signed in to the same account on both computers; local use never needs it. A paired device has full control of the host's sPi. Linux keyring required; macOS/Windows unverified.
+- AI naming works on reasoning models that reject `reasoning: none`; failures show allowlisted categories only.
+- Healthy sessions no longer show the connection banner; stale unresponsive state clears on real Pi progress; model and connection errors are shown once and separately.
+- Linux x64/arm64 only. Save important drafts and fully quit the previous window before reopening.
+
 ## 0.1.5
 
 - Passive RPC diagnostics only on send failure, blocked busy submissions or manual checks; no periodic/focus/network-restoration polling. Retain exited tabs and recover saved history/drafts/outboxes without replaying unconfirmed work.

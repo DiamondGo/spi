@@ -1,12 +1,12 @@
 # Remote access and the GitHub CLI dependency / 远程访问与 gh 依赖
 
-**Status: implemented in the source tree, not included in any release (0.1.5 and earlier do not contain it).** Pairing, the remote window, reconnects and revocation are covered by unit tests and a two-instance GUI test, run on Linux both on a loopback relay and against the live Dev Tunnels service. macOS/Windows are unverified.
+**Status: new in Linux desktop/npm 0.2.0 (0.1.5 and earlier do not contain it).** [Release notes](releases/0.2.0.md). Pairing, the remote window, reconnects and revocation are covered by unit tests and a two-instance GUI test, run on Linux both on a loopback relay and against the live Dev Tunnels service. macOS/Windows are unverified.
 
 **Summary (English).** Remote access lets one sPi desktop open a window onto another sPi host behind NAT/firewalls, relayed through Microsoft Dev Tunnels and end-to-end encrypted by sPi itself. **It requires the GitHub CLI (`gh`) to be installed and signed in to the same GitHub account on both machines.** Dev Tunnels rejects GitHub tokens issued to third-party OAuth Apps (`invalid_token`), but accepted the token from `gh auth token` in our tests. sPi reads that token on demand, keeps it in memory only and sends it only to the Dev Tunnels management/relay service. Local use of sPi never needs `gh`, GitHub or Dev Tunnels.
 
 **实现状态。**
 
-- **已实现**：功能已接入应用源码，尚未发布。
+- **发布版本**：0.2.0 起包含远程访问。
 - **已在 Linux 上验证**：
   - 单元测试；
   - 两个 sPi 实例通过本机回环中继的 GUI 测试：配对、远程会话、远程终端、断线重连、host 重启、撤销。

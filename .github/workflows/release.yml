@@ -68,7 +68,9 @@ jobs:
             if [ "$attempt" -lt 3 ]; then sleep 20; fi
           done
           exit 1
-      - run: npm run typecheck && npm run test:launch && npm run test:icons && npm run test:yolo && npm run test:extension-ui && npm run test:workspace-ui && npm run test:sessions && npm run test:settings && npm run test:terminal && npm run test:session-health && npm run test:workspace-actions
+      - run: npm run typecheck && npm run test:launch && npm run test:icons && npm run test:yolo && npm run test:extension-ui && npm run test:workspace-ui && npm run test:sessions && npm run test:settings && npm run test:terminal && npm run test:session-health && npm run test:workspace-actions && npm run test:remote
+      - name: Two-instance remote access GUI smoke (loopback relay, no Dev Tunnels account)
+        run: npm run test:remote-smoke
       - name: Build complete native runtime (no AppImage)
         run: npm run dist -- --production
       - name: Native PTY, GUI, Pi RPC and single-instance smoke
@@ -79,6 +81,7 @@ jobs:
           SPI_ASSERT_SESSION_ACTIONS: '1'
           SPI_ASSERT_SESSION_HEALTH: '1'
           SPI_ASSERT_TERMINAL_UI: '1'
+          SPI_ASSERT_REMOTE_ACCESS: '1'
         run: node scripts/with-display.cjs scripts/install-native-smoke.cjs
       - name: Full isolated Pi installation checks (Linux x64)
         if: matrix.target == 'linux-x64'

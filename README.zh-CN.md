@@ -20,6 +20,8 @@
 
 **Linux 桌面/npm 0.1.5 已发布：** [会话健康检查、状态校准、异常提醒与手动恢复](docs/session-recovery.md)。恢复保留草稿和暂停的待发送队列，不自动重发；旧版本包保持不变。另已加入[终端显示切换与右键菜单、手动/AI 会话命名、确认后删除历史及窗口位置恢复](docs/desktop-interactions.md)，均已包含在本次桌面发布中。
 
+**0.2.0 发布候选（待完成发布验证）：** 可选的[端到端加密远程访问](docs/remote-access.md)。在一台电脑上打开窗口操作另一台电脑上的 sPi，两边都在 NAT 或防火墙后面也可以；流量经 Microsoft Dev Tunnels 中继，由 sPi 自己加密。**两台电脑都要安装 GitHub CLI（`gh`）并登录同一个 GitHub 账号**；本地使用不需要 `gh`，也不会连接 GitHub 或 Dev Tunnels。已配对的设备拥有 host 上 sPi 的全部权限，包括终端和 YOLO。已在 Linux 上验证（含真实 Dev Tunnels 服务）；macOS 和 Windows 未验证。另修复了推理模型上的 AI 命名，以及过期的会话健康提示。
+
 ## 发布状态与依赖
 
 源码仓库：[DiamondGo/spi](https://github.com/DiamondGo/spi)。npm 包为 **[`spi-agent-gui`](https://www.npmjs.com/package/spi-agent-gui)**，可执行命令仍为 **`spi`**；公开默认值集中在 `release.config.json`。

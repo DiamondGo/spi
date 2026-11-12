@@ -37,7 +37,7 @@ if(process.platform!=='win32'){
   console.log('PASS sparse/stale desktop PATH, login-shell Node, managed Node, JS entries, wrapper/argv preservation and probe token isolation')
   console.log('PASS manual Node takes priority; invalid paths fail closed; private atomic settings preserve unrelated fields and clear back to auto')
 }
-const store=load('src/renderer/src/store.ts',{react:{useSyncExternalStore(){}}});let calls=0
+const store=load('src/renderer/src/store.ts',{react:{useSyncExternalStore(){}},'../../shared/sessionHealth':load('src/shared/sessionHealth.ts')});let calls=0
 let resolve;const opened=new Promise(r=>{resolve=r});global.window={spi:{openSession:()=>{calls++;return opened},getMessages:async()=>[]}}
 ;(async()=>{
   const a=store.openDirectory(dir),b=store.openDirectory(dir);assert.equal(calls,1)

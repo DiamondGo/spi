@@ -21,6 +21,7 @@ npm ci
 npm run typecheck
 npm run check:privacy
 npm run test:session-health && npm run test:workspace-actions
+npm run test:remote && npm run test:remote-smoke
 npm run test:installer
 npm run dist -- --production
 ```

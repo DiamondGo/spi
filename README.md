@@ -19,6 +19,8 @@
 
 **Linux desktop/npm 0.1.5 published:** [session health checks, state reconciliation, fault alerts and explicit recovery](docs/session-recovery.md), preserving drafts and a paused outbox without automatically replaying work. Older immutable archives are unchanged. Also included: [terminal visibility/context menus, manual/AI session naming, confirmed history deletion and window-placement restoration](docs/desktop-interactions.md).
 
+**0.2.0 release candidate (publication pending):** optional [end-to-end encrypted remote access](docs/remote-access.md). A window on one computer drives sPi on another, even behind NAT/firewalls, relayed through Microsoft Dev Tunnels and encrypted by sPi itself. **It requires the GitHub CLI (`gh`) signed in to the same GitHub account on both computers**; local use never needs `gh`, GitHub or Dev Tunnels. A paired device has full control of the host's sPi, including terminals and YOLO. Verified on Linux (including the live Dev Tunnels service); macOS/Windows unverified. Also fixes AI naming on reasoning models and stale session-health alerts.
+
 ## Release status and requirements
 
 Source: [DiamondGo/spi](https://github.com/DiamondGo/spi). The npm package is **[`spi-agent-gui`](https://www.npmjs.com/package/spi-agent-gui)**; the executable is **`spi`**. These public defaults are stored in `release.config.json`.

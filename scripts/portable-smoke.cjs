@@ -32,7 +32,7 @@ function descendants(pid){try{
   app=child(exe,args,env)
   const endpoint=await wait(()=>{if(app.done)throw Error(app.log);return app.log.match(/DevTools listening on (ws:\/\/\S+)/)?.[1]},'GUI endpoint')
   console.log('CHECK packaged GUI debugger endpoint ready')
-  const page=await wait(async()=>{try{const pages=await(await fetch('http://'+new URL(endpoint).host+'/json/list')).json();return pages.find(p=>p.type==='page'&&p.webSocketDebuggerUrl)}catch{return false}},'GUI debugger page')
+  const page=await wait(async()=>{try{const pages=await(await fetch('http://'+new URL(endpoint).host+'/json/list',{signal:AbortSignal.timeout(3000)})).json();return pages.find(p=>p.type==='page'&&p.webSocketDebuggerUrl)}catch{return false}},'GUI debugger page')
   console.log('CHECK packaged GUI debugger page ready')
   ws=new WebSocket(page.webSocketDebuggerUrl);await new Promise((resolve,reject)=>{
     const timer=setTimeout(()=>reject(Error('Packaged GUI debugger WebSocket connection timed out')),15000)
@@ -119,7 +119,16 @@ function descendants(pid){try{
   await evaluate('window.spi.quitApp ? window.spi.quitApp() : window.close()').catch(()=>{})
   await exit(app)
   console.log('RESULT PASS',tmp)
-})().catch(e=>{if(app){fs.writeFileSync(path.join(tmp,'failure.log'),app.log);const events=app.log.match(/\[sPi lifecycle\] (?:quit-committed|quit-dispatched|before-quit|window-all-closed|closed|close)\b/g)||[];console.error(events.slice(-20).join('\n'))}console.error(e.message);process.exitCode=1}).finally(()=>{
+})().catch(e=>{if(app){
+  if(process.platform==='darwin'&&!app.done){
+    const sample=path.join(tmp,'startup-stack.txt')
+    try{
+      execFileSync('/usr/bin/sample',[String(app.pid),'1','-file',sample],{timeout:10000,stdio:'ignore'})
+      const symbols=fs.readFileSync(sample,'utf8').split('\n').filter(line=>/SecKeychain|SecItem|OSCrypt|Keychain|SafeStorage|safe_storage|GetPassword|dispatch_sync|ElectronMain|uv_run/.test(line)).slice(0,30)
+      console.error('Packaged startup diagnostic symbols:\n'+symbols.join('\n'))
+    }catch{}
+  }
+  fs.writeFileSync(path.join(tmp,'failure.log'),app.log);const events=app.log.match(/\[sPi lifecycle\] (?:quit-committed|quit-dispatched|before-quit|window-all-closed|closed|close)\b/g)||[];console.error(events.slice(-20).join('\n'))}console.error(e.message);process.exitCode=1}).finally(()=>{
   ws?.close()
   if(app&&!app.done){
     if(['linux','darwin'].includes(process.platform)&&(!app.started||start(app.pid)!==app.started)){app.stdout.destroy();app.stderr.destroy();return}

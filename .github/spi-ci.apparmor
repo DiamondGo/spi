@@ -8,6 +8,6 @@ profile spi-native-ci /tmp/spi-native-install-*/runtime/releases/*/*/app/spi fla
 }
 
 # The development Electron binary used by source-tree GUI smokes on the same runner.
-profile spi-dev-electron-ci /home/runner/work/*/*/node_modules/electron/dist/electron flags=(unconfined) {
+profile spi-dev-electron-ci /home/*/work/*/*/node_modules/electron/dist/electron flags=(unconfined) {
   userns,
 }

@@ -104,6 +104,7 @@ function hostHarness(dir, identity, extra = {}) {
   api.handle('local:only', () => 'never', { remote: false })
   api.handle('session:open', () => ({ sessionId: 'opened-session' }))
   api.handle('session:get-state', (_caller, id) => ({ id }))
+  api.handle('sessions:live', () => [{ sessionId: 'opened-session', cwd: '/workspace' }])
   api.handle('hang', () => new Promise(() => {}))
   api.on('terminal:ack', (caller, ...args) => sends.push({ caller, args }))
   const host = new R.RemoteHostService({
@@ -402,6 +403,7 @@ const rewritePort = (code, port) => { const decoded = R.decodePairingCode(code);
     assert.throws(() => host.createPairingCode(), /not online/)
     await host.setEnabled(true)
     assert.equal(host.snapshot().state, 'online')
+    assert.equal(host.getPairingCode(), null)
     const client = clientHarness(clientDir, deviceId)
     for (const invalid of [0, NaN, '3600000', R.MAX_PAIRING_TTL_MS + 1]) assert.throws(() => host.createPairingCode(invalid), /between 1 minute and 60 days/)
     const beforeOffer = Date.now()
@@ -409,10 +411,20 @@ const rewritePort = (code, port) => { const decoded = R.decodePairingCode(code);
     assert.ok(expiresAt >= beforeOffer + R.MAX_PAIRING_TTL_MS)
     assert.ok(expiresAt <= Date.now() + R.MAX_PAIRING_TTL_MS)
     assert.equal(host.snapshot().pairingExpiresAt, expiresAt)
+    assert.deepEqual(host.getPairingCode(), { code, expiresAt }, 'local settings can recover the same active code without replacing it')
+    assert.ok(!JSON.stringify(host.snapshot()).includes(code), 'status broadcasts must never contain the secret code')
+    assert.ok(!fs.readFileSync(path.join(hostDir, 'spi-remote-host.json'), 'utf8').includes(code), 'pending secrets are not persisted as plaintext')
+    const realNow = Date.now
+    try {
+      Date.now = () => expiresAt + 1
+      assert.equal(host.getPairingCode(), null, 'expired offers cannot be recovered')
+      assert.equal(host.snapshot().pairingExpiresAt, undefined)
+    } finally { Date.now = realNow }
     const entry = await client.pair(code)
     assert.equal(entry.name, 'Host A'); assert.equal(entry.id, R.keyFingerprint(hostId.publicKey))
     await waitFor('device name', () => host.snapshot().devices[0]?.name === 'Laptop B')
     assert.equal(host.snapshot().pairingExpiresAt, undefined, 'a used code is gone')
+    assert.equal(host.getPairingCode(), null, 'used offers cannot be recovered')
     await assert.rejects(client.pair(code), /refused this pairing code/)
     const fresh = R.decodePairingCode(host.createPairingCode().code)
     const stranger = clientHarness(fs.mkdtempSync(path.join(tmp, 'stranger-')), R.generateKeyPair())
@@ -420,6 +432,8 @@ const rewritePort = (code, port) => { const decoded = R.decodePairingCode(code);
     await waitFor('failure counted', () => host.snapshot().pairingExpiresAt !== undefined)
     await assert.rejects(clientHarness(fs.mkdtempSync(path.join(tmp, 'self-')), hostId).pair(host.createPairingCode().code), /belongs to this computer/)
     host.cancelPairing()
+    assert.equal(host.getPairingCode(), null, 'cancelled offers cannot be recovered')
+    assert.equal(host.snapshot().pairingExpiresAt, undefined)
     for (const f of ['spi-remote-host.json']) assert.equal(fs.statSync(path.join(hostDir, f)).mode & 0o777, 0o600)
     assert.equal(fs.statSync(path.join(clientDir, 'spi-remote-hosts.json')).mode & 0o777, 0o600)
 
@@ -499,6 +513,78 @@ const rewritePort = (code, port) => { const decoded = R.decodePairingCode(code);
     await client.closeAll(); await host.stop(); await proxy.close()
   })
 
+  await check('legacy clients cannot initialize or obtain write access on a role-enforcing host', async () => {
+    const hostIdentity = R.generateKeyPair()
+    const { host, calls } = hostHarness(fs.mkdtempSync(path.join(tmp, 'legacy-host-')), hostIdentity)
+    let peer
+    try {
+      await host.setEnabled(true)
+      const code = R.decodePairingCode(host.createPairingCode().code)
+      const stream = await new R.LoopbackTransport().connect(code.address)
+      const channel = await R.clientHandshake(stream, { mode: 'pair', identity: R.generateKeyPair(), hostKey: hostIdentity.publicKey, psk: code.psk })
+      peer = new R.RpcPeer(channel)
+      await assert.rejects(peer.call('remote.hello', { deviceName: 'Old client', protocol: 1 }), /incompatible/)
+      await assert.rejects(peer.call('ipc.invoke', { channel: 'ping', args: [1] }), /not initialized/)
+      assert.equal(calls.length, 0)
+      assert.equal(host.snapshot().devices.filter(d => d.access === 'control').length, 0)
+    } finally { await peer?.close(); await host.stop() }
+  })
+
+  await check('one remote controller, fail-closed read-only viewers, FIFO promotion and no reconnect takeover', async () => {
+    const { host, calls, sends } = hostHarness(fs.mkdtempSync(path.join(tmp, 'lease-host-')), R.generateKeyPair())
+    const clientDirs = Array.from({ length: 3 }, () => fs.mkdtempSync(path.join(tmp, 'lease-client-')))
+    const identities = clientDirs.map(() => R.generateKeyPair())
+    const clients = clientDirs.map((dir, i) => clientHarness(dir, identities[i]))
+    try {
+      await host.setEnabled(true)
+      const entries = [], connections = []
+      for (const client of clients) {
+        entries.push(await client.pair(host.createPairingCode().code))
+        connections.push(await client.connect(entries.at(-1).id))
+      }
+      const [a, b, c] = connections
+      assert.deepEqual(connections.map(c => c.access), ['control', 'read-only', 'read-only'])
+      assert.equal(host.snapshot().devices.filter(d => d.access === 'control').length, 1)
+      const results = await Promise.allSettled(connections.map(c => c.invoke('ping', [42])))
+      assert.deepEqual(results.map(r => r.status), ['fulfilled', 'rejected', 'rejected'])
+      assert.equal(calls.length, 1)
+      const duplicateClient = clientHarness(clientDirs[0], identities[0])
+      clients.push(duplicateClient)
+      const duplicate = await duplicateClient.connect(entries[0].id)
+      assert.equal(duplicate.access, 'read-only', 'a second connection with the controller device key is still read-only')
+      for (const viewer of [b, c, duplicate]) {
+        for (const channel of ['session:open', 'session:prompt', 'session:abort', 'session:answer-ui', 'session:set-model', 'yolo:set', 'terminal:open', 'terminal:attach', 'terminal:close', 'messages:submit', 'messages:cancel', 'sessions:delete', 'node:set-path', 'future:unknown']) {
+          await assert.rejects(viewer.invoke(channel, []), /read-only/)
+        }
+        await assert.rejects(viewer.invoke('terminal:ack', []), /read-only/)
+        viewer.send('terminal:ack', ['blocked'])
+      }
+      a.send('terminal:ack', ['allowed'])
+      await waitFor('controller send', () => sends.length === 1)
+      assert.deepEqual(sends[0].args, ['allowed'])
+      const events = []
+      b.onEvent((channel, payload) => events.push({ channel, payload }))
+      assert.deepEqual(await b.invoke('sessions:live', []), [{ sessionId: 'opened-session', cwd: '/workspace' }])
+      assert.deepEqual(await b.invoke('session:get-state', ['opened-session']), { id: 'opened-session' })
+      host.broadcast('pi:event', { sessionId: 'opened-session', event: { type: 'agent_start' } })
+      await waitFor('viewer sees live events', () => events.some(e => e.channel === 'pi:event'))
+      await clients[0].disconnect(entries[0].id)
+      await waitFor('oldest viewer promoted', () => b.access === 'control')
+      assert.equal(c.access, 'read-only')
+      await b.invoke('ping', [43])
+      const reconnected = await clients[0].connect(entries[0].id)
+      assert.equal(reconnected.access, 'read-only', 'reconnection must not steal control')
+      host.revoke(host.snapshot().devices.find(d => d.access === 'control').id)
+      await waitFor('revoked controller replaced', () => c.access === 'control')
+      assert.equal(reconnected.access, 'read-only')
+      assert.equal(host.snapshot().devices.filter(d => d.access === 'control').length, 1)
+      await c.invoke('ping', [44])
+    } finally {
+      await Promise.all(clients.map(c => c.closeAll()))
+      await host.stop()
+    }
+  })
+
   await check('revoking a device disconnects it and the client ends in rejected after repeated refusals', async () => {
     const hostId = R.generateKeyPair(), deviceId = R.generateKeyPair()
     const { host, gone } = hostHarness(fs.mkdtempSync(path.join(tmp, 'host-')), hostId)
@@ -520,12 +606,16 @@ const rewritePort = (code, port) => { const decoded = R.decodePairingCode(code);
 
   await check('an incompatible host is refused during pairing; a failing relay start is reported and cleared when turned off', async () => {
     const hostId = R.generateKeyPair(), psk = R.randomSecret()
+    let serverVersion = 99
     const listener = await new R.LoopbackTransport().listen(async stream => {
       const { channel } = await R.serverHandshake(stream, serverPolicy(hostId, { pairingPsk: () => psk }))
-      new R.RpcPeer(channel, { 'remote.hello': () => ({ protocol: 99, hostName: 'Future' }) })
+      new R.RpcPeer(channel, { 'remote.hello': () => ({ protocol: serverVersion, hostName: 'Incompatible' }) })
     })
     const code = R.encodePairingCode({ address: listener.address, hostKey: hostId.publicKey, psk, expiresAt: Date.now() + 60_000 })
-    await assert.rejects(clientHarness(fs.mkdtempSync(path.join(tmp, 'client-')), R.generateKeyPair()).pair(code), /incompatible sPi version/)
+    for (const version of [99, 1, R.PROTOCOL_VERSION]) {
+      serverVersion = version
+      await assert.rejects(clientHarness(fs.mkdtempSync(path.join(tmp, 'client-')), R.generateKeyPair()).pair(code), /incompatible sPi version/)
+    }
     await assert.rejects(clientHarness(fs.mkdtempSync(path.join(tmp, 'client-')), R.generateKeyPair()).pair(R.encodePairingCode({ address: listener.address, hostKey: hostId.publicKey, psk, expiresAt: Date.now() - 1 })), /expired/)
     await listener.close()
 

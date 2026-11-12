@@ -1,12 +1,12 @@
-// Host role: publishes this sPi through the relay to paired devices only. A connected device
-// gets the same API as a local window (including terminals and YOLO), so pairing is explicit,
-// revocable and visible.
+// Host role: publishes this sPi through the relay to paired devices only. Exactly one
+// connection may mutate host state (including terminals and YOLO); others are read-only.
+// Pairing and the controller role are explicit, revocable and visible.
 import { join } from 'path'
 import type { KeyPair } from './noise'
 import { serverHandshake } from './secure'
 import { RpcPeer } from './rpc'
 import { PairingOffer, encodePairingCode, fromBase64, keyFingerprint, toBase64 } from './pairing'
-import { PeerOutbox, PROTOCOL_VERSION, SESSION_SCOPED_CHANNELS } from './protocol'
+import { PeerOutbox, PROTOCOL_VERSION, READ_ONLY_REMOTE_CALLS, SESSION_SCOPED_CHANNELS } from './protocol'
 import type { RemoteBackend } from './backend'
 import type { HostTunnelRecord } from './devTunnels'
 import type { ByteStream, Listener, Transport } from './transport'
@@ -30,7 +30,7 @@ export interface HostDependencies {
 
 interface DeviceRecord { key: string; name: string; pairedAt: number; lastSeenAt?: number }
 interface HostConfig { version: 1; enabled: boolean; tunnel?: HostTunnelRecord; devices: DeviceRecord[] }
-interface PeerInfo { deviceId: string; caller: RemoteCaller; outbox: PeerOutbox; sessions: Set<string> }
+interface PeerInfo { deviceId: string; caller: RemoteCaller; outbox: PeerOutbox; sessions: Set<string>; ready: boolean }
 
 const OWNER_GRACE_MS = 2 * 60_000
 const RETRY_MIN_MS = 15_000
@@ -48,7 +48,9 @@ export class RemoteHostService {
   private transport: Transport | null = null
   private listener: Listener | null = null
   private offer: PairingOffer | null = null
+  private offerCode: string | null = null
   private readonly peers = new Map<RpcPeer, PeerInfo>()
+  private controller: RpcPeer | null = null
   private readonly ownerTimers = new Map<string, ReturnType<typeof setTimeout>>()
   private retryTimer: ReturnType<typeof setTimeout> | null = null
   private retryDelay = RETRY_MIN_MS
@@ -62,16 +64,20 @@ export class RemoteHostService {
     this.config = { version: 1, enabled: saved?.enabled === true, tunnel: saved?.tunnel, devices }
   }
 
-  get connectedDevices(): number { return new Set([...this.peers.values()].map(p => p.deviceId)).size }
+  get connectedDevices(): number { return new Set([...this.peers.values()].filter(p => p.ready).map(p => p.deviceId)).size }
 
   /** Resumes hosting after an app restart if it was left enabled. */
   resume(): void { if (this.config.enabled) void this.start() }
 
   snapshot(): RemoteHostSnapshot {
-    const online = new Set([...this.peers.values()].map(p => p.deviceId))
+    const online = new Set([...this.peers.values()].filter(p => p.ready).map(p => p.deviceId))
+    const controllerId = this.controller ? this.peers.get(this.controller)?.deviceId : undefined
     return {
       enabled: this.config.enabled, state: this.state, error: this.error,
-      devices: this.config.devices.map(d => ({ id: keyFingerprint(fromBase64(d.key)), name: d.name, pairedAt: d.pairedAt, lastSeenAt: d.lastSeenAt, connected: online.has(keyFingerprint(fromBase64(d.key))) })),
+      devices: this.config.devices.map(d => {
+        const id = keyFingerprint(fromBase64(d.key)), connected = online.has(id)
+        return { id, name: d.name, pairedAt: d.pairedAt, lastSeenAt: d.lastSeenAt, connected, access: connected ? (controllerId === id ? 'control' : 'read-only') : undefined }
+      }),
       pairingExpiresAt: this.offer?.active ? this.offer.expiresAt : undefined
     }
   }
@@ -88,17 +94,24 @@ export class RemoteHostService {
     if (this.state !== 'online' || !this.listener) throw new Error('Remote access is not online yet')
     this.offer = new PairingOffer(Date.now(), ttlMs)
     const code = encodePairingCode({ address: this.listener.address, hostKey: this.deps.identity().publicKey, psk: this.offer.psk, expiresAt: this.offer.expiresAt })
+    this.offerCode = code
     this.deps.changed()
     return { code, expiresAt: this.offer.expiresAt }
   }
 
-  cancelPairing(): void { this.offer = null; this.deps.changed() }
+  /** Local settings only: never include the secret code in status broadcasts. */
+  getPairingCode(): { code: string; expiresAt: number } | null {
+    return this.offer?.active && this.offerCode ? { code: this.offerCode, expiresAt: this.offer.expiresAt } : null
+  }
+
+  cancelPairing(): void { this.offer = null; this.offerCode = null; this.deps.changed() }
 
   revoke(deviceId: string): void {
     const before = this.config.devices.length
     this.config.devices = this.config.devices.filter(d => keyFingerprint(fromBase64(d.key)) !== deviceId)
     if (this.config.devices.length === before) throw new Error('Device not found')
     this.save()
+    this.electController()
     for (const [peer, info] of this.peers) if (info.deviceId === deviceId) void peer.close('device revoked')
     this.releaseOwner('remote:' + deviceId)
     this.deps.changed()
@@ -123,6 +136,7 @@ export class RemoteHostService {
     if (this.retryTimer) clearTimeout(this.retryTimer)
     this.retryTimer = null
     this.offer = null
+    this.offerCode = null
     const listener = this.listener, transport = this.transport
     this.listener = null; this.transport = null
     await listener?.close().catch(() => {})
@@ -196,7 +210,7 @@ export class RemoteHostService {
         onPairingFailed: () => { offer?.failed(); this.deps.changed() },
         onPaired: key => {
           offer?.consume()
-          if (this.offer === offer) this.offer = null
+          if (this.offer === offer) { this.offer = null; this.offerCode = null }
           if (!this.device(key)) this.config.devices.push({ key: toBase64(key), name: 'Unnamed device', pairedAt: Date.now() })
           this.save()
         }
@@ -209,27 +223,41 @@ export class RemoteHostService {
     const deviceId = keyFingerprint(channel.peerKey)
     const caller: RemoteCaller = { kind: 'remote', deviceId, owner: 'remote:' + deviceId }
     let info: PeerInfo
-    const peer = new RpcPeer(channel, {
+    const peer: RpcPeer = new RpcPeer(channel, {
       'remote.hello': params => {
+        if (generation !== this.generation || !this.listener) throw new Error('Remote host is stopping')
+        if ((params as { protocol?: unknown })?.protocol !== PROTOCOL_VERSION) throw new Error('The host runs an incompatible sPi version; update both computers')
+        info.ready = true
+        this.electController()
         const record = this.device(channel.peerKey)
         if (record) { record.name = sanitizeName((params as { deviceName?: unknown })?.deviceName); record.lastSeenAt = Date.now(); this.save() }
         this.deps.changed()
-        return { protocol: PROTOCOL_VERSION, hostName: this.deps.hostName(), deviceId }
+        return { protocol: PROTOCOL_VERSION, hostName: this.deps.hostName(), deviceId, access: this.controller === peer ? 'control' : 'read-only' }
       },
-      'remote.bye': () => { this.releaseOwner(caller.owner); return true },
+      'remote.bye': () => {
+        if (this.controller === peer) this.releaseOwner(caller.owner)
+        info.ready = false; this.electController(); return true
+      },
       'ipc.invoke': async params => {
         const { channel: name, args } = (params ?? {}) as { channel?: unknown; args?: unknown }
         if (typeof name !== 'string' || !Array.isArray(args) || args.length > 8) throw new Error('Invalid remote call')
         if (!this.device(channel.peerKey)) throw new Error('This device is no longer paired')
+        if (!info.ready || generation !== this.generation || !this.listener) throw new Error('Remote connection is not initialized')
+        if (this.controller !== peer && !READ_ONLY_REMOTE_CALLS.has(name)) throw new Error('This remote connection is read-only; another device has control')
         if (SESSION_SCOPED_CHANNELS.has(name) && typeof args[0] === 'string') info.sessions.add(args[0])
         const result = await this.deps.invoke(name, caller, args)
+        if (name === 'sessions:live' && Array.isArray(result)) for (const session of result) {
+          const id = (session as { sessionId?: unknown })?.sessionId
+          if (typeof id === 'string') info.sessions.add(id)
+        }
         if (name === 'session:open') { const id = (result as { sessionId?: unknown })?.sessionId; if (typeof id === 'string') info.sessions.add(id) }
         return result
       }
     })
-    info = { deviceId, caller, sessions: new Set(), outbox: new PeerOutbox(peer, () => void peer.close('connection too slow')) }
+    info = { deviceId, caller, ready: false, sessions: new Set(), outbox: new PeerOutbox(peer, () => void peer.close('connection too slow')) }
     peer.onEvent((name, data) => {
-      if (name !== 'ipc.send' || !this.device(channel.peerKey)) return
+      // Viewers cannot emit terminal input/resize/ack or future fire-and-forget writes.
+      if (name !== 'ipc.send' || !info.ready || generation !== this.generation || !this.listener || this.controller !== peer || !this.device(channel.peerKey)) return
       const { channel: target, args } = (data ?? {}) as { channel?: unknown; args?: unknown }
       if (typeof target !== 'string' || !Array.isArray(args) || args.length > 8) return
       try { this.deps.send(target, caller, args) } catch {}
@@ -237,11 +265,23 @@ export class RemoteHostService {
     peer.onClose(() => {
       info.outbox.close()
       this.peers.delete(peer)
+      this.electController()
       if (![...this.peers.values()].some(p => p.deviceId === deviceId)) this.scheduleOwnerRelease(caller.owner)
       this.deps.changed()
     })
     this.peers.set(peer, info)
     this.cancelOwnerRelease(caller.owner)
+    this.deps.changed()
+  }
+
+  /** Exactly one authenticated, initialized connection controls the host. FIFO promotion. */
+  private electController(): void {
+    const eligible = (info: PeerInfo) => !!this.listener && info.ready && this.config.devices.some(d => keyFingerprint(fromBase64(d.key)) === info.deviceId)
+    if (this.controller && this.peers.has(this.controller) && eligible(this.peers.get(this.controller)!)) return
+    this.controller = [...this.peers].find(([, info]) => eligible(info))?.[0] ?? null
+    for (const [peer, info] of this.peers) if (info.ready) {
+      void peer.emit('remote.access', { access: peer === this.controller ? 'control' : 'read-only' }).catch(() => {})
+    }
     this.deps.changed()
   }
 

@@ -4,6 +4,16 @@
 
 **Summary (English).** Remote access lets one sPi desktop open a window onto another sPi host behind NAT/firewalls, relayed through Microsoft Dev Tunnels and end-to-end encrypted by sPi itself. **It requires the GitHub CLI (`gh`) to be installed and signed in to the same GitHub account on both machines.** Dev Tunnels rejects GitHub tokens issued to third-party OAuth Apps (`invalid_token`), but accepted the token from `gh auth token` in our tests. sPi reads that token on demand, keeps it in memory only and sends it only to the Dev Tunnels management/relay service. Local use of sPi never needs `gh`, GitHub or Dev Tunnels.
 
+## 当前源码：单远程控制端（尚未发布）
+
+- 同一时间只有一个远程**连接**可控制 host，其他连接只读；即使同一设备打开多个连接也不能同时获得控制权。本机窗口不受此限制。
+- 第一个完成认证及版本握手的连接获得控制权。它断开、主动关闭窗口或被撤销后，由最早仍在线的只读连接自动接替。重新连接不会抢占现有控制端。
+- 只读端显示 host 已打开会话的历史和实时聊天/工具输出，可切换查看会话；不会启动/恢复 Pi 会话或创建终端。不能发消息、修改队列/模型/YOLO、回应审批、删除历史或执行终端操作。当前不镜像控制端的 PTY 画面。
+- host 对每次调用实行只读白名单，对只读连接丢弃写入类单向消息；新 API 默认不对只读端开放。禁用按钮只是提示，不是安全边界。
+- 已发出的操作不会因控制端断开而回滚，运行中的 Pi 工作也不会自动取消。
+- 远程协议升级到 v2，两端均需更新；不与已发布的 0.2.1/v1 静默兼容，以免旧 host 缺少权限限制。
+- 本地单元测试覆盖多连接互斥、写入拦截、只读订阅、FIFO 接替及重连不抢占；三实例回环 GUI 测试覆盖只读查看、IPC 绕过拒绝、控制权接替，以及原有终端重连行为。尚未针对新权限规则执行 Mac 或真实 Dev Tunnels 验收。
+
 **实现状态。**
 
 - **发布版本**：0.2.0 起包含远程访问。
@@ -11,7 +21,7 @@
   - 单元测试；
   - 两个 sPi 实例通过本机回环中继的 GUI 测试：配对、远程会话、远程终端、断线重连、host 重启、撤销。
   - 同一套 GUI 测试在真实的 Dev Tunnels 服务上的实测（2026-11-11），另外验证了隧道被删除后自动重建、client 自动找回 host。
-- **未验证**：macOS 和 Windows 的代码已写好，但没有测试过。
+- **macOS 0.2.1** 已通过原生构建、安装后的运行时及回环远程 GUI 验收，见 [Mac 验收](macos-build.md)；Mac 真实 Dev Tunnels 服务尚未验证。Windows 未验证。
 
 下文中 gh 的验证结果是实测。
 
@@ -73,6 +83,8 @@ sPi 不会借用 VS Code 或 `devtunnel` CLI 的应用身份（Client ID），�
 1. 打开"设置 → 远程访问"，确认 GitHub CLI 显示"已登录"。
 2. 勾选"开启远程访问"，等待状态变为"在线，等待设备连接"。
 3. 点"添加设备…"，复制显示的配对码。0.2.1 的配对码默认 1 小时有效，可在生成前按小时设置为 1–1440 小时（最长 60 天）；0.2.0 固定为 10 分钟。只能用一次，连续 3 次握手失败后作废。它相当于临时密码，请通过你信任的方式带到另一台电脑，不要发到公开的地方。
+
+**当前源码新增（尚未包含在已发布的 0.2.1）：** 设置的“设备列表”分别显示待配对、已配对但未连接和已连接设备。生成配对码后，即使关闭再打开设置，待配对项仍在列表中；点击“查看配对码”可重新查看/复制同一个码，不会生成新码或重置期限，也可直接取消。完成配对后设备自动保存，无需点击保存。待配对项只是邀请，尚不知道对方设备身份，因此显示为“等待新设备配对”；目前同时支持一个待配对项。
 
 配对码只保存在 host 的内存中：重启 sPi、关闭远程访问、取消配对码或生成新码都会使旧码失效。设置较长有效期不会让它跨重启保留；已配对设备的连接不受配对码到期影响。长有效期会延长泄露风险窗口，请妥善保管。
 

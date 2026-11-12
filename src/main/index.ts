@@ -202,7 +202,7 @@ function remoteStatus(): RemoteStatusSnapshot {
 }
 function remoteWindowInfo(remote: RemoteWindow): RemoteWindowInfo {
   const { connection } = remote
-  return { hostId: remote.hostId, hostName: connection.hostName, state: connection.state, detail: connection.detail, reason: connection.reason, resync: remote.resync || undefined }
+  return { hostId: remote.hostId, hostName: connection.hostName, state: connection.state, access: connection.access, detail: connection.detail, reason: connection.reason, resync: remote.resync || undefined }
 }
 function sendRemoteWindowInfo(remote: RemoteWindow): void {
   if (!remote.win.webContents.isDestroyed()) remote.win.webContents.send('remote:window-changed', remoteWindowInfo(remote))
@@ -400,6 +400,7 @@ api.handle('sessions:delete', async (caller, target: SessionTarget) => {
     catalogChanged({ path: file })
   })
 })
+api.handle('sessions:live', () => manager?.listSessions() ?? [])
 api.handle('sessions:scan', (_caller, cwd: string) => scanSessions(cwd))
 api.handle('sessions:scan-recent', (_caller, limit?: number) => scanRecent(limit ?? 50))
 api.handle('pins:get', () => loadPinned())
@@ -445,6 +446,7 @@ api.handle('messages:resume', async (_caller, id: string) => (await getManager()
 api.handle('remote:status', () => remoteStatus(), localOnly)
 api.handle('remote:check-account', () => getBackend().account(), localOnly)
 api.handle('remote:host-enable', async (_caller, enabled: unknown) => { await getRemoteHost().setEnabled(enabled === true); return remoteStatus() }, localOnly)
+api.handle('remote:pairing-code-get', () => getRemoteHost().getPairingCode(), localOnly)
 api.handle('remote:pairing-code', (_e, ttlMs: unknown) => getRemoteHost().createPairingCode(ttlMs), localOnly)
 api.handle('remote:cancel-pairing', () => getRemoteHost().cancelPairing(), localOnly)
 api.handle('remote:revoke', (_caller, deviceId: unknown) => { if (typeof deviceId !== 'string') throw new Error('Invalid device'); getRemoteHost().revoke(deviceId) }, localOnly)

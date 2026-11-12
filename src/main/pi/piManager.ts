@@ -477,6 +477,11 @@ export class PiManager {
     return request
   }
 
+  /** Passive catalog: never starts/reopens a Pi process or probes an RPC endpoint. */
+  listSessions(): Array<{ sessionId: string; cwd: string }> {
+    return [...this.sessions].filter(([id, session]) => !this.closing.has(id) && !session.hasExited).map(([sessionId, session]) => ({ sessionId, cwd: session.cwd }))
+  }
+
   getCwd(sessionId: string): string {
     const session = this.sessions.get(sessionId)
     if (!session || this.closing.has(sessionId)) throw new Error('session not found or closing')

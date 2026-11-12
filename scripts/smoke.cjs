@@ -175,7 +175,7 @@ const text = (app, selector) => app.eval(`document.querySelector(${JSON.stringif
 
 async function main() {
   console.log('ARTIFACTS', artifacts)
-  if (process.argv.includes('--yolo') || process.argv.includes('--settings') || process.argv.includes('--terminal') || process.argv.includes('--extension-ui') || process.argv.includes('--workspace-ui') || process.argv.includes('--runtime-env') || process.argv.includes('--session-health') || process.argv.includes('--session-actions') || process.argv.includes('--remote')) {
+  if (process.argv.includes('--question-navigation') || process.argv.includes('--yolo') || process.argv.includes('--settings') || process.argv.includes('--terminal') || process.argv.includes('--extension-ui') || process.argv.includes('--workspace-ui') || process.argv.includes('--runtime-env') || process.argv.includes('--session-health') || process.argv.includes('--session-actions') || process.argv.includes('--remote')) {
     await require('./gui-fixture-smoke.cjs')({ launch, stop, waitFor, pass, fill, text, results, workspace, profile, repo, artifacts, descendants, connectPage })
     return
   }

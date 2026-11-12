@@ -146,6 +146,8 @@ html, body, #root { background: var(--bg); color: var(--fg); }
 .remote-pair-row { display: flex; gap: 8px; }
 .remote-list { list-style: none; margin: 10px 0 0; padding: 0; }
 .remote-list li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid var(--subtle); }
+.remote-list li[data-remote-pending-device] { flex-wrap: wrap; }
+.remote-list li[data-remote-pending-device] .settings-help { flex-basis: 100%; margin: 0; }
 .remote-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .remote-state { font-size: 12px; color: var(--muted); }
 .remote-state.connected { color: var(--accent-fg); }

@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { answerDialog, type Item, type SessionUI } from '../store'
 import { renderAnsi } from '../ansi'
 import { DiffView } from './DiffView'
 import { useT } from '../preferences'
+import { useRemoteReadOnly } from '../remote'
+import { userMessageScrollTop, userMessageTargets } from '../userMessageNavigation'
 
 interface Props {
   session: SessionUI
@@ -10,50 +12,94 @@ interface Props {
 
 export function ChatView({ session }: Props) {
   const t = useT()
-  const bottomRef = useRef<HTMLDivElement>(null)
-  const [autoScroll, setAutoScroll] = useState(true)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
+  const autoScroll = useRef(true)
+  const frame = useRef<number | null>(null)
   const [showJump, setShowJump] = useState(false)
+  const [directions, setDirections] = useState({ above: false, below: false })
 
+  const geometry = useCallback(() => {
+    const el = scrollRef.current
+    if (!el) return null
+    const messages = [...el.querySelectorAll<HTMLElement>('[data-user-message]')]
+    const origin = el.getBoundingClientRect().top + el.clientTop
+    const starts = messages.map(message => message.getBoundingClientRect().top - origin + el.scrollTop)
+    const inset = parseFloat(getComputedStyle(el).paddingTop) || 0
+    return { el, starts, inset, targets: userMessageTargets(starts, el.scrollTop, el.clientHeight) }
+  }, [])
+  const scheduleMeasure = useCallback(() => {
+    if (frame.current !== null) return
+    frame.current = requestAnimationFrame(() => {
+      frame.current = null
+      const data = geometry()
+      if (!data) return
+      const next = { above: data.targets.above !== null, below: data.targets.below !== null }
+      setDirections(old => old.above === next.above && old.below === next.below ? old : next)
+      setShowJump(data.el.scrollHeight - data.el.scrollTop - data.el.clientHeight >= 60)
+    })
+  }, [geometry])
+
+  useLayoutEffect(() => { autoScroll.current = true }, [session.id])
+  useLayoutEffect(() => {
+    const el = scrollRef.current
+    if (el && autoScroll.current) el.scrollTop = el.scrollHeight
+    scheduleMeasure()
+  }, [session.items, session.id, scheduleMeasure])
   useEffect(() => {
-    if (autoScroll) bottomRef.current?.scrollIntoView({ behavior: 'auto' })
-  }, [session.items, autoScroll])
+    const el = scrollRef.current, content = contentRef.current
+    if (!el || !content) return
+    const observer = new ResizeObserver(() => {
+      if (autoScroll.current) el.scrollTop = el.scrollHeight
+      scheduleMeasure()
+    })
+    observer.observe(el); observer.observe(content)
+    el.addEventListener('toggle', scheduleMeasure, true)
+    scheduleMeasure()
+    return () => {
+      observer.disconnect()
+      el.removeEventListener('toggle', scheduleMeasure, true)
+      if (frame.current !== null) cancelAnimationFrame(frame.current)
+      frame.current = null
+    }
+  }, [scheduleMeasure])
 
-  function onScroll(el: HTMLDivElement): void {
-    const gap = el.scrollHeight - el.scrollTop - el.clientHeight
-    const atBottom = gap < 60
-    setAutoScroll(atBottom)
-    setShowJump(!atBottom)
+  function jump(direction: 'above' | 'below'): void {
+    // Measure again on click: streaming or an expanded tool output may have moved the target.
+    const data = geometry()
+    const index = data?.targets[direction]
+    if (!data || index === null || index === undefined) return
+    autoScroll.current = false
+    data.el.scrollTo({ top: userMessageScrollTop(data.starts[index], data.el.scrollHeight, data.el.clientHeight, data.inset), behavior: 'auto' })
+    scheduleMeasure()
   }
 
-  if (session.items.length === 0) {
-    return (
-      <div className="chat-messages">
-        <div className="placeholder">
-          {t('会话已就绪（{cwd}）。输入消息开始对话。', { cwd: session.cwd })}
-        </div>
+  return <div className="chat-view">
+    <div className="chat-messages" ref={scrollRef} onScroll={e => {
+      const el = e.currentTarget
+      autoScroll.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60
+      scheduleMeasure()
+    }}>
+      <div className="chat-message-items" ref={contentRef}>
+        {session.items.length === 0 ? <div className="placeholder">{t('会话已就绪（{cwd}）。输入消息开始对话。', { cwd: session.cwd })}</div>
+          : session.items.map((it, i) => <ItemView key={i} item={it} sessionId={session.id} />)}
       </div>
-    )
-  }
-
-  return (
-    <div className="chat-messages" onScroll={(e) => onScroll(e.currentTarget)}>
-      {session.items.map((it, i) => (
-        <ItemView key={i} item={it} sessionId={session.id} />
-      ))}
-      <div ref={bottomRef} />
-      {showJump && (
-        <button
-          className="jump-bottom"
-          onClick={() => {
-            setAutoScroll(true)
-            bottomRef.current?.scrollIntoView()
-          }}
-        >
-          {t('↓ 回到最新')}
-        </button>
-      )}
     </div>
-  )
+    <nav className="user-message-nav" aria-label={t('定位用户提问')} hidden={!directions.above && !directions.below}>
+      <button type="button" data-action="user-question-up" hidden={!directions.above} title={t('上一条用户提问')} aria-label={t('上一条用户提问')} onClick={() => jump('above')}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6" /></svg>
+      </button>
+      <button type="button" data-action="user-question-down" hidden={!directions.below} title={t('下一条用户提问')} aria-label={t('下一条用户提问')} onClick={() => jump('below')}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+      </button>
+    </nav>
+    {showJump && <button className="jump-bottom" onClick={() => {
+      autoScroll.current = true
+      const el = scrollRef.current
+      if (el) el.scrollTop = el.scrollHeight
+      scheduleMeasure()
+    }}>{t('↓ 回到最新')}</button>}
+  </div>
 }
 
 function ItemView({ item, sessionId }: { item: Item; sessionId: string }) {
@@ -61,7 +107,7 @@ function ItemView({ item, sessionId }: { item: Item; sessionId: string }) {
   switch (item.kind) {
     case 'user':
       return (
-        <div className="msg user">
+        <div className="msg user" data-user-message>
           <div className="msg-bubble" onCopy={copyHandler(item.text)}>{item.text}</div>
         </div>
       )
@@ -136,6 +182,7 @@ function ItemView({ item, sessionId }: { item: Item; sessionId: string }) {
 
 function DialogCard({ item, sessionId }: { item: Extract<Item, { kind: 'dialog' }>; sessionId: string }) {
   const t = useT()
+  const readOnly = useRemoteReadOnly()
   const [text, setText] = useState(item.prefill ?? '')
   const [error, setError] = useState('')
   const title = item.title ?? (item.approvalTool ? t('Pi 工具审批 · {tool}', { tool: item.approvalTool }) : item.method)
@@ -155,7 +202,7 @@ function DialogCard({ item, sessionId }: { item: Extract<Item, { kind: 'dialog' 
   }
 
   return (
-    <div className="dialog-card">
+    <fieldset className="dialog-card" disabled={readOnly}>
       <div className="permission-hint">{item.approvalAdapter ? t('Pi 工具审批 · permission-modes 兼容格式') : t('Pi 扩展询问（需手动答复）')}</div>
       <div className="dialog-title">{title}</div>
       {error && <div role="alert" className="permission-error">{error}</div>}
@@ -188,7 +235,7 @@ function DialogCard({ item, sessionId }: { item: Extract<Item, { kind: 'dialog' 
           </div>
         </>
       )}
-    </div>
+    </fieldset>
   )
 }
 

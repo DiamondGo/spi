@@ -1,7 +1,16 @@
 // What crosses the encrypted channel, and how host events are slimmed for a metered relay.
 import type { RpcPeer } from './rpc'
 
-export const PROTOCOL_VERSION = 1
+// v2 requires server-assigned control/read-only roles on every connection.
+export const PROTOCOL_VERSION = 2
+
+/** Fail-closed allowlist: new RPCs require explicit review before viewers may use them. */
+export const READ_ONLY_REMOTE_CALLS = new Set([
+  'app:home', 'pi:find', 'node:get-path', 'fs:list-dirs', 'fs:list-files',
+  'sessions:scan', 'sessions:scan-recent', 'sessions:live', 'pins:get', 'yolo:get',
+  'session:get-state', 'session:get-messages', 'session:pending-ui', 'session:models',
+  'session:thinking-levels', 'session:commands', 'messages:get'
+])
 
 /** Host events a remote window needs; everything else (settings, launch requests) stays per machine. */
 export const REMOTE_EVENT_CHANNELS = new Set(['pi:event', 'session:closed', 'sessions:changed', 'yolo:changed', 'terminal:event'])

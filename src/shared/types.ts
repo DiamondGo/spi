@@ -115,7 +115,8 @@ export type TerminalEvent =
 export type RemoteAccountState = 'ready' | 'missing' | 'logged_out' | 'failed'
 export interface RemoteAccountStatus { state: RemoteAccountState; message?: string }
 export type RemoteHostState = 'off' | 'starting' | 'online' | 'reconnecting' | 'error'
-export interface RemoteDeviceInfo { id: string; name: string; pairedAt: number; lastSeenAt?: number; connected: boolean }
+export type RemoteAccessRole = 'control' | 'read-only'
+export interface RemoteDeviceInfo { id: string; name: string; pairedAt: number; lastSeenAt?: number; connected: boolean; access?: RemoteAccessRole }
 export interface RemoteHostSnapshot {
   enabled: boolean
   state: RemoteHostState
@@ -134,7 +135,7 @@ export interface RemoteStatusSnapshot {
   host: RemoteHostSnapshot
   hosts: RemoteHostEntry[]
 }
-export interface RemoteWindowInfo { hostId: string; hostName: string; state: RemoteConnectionState; detail?: string; reason?: RemoteRejectReason; resync?: boolean }
+export interface RemoteWindowInfo { hostId: string; hostName: string; state: RemoteConnectionState; access: RemoteAccessRole; detail?: string; reason?: RemoteRejectReason; resync?: boolean }
 
 // 渲染进程可调用的 API（preload 暴露）
 export interface IpcApi {
@@ -202,6 +203,8 @@ export interface IpcApi {
   checkRemoteAccount(): Promise<RemoteAccountStatus>
   setRemoteHostEnabled(enabled: boolean): Promise<RemoteStatusSnapshot>
   createPairingCode(ttlMs?: number): Promise<{ code: string; expiresAt: number }>
+  getPairingCode(): Promise<{ code: string; expiresAt: number } | null>
+  listLiveSessions(): Promise<Array<{ sessionId: string; cwd: string }>>
   cancelPairingCode(): Promise<void>
   revokeRemoteDevice(deviceId: string): Promise<void>
   pairRemoteHost(code: string): Promise<RemoteHostEntry>

@@ -1,6 +1,6 @@
 {
   "name": "spi",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "sPi - Simple Pi Agent GUI",
   "private": true,
   "license": "UNLICENSED",
@@ -44,6 +44,8 @@
     "test:yolo": "node scripts/yolo.test.cjs && node scripts/session-bridge.test.cjs && node scripts/ai-naming.test.cjs",
     "test:extension-ui": "node scripts/extension-ui.test.cjs",
     "test:workspace-ui": "node scripts/workspace-ui.test.cjs",
+    "test:question-navigation": "node scripts/user-message-navigation.test.cjs",
+    "test:question-navigation-smoke": "electron-vite build && node scripts/with-display.cjs scripts/smoke.cjs --question-navigation",
     "test:runtime-env-smoke": "electron-vite build && node scripts/with-display.cjs scripts/smoke.cjs --runtime-env",
     "test:workspace-ui-smoke": "electron-vite build && node scripts/with-display.cjs scripts/smoke.cjs --workspace-ui",
     "test:extension-ui-smoke": "electron-vite build && node scripts/with-display.cjs scripts/smoke.cjs --extension-ui",

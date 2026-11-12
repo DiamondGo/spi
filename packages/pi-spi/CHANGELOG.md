@@ -1,8 +1,14 @@
 # Changelog
 
-## Unreleased
+## 0.3.0
 
-- macOS Apple Silicon/Intel candidates remain separate from public Linux releases. Developer ID signing and notarization are not configured.
+- Floating Previous/Next question arrows at the lower-right of the chat viewport navigate to the nearest offscreen user input. Arrows appear only when a target exists in that direction, keep fixed upper/lower slots, and update for streaming output, resized windows and expanded tools. Browsing history pauses automatic following; Return to latest restores it. Available in read-only remote views too.
+
+- One remote connection controls the host at a time; other connections get a passive, read-only session viewer. Server-side fail-closed RPC allowlists block writes and terminal operations from viewers. The first connection controls; the oldest connected viewer takes over when it disconnects or is revoked, without reconnect takeover. Local windows are unaffected. Protocol v2 requires both ends to update; published v1 peers are not silently compatible.
+
+- Remote settings list pending pairing invitations alongside paired online/offline devices. Closing and reopening Settings retains the pending entry; View pairing code retrieves the same code through a local-only API without regenerating it. Offers remain in-memory, single-use, cancellable and expire as before; only one pending offer is supported at a time.
+
+- Linux x64/arm64 automatic installation and supplemental Mac Apple Silicon/Intel manual downloads. Mac packages are ad-hoc signed, not Developer ID signed or notarized. Both ends of a remote connection must update together; save drafts and fully quit old windows before reopening.
 
 ## 0.2.1
 

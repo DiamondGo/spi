@@ -54,7 +54,7 @@ module.exports = async function ({ app: host, launch, stop, waitFor, pass, fill,
     await page.eval(`document.querySelector('.settings-close').click()`)
     await waitFor(() => page.eval(`!document.querySelector('.app-settings-dialog')`), 'settings dialog closed')
   }
-  let client, remote, proxy
+  let client, remote, proxy, observer, observerRemote
   const heaps = {}
   const checkHeap = async phase => {
     for (const [name, page] of [['host', host], ['client', client], ['remote', remote]]) {
@@ -88,6 +88,15 @@ module.exports = async function ({ app: host, launch, stop, waitFor, pass, fill,
     const offerExpires = JSON.parse(Buffer.from(original.slice(5), 'base64url').toString()).x
     assert.ok(offerExpires >= generatedAt + 60 * 24 * 3_600_000)
     assert.ok(offerExpires <= Date.now() + 60 * 24 * 3_600_000)
+    await waitFor(() => host.eval(`document.querySelector('[data-remote-pending-device] .remote-state')?.textContent === '待配对'`), 'pending device status displayed')
+    await closeSettings(host)
+    await openSettings(host)
+    await waitFor(() => host.eval(`!!document.querySelector('[data-remote-pending-device]')`), 'pending device survives settings close and reopen')
+    assert.equal(await host.eval(`document.querySelector('[data-remote-pairing-code]')`), null, 'secret stays hidden until explicitly viewed')
+    assert.equal(await host.eval(`document.querySelector('[data-action="remote-add-device"]')`), null, 'pending offer is not silently replaced')
+    await host.eval(`document.querySelector('[data-action="remote-view-pairing"]').click()`)
+    const recovered = await waitFor(() => host.eval(`document.querySelector('[data-remote-pairing-code]')?.value || ''`), 'recover active pairing code')
+    assert.equal(recovered, original, 'closing settings must not regenerate or lose the code')
     await capture(host, 'remote-host-settings')
     let code = original
     if (!live) {
@@ -125,6 +134,7 @@ module.exports = async function ({ app: host, launch, stop, waitFor, pass, fill,
     await waitFor(() => host.eval(`document.querySelector('[data-remote-device] .remote-state.connected')?.textContent === '已连接'`), 'host lists the connected device')
     assert.equal(await host.eval(`document.querySelector('[data-remote-pairing-code]')`), null, 'a used code disappears')
     assert.equal(await client.eval(`document.querySelector('[data-remote-host] .remote-state.connected')?.textContent`), '已连接')
+    await remote.eval(`window.spi.getPairingCode()`).then(() => assert.fail('remote windows cannot read host pairing secrets'), error => assert.match(error.message, /local sPi window/))
     await remote.eval(`window.spi.pairRemoteHost('x')`).then(() => assert.fail('remote windows cannot manage remote access'), error => assert.match(error.message, /local sPi window/))
     await closeSettings(host); await closeSettings(client)
     await step('client pairs from settings and opens a remote window; both sides show the connection')
@@ -161,6 +171,34 @@ module.exports = async function ({ app: host, launch, stop, waitFor, pass, fill,
     assert.equal(await host.eval(`window.spi.getTerminal(${JSON.stringify(sessionId)}).catch(()=>null)`), null, 'the terminal belongs to the remote device, not the host window')
     await step('the remote window gets its own host terminal rendered by xterm')
     assert.equal(remote.errors.length, 0, JSON.stringify(remote.errors))
+
+    const observerProfile = path.join(artifacts, 'profile-observer')
+    fs.mkdirSync(observerProfile)
+    fs.writeFileSync(path.join(observerProfile, 'spi-config.json'), JSON.stringify({ ...config, layout: { viewMode: 'dir', selectedDir: workspace, sessions: [] } }))
+    fs.copyFileSync(path.join(profile, 'spi-settings.json'), path.join(observerProfile, 'spi-settings.json'))
+    observer = await launch({ profile: observerProfile, waitForSession: false })
+    const observerCode = await host.eval('window.spi.createPairingCode().then(r=>r.code)')
+    await observer.eval(`window.spi.pairRemoteHost(${JSON.stringify(observerCode)}).then(r=>window.spi.connectRemoteHost(r.id))`)
+    const observerTarget = await waitFor(async () => (await (await fetch(observer.origin + '/json/list')).json()).find(t => t.type === 'page' && t.id !== observer.targetId), 'read-only remote window')
+    observerRemote = await connectPage(observerTarget)
+    await waitFor(() => observerRemote.eval(`!!document.querySelector('[data-remote-read-only]')`), 'read-only viewer UI')
+    assert.equal((await observerRemote.eval('window.spi.getRemoteWindow()')).access, 'read-only')
+    assert.equal((await remote.eval('window.spi.getRemoteWindow()')).access, 'control')
+    await waitFor(() => observerRemote.eval(`document.querySelector('.chat-messages')?.textContent.includes('SPI_REMOTE_OUTPUT')`), 'viewer loads existing history without opening a session')
+    assert.equal(await observerRemote.eval(`document.querySelector('.input-bar')`), null)
+    assert.equal(await observerRemote.eval(`document.querySelector('[data-control="yolo"]').disabled`), true)
+    for (const call of [`window.spi.sendPrompt(${JSON.stringify(sessionId)},'must-not-run','normal')`, `window.spi.openTerminal(${JSON.stringify(sessionId)},80,24)`]) {
+      await observerRemote.eval(call).then(() => assert.fail('read-only API must be denied by the host'), error => assert.match(error.message, /read-only/))
+    }
+    await prompt('SPI_VIEWER_LIVE_OUTPUT')
+    await waitFor(() => observerRemote.eval(`document.querySelector('.chat-messages')?.textContent.includes('SPI_VIEWER_LIVE_OUTPUT')`), 'viewer receives controller live output')
+    assert.equal(observerRemote.errors.length, 0, JSON.stringify(observerRemote.errors))
+    await capture(observerRemote, 'remote-read-only-viewer')
+    await observerRemote.eval('window.close()').catch(() => {})
+    observerRemote.ws.close(); observerRemote = null
+    // Keep the observer's local app alive until final cleanup: the shared fixture
+    // waitFor tracks the most recently launched Electron parent.
+    await step('a second remote is read-only, sees history and live output, and cannot bypass permissions through IPC')
 
     // A relay drop can only be injected on the loopback relay, where the test owns the TCP path.
     if (!live) {
@@ -207,13 +245,24 @@ module.exports = async function ({ app: host, launch, stop, waitFor, pass, fill,
       await step('a deleted host tunnel is recreated and the client finds it again by its label')
     }
 
-    const device = (await host.eval('window.spi.getRemoteStatus()')).host.devices[0]
+    await observer.eval('window.spi.getRemoteStatus().then(s=>window.spi.connectRemoteHost(s.hosts[0].id))')
+    const promotionTarget = await waitFor(async () => (await (await fetch(observer.origin + '/json/list')).json()).find(t => t.type === 'page' && t.id !== observer.targetId), 'observer reconnects before control handoff')
+    observerRemote = await connectPage(promotionTarget)
+    await waitFor(() => observerRemote.eval(`!!document.querySelector('[data-remote-read-only]')`), 'observer waits read-only')
+    const device = (await host.eval('window.spi.getRemoteStatus()')).host.devices.find(d => d.access === 'control')
     await host.eval(`window.spi.revokeRemoteDevice(${JSON.stringify(device.id)})`)
     await waitFor(() => remote.eval(`!!document.querySelector('[data-remote-banner="rejected"]')`), 'rejected banner', live ? relayMs : 30000)
     assert.match(await remote.eval(`document.querySelector('[data-remote-banner]').textContent`), /不再接受此设备（已被撤销/)
     assert.equal((await remote.eval('window.spi.getRemoteWindow()')).reason, 'revoked')
+    await waitFor(() => observerRemote.eval(`window.spi.getRemoteWindow().then(r=>r.access==='control')`), 'viewer promoted after controller revocation')
+    await waitFor(() => observerRemote.eval(`!!document.querySelector('.input-bar textarea') && !document.querySelector('[data-remote-read-only]')`), 'promoted viewer becomes writable')
+    await step('revoking the controller automatically promotes the remaining read-only window')
+    await observerRemote.eval('window.close()').catch(() => {})
+    observerRemote.ws.close(); observerRemote = null
     await waitFor(() => host.eval(`!document.querySelector('[data-remote-connected]')`), 'host badge cleared')
-    assert.equal((await host.eval('window.spi.getRemoteStatus()')).host.devices.length, 0)
+    const remainingDevices = (await host.eval('window.spi.getRemoteStatus()')).host.devices
+    assert.equal(remainingDevices.length, 1, 'the offline observer remains paired')
+    assert.equal(remainingDevices[0].connected, false)
     await capture(remote, 'remote-window-revoked')
     await step('revoking the device disconnects the remote window for good')
 
@@ -224,6 +273,17 @@ module.exports = async function ({ app: host, launch, stop, waitFor, pass, fill,
     assert.equal(host.errors.length, 0, JSON.stringify(host.errors))
     assert.equal(client.errors.length, 0, JSON.stringify(client.errors))
     await step('closing the remote window leaves both apps running without renderer errors')
+
+    await openSettings(host)
+    await waitFor(() => host.eval(`!!document.querySelector('[data-action="remote-add-device"]:not([disabled])')`), 'add another pending device')
+    await host.eval(`document.querySelector('[data-action="remote-add-device"]').click()`)
+    await waitFor(() => host.eval(`!!document.querySelector('[data-remote-pending-device]')`), 'new pending entry')
+    await closeSettings(host); await openSettings(host)
+    await waitFor(() => host.eval(`!!document.querySelector('[data-action="remote-cancel-pending"]')`), 'pending cancel action survives reopening')
+    await host.eval(`document.querySelector('[data-action="remote-cancel-pending"]').click()`)
+    await waitFor(() => host.eval(`!document.querySelector('[data-remote-pending-device]') && !!document.querySelector('[data-action="remote-add-device"]')`), 'cancel removes pending entry')
+    assert.equal(await host.eval('window.spi.getPairingCode()'), null)
+    await step('pending devices survive settings reopening, recover the same code, and can be cancelled from the list')
 
     if (live) {
       await host.eval('window.spi.setRemoteHostEnabled(false)')
@@ -245,6 +305,8 @@ module.exports = async function ({ app: host, launch, stop, waitFor, pass, fill,
     throw error
   } finally {
     remote?.ws?.close()
+    observerRemote?.ws?.close()
+    await stop(observer)
     await stop(client)
     await proxy?.close()
     if (live && results.at(-1)?.name !== 'the live test tunnel was deleted from the Dev Tunnels account') {

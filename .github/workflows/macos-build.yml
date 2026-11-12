@@ -34,7 +34,7 @@ jobs:
       - name: Install locked build tools without unrelocated addon postinstall
         run: npm ci --ignore-scripts
       - run: npm audit --audit-level=high
-      - run: npm run typecheck && npm run test:launch && npm run test:settings && npm run test:yolo && npm run test:extension-ui && npm run test:workspace-ui && npm run test:icons && npm run test:native-build && npm run test:remote && npm run check:privacy
+      - run: npm run typecheck && npm run test:launch && npm run test:settings && npm run test:yolo && npm run test:extension-ui && npm run test:workspace-ui && npm run test:icons && npm run test:native-build && npm run test:remote && npm run test:question-navigation && npm run check:privacy
       - name: Install Pi for isolated RPC integration (bounded registry retry)
         shell: bash
         run: |
@@ -45,19 +45,16 @@ jobs:
           exit 1
       - name: Build native app, sanitize before signing, archive and scan
         run: npm run dist -- --production
-      - name: Verify two-instance pairing UI and configurable lifetime with rebuilt native addons
+      - name: Verify pending pairing, single-controller and read-only three-instance GUI with rebuilt native addons
         run: npm run test:remote-smoke
+      - name: User-question navigation GUI regression
+        run: npm run test:question-navigation-smoke
       - name: Verify native binaries, bundle icon and ad-hoc signatures
         run: node scripts/macos-verify.cjs '${{ matrix.executable }}' 'dist/release/macos-build-${{ matrix.target }}.txt'
-      - name: Install ZIP and test real native PTY, GUI, RPC and single instance
+      - name: Install ZIP and test real native PTY, GUI, RPC, single instance and question navigation
+        env:
+          SPI_ASSERT_QUESTION_NAVIGATION: '1'
         run: node scripts/install-native-smoke.cjs
-      - name: Preserve failure diagnostics
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: mac-diagnostics-${{ matrix.target }}
-          path: ${{ runner.temp }}/spi-smoke-*/**
-          retention-days: 3
       - uses: actions/upload-artifact@v4
         with:
           name: mac-native-${{ matrix.target }}

@@ -25,6 +25,10 @@ export function useRemoteWindow(): RemoteWindowInfo | null {
   return useSyncExternalStore(listener => { listeners.add(listener); return () => listeners.delete(listener) }, () => info)
 }
 export function isRemoteWindow(): boolean { return info !== null }
+export function useRemoteReadOnly(): boolean {
+  const remote = useRemoteWindow()
+  return !!remote && remote.access !== 'control'
+}
 /** Runs after the window reconnected to its host and may have missed events. */
 export function onRemoteResync(cb: () => void): () => void { resyncListeners.add(cb); return () => resyncListeners.delete(cb) }
 

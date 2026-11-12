@@ -46,10 +46,10 @@ function LocalRemoteSettings(): React.JSX.Element {
   }
   useEffect(() => { if (relay === 'devtunnels') void checkAccount() }, [relay])
   useEffect(() => {
-    if (!pairing) return
+    if (!pairing && !status?.host.pairingExpiresAt) return
     const timer = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(timer)
-  }, [pairing])
+  }, [pairing, status?.host.pairingExpiresAt])
   // Status updates lag the createPairingCode reply, so a code is only hidden as used/cancelled after status has shown it.
   useEffect(() => {
     if (!pairing) return
@@ -66,6 +66,7 @@ function LocalRemoteSettings(): React.JSX.Element {
   const unavailable = !!status.storageProblem || (relay === 'devtunnels' && account?.state !== 'ready')
   const host = status.host
   const minutes = pairing ? Math.max(1, Math.ceil((pairing.expiresAt - now) / 60_000)) : 0
+  const pendingExpiresAt = host.pairingExpiresAt && host.pairingExpiresAt > now ? host.pairingExpiresAt : undefined
 
   return <fieldset className="remote-settings" disabled={busy}>
     <legend>{t('远程访问')}</legend>
@@ -82,8 +83,8 @@ function LocalRemoteSettings(): React.JSX.Element {
       <input type="checkbox" data-setting="remoteHost" aria-label={t('开启远程访问')} checked={host.enabled} disabled={!host.enabled && unavailable} onChange={e => void run(async () => { await window.spi.setRemoteHostEnabled(e.target.checked); setPairing(null) })} />
     </label>
     <p className="settings-help" data-remote-host-state={host.state}>{t('状态：{state}', { state: t(hostStateText[host.state]) })}{host.error ? ' · ' + host.error : ''}</p>
-    {host.enabled && <p className="settings-help">{t('已配对的设备拥有与本机窗口相同的权限，包括终端和 YOLO。只配对你自己的设备；关闭本机 sPi 后远程连接也会断开。')}</p>}
-    {host.enabled && !pairing && <>
+    {host.enabled && <p className="settings-help">{t('同一时间只有一个远程连接拥有控制权，其余连接只能查看。先连接者获得控制权，断开后由最早在线的只读端接替。本机窗口不受限制。只配对你自己的设备。')}</p>}
+    {host.enabled && !pairing && !pendingExpiresAt && <>
       <label className="app-settings-row" htmlFor="remote-pairing-hours">
         <span>{t('配对码有效期（小时）')}</span>
         <input id="remote-pairing-hours" data-setting="remotePairingHours" type="number" min="1" max={MAX_PAIRING_TTL_MS / 3_600_000} step="1" value={lifetimeHours} onChange={e => setLifetimeHours(e.target.value)} />
@@ -101,13 +102,30 @@ function LocalRemoteSettings(): React.JSX.Element {
         <button type="button" onClick={() => void run(async () => { await window.spi.cancelPairingCode(); setPairing(null) })}>{t('取消')}</button>
       </div>
     </div>}
-    {host.devices.length > 0 && <ul className="remote-list" aria-label={t('已配对的设备')}>
+    {(host.enabled || host.devices.length > 0) && <>
+      <h3>{t('设备列表')}</h3>
+      <p className="settings-help">{t('待配对项会自动保留在此列表中，可稍后复制配对码到另一台电脑。完成配对后设备自动保存，无需确认或保存。当前同时支持一个待配对项。')}</p>
+      <ul className="remote-list" aria-label={t('设备列表')}>
+      {pendingExpiresAt && <li data-remote-pending-device>
+        <span className="remote-name">{t('等待新设备配对')}</span>
+        <span className="remote-state">{t('待配对')}</span>
+        <span className="settings-help">{t('到期时间：{date}', { date: new Date(pendingExpiresAt).toLocaleString() })}</span>
+        <button type="button" data-action="remote-view-pairing" onClick={() => void run(async () => {
+          const current = await window.spi.getPairingCode()
+          setNow(Date.now()); setPairing(current); setCopied(false)
+          if (!current) setError(t('配对码已失效，请重新添加设备。'))
+        })}>{t('查看配对码')}</button>
+        <button type="button" data-action="remote-cancel-pending" onClick={() => void run(async () => { await window.spi.cancelPairingCode(); setPairing(null) })}>{t('取消')}</button>
+      </li>}
+      {!pendingExpiresAt && host.devices.length === 0 && <li>{t('尚无设备。点击“添加设备…”生成配对码。')}</li>}
       {host.devices.map(device => <li key={device.id} data-remote-device={device.id}>
         <span className="remote-name">{device.name}</span>
-        <span className={`remote-state${device.connected ? ' connected' : ''}`}>{t(device.connected ? '已连接' : '未连接')}</span>
+        <span className={`remote-state${device.connected ? ' connected' : ''}`}>{t(device.connected ? '已连接' : '已配对，未连接')}</span>
+        {device.connected && <span className="remote-state" data-remote-device-access={device.access}>{t(device.access === 'control' ? '控制端' : '只读端')}</span>}
         <button type="button" onClick={() => { if (window.confirm(t('撤销“{name}”？该设备会立即断开，之后需要重新配对才能连接。', { name: device.name }))) void run(() => window.spi.revokeRemoteDevice(device.id)) }}>{t('撤销')}</button>
       </li>)}
-    </ul>}
+      </ul>
+    </>}
 
     <h3>{t('连接到其他电脑')}</h3>
     <label htmlFor="remote-pair-input">{t('配对码')}</label>

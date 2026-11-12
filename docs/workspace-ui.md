@@ -10,6 +10,14 @@ The active session is highlighted in both directory and recent lists, including 
 
 App-owned path labels/tooltips abbreviate the exact home prefix: `/home/demo/source/app` → `~/source/app`. Prefix boundaries and Windows drive/case/separators are handled; `/home/demo2` is not inside `/home/demo`. Real paths in IPC, layout, launch, cwd, tools, user messages, code and queued payloads are not rewritten.
 
+## User-question navigation / 用户提问跳转（当前源码，尚未发布）
+
+消息区右下角、滚动条内侧新增两个浮动箭头：上方按钮定位到视野上方最近一条用户提问，下方按钮定位到视野下方最近一条用户提问。仅在对应方向存在目标时显示；上下两个位置固定，不会因为另一个按钮隐藏而交换位置。跳转只滚动消息内容，不移动外层页面或输入框，也不触发任何模型请求。
+
+流式输出、窗口缩放、工具输出展开/折叠和切换会话都会更新按钮状态与定位。浏览历史时不会被新增输出拉回底部；“回到最新”按钮仍可恢复自动跟随。远程只读会话也支持这些纯浏览操作。
+
+`npm run test:question-navigation` 验证目标选择、像素容差及滚动边界；`npm run test:question-navigation-smoke` 使用真实 Electron/Pi 和确定性本地模型，覆盖上下跳转、浮动位置、长输出、流式跟随、展开/缩放、会话切换及暗色/亮色/高对比主题。
+
 ## Editable outbox
 
 The composer keeps both **Send** and **Stop** available during work. Sending from the GUI uses a main-process-owned outbox, not a native Pi follow-up queue:

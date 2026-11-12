@@ -9,7 +9,8 @@ import { SessionTabs } from './components/SessionTabs'
 import { TitleBar } from './components/TitleBar'
 import { TerminalDock } from './components/TerminalDock'
 import { forgetTerminalSession, reattachTerminals, subscribeTerminalState } from './terminals'
-import { onRemoteResync, useRemoteWindow } from './remote'
+import { onRemoteResync, useRemoteReadOnly, useRemoteWindow } from './remote'
+import { ReadOnlyRemoteView } from './components/ReadOnlyRemoteView'
 import { Icon, IconControl } from './components/IconControl'
 import { applyEvent, getStore, openDirectory, openSession, removeSession, refreshSessionCatalog, resyncSessions, setActive, setPiPath, useStore } from './store'
 import type { SessionMeta } from '../../shared/types'
@@ -24,6 +25,8 @@ type ViewMode = 'dir' | 'recent'
 export default function App() {
   const t = useT()
   const { sessions, activeId, piPath } = useStore()
+  const remote = useRemoteWindow()
+  const readOnly = useRemoteReadOnly()
   const [viewMode, setViewMode] = useState<ViewMode>('dir')
   const [selectedDir, setSelectedDir] = useState<string | null>(null)
   const [homeDir, setHomeDir] = useState<string>('')
@@ -36,7 +39,7 @@ export default function App() {
 
   // 持久化当前布局（视图模式 + 选中目录 + 打开的会话）
   function persist(): void {
-    if (!restored) return
+    if (!restored || readOnly) return
     const s = getStore()
     const layout = {
       viewMode,
@@ -78,15 +81,16 @@ export default function App() {
     }
   }, [])
 
-  const remote = useRemoteWindow()
   useEffect(() => onRemoteResync(() => {
-    void resyncSessions().then(replaced => { replaced.forEach(forgetTerminalSession); return reattachTerminals() })
-  }), [])
+    if (!readOnly) void resyncSessions().then(replaced => { replaced.forEach(forgetTerminalSession); return reattachTerminals() })
+  }), [readOnly])
 
   const active = activeId ? sessions[activeId] : null
 
+  // Viewers must never reopen sessions from their own previously saved layout.
   // 启动时恢复上次的布局 + 重开会话
   useEffect(() => {
+    if (readOnly) { setRestored(false); return }
     let cancelled = false
     ;(async () => {
       const layout = await window.spi.loadLayout()
@@ -108,7 +112,7 @@ export default function App() {
       if (!cancelled) setRestored(true)
     })()
     return () => { cancelled = true }
-  }, [])
+  }, [readOnly])
 
   // 布局/会话变化时持久化（依赖会话 ID 列表，避免每次事件都写文件）
   const sessionIds = Object.keys(sessions).join(',')
@@ -176,9 +180,17 @@ export default function App() {
     }
   }
 
+  if (readOnly) return <HomeDirectory.Provider value={homeDir}><div className="app-root">
+    <TitleBar sidebarOpen={false} onToggleSidebar={() => {}} />
+    <div className="remote-banner" role="status" data-remote-access="read-only">{t('只读模式：当前由另一远程连接控制。可查看已打开会话，不能发送消息、操作终端或回应审批。控制端断开后自动接替。')}</div>
+    {remote?.state !== 'connected' && <div className="remote-banner" role="status">{t('远程连接不可用；正在等待重新连接。')}</div>}
+    <div className="layout"><ReadOnlyRemoteView /></div>
+  </div></HomeDirectory.Provider>
+
   return (
     <HomeDirectory.Provider value={homeDir}><SessionActionsProvider><div className="app-root">
       <TitleBar sidebarOpen={sidebarOpen} onToggleSidebar={() => setSidebarOpen((o) => !o)} />
+      {remote && <div className="remote-banner" role="status" data-remote-access="control">{t('控制模式：此远程连接拥有控制权，其他远程连接只能查看。')}</div>}
       {remote && remote.state !== 'connected' && <div className="remote-banner" role="status" data-remote-banner={remote.state}>
         {remote.state === 'rejected'
           ? t(remote.reason === 'key_changed' ? '{name} 的密钥变了：可能重装过系统，也可能是攻击。只有确认可信时才重新配对。'

@@ -9,7 +9,7 @@ import type { RemoteBackend } from './backend'
 import { TunnelMissingError } from './devTunnels'
 import type { TransportAddress } from './transport'
 import { readJson, writeJsonAtomic } from './stateFile'
-import type { LayoutState, RemoteConnectionState, RemoteHostEntry, RemoteRejectReason } from '../../shared/types'
+import type { LayoutState, RemoteAccessRole, RemoteConnectionState, RemoteHostEntry, RemoteRejectReason } from '../../shared/types'
 
 interface HostRecord { id: string; name: string; hostKey: string; address: TransportAddress; pairedAt: number }
 interface ClientConfig { version: 1; hosts: HostRecord[]; layouts: Record<string, LayoutState> }
@@ -27,11 +27,12 @@ const RETRY_MIN_MS = 1_000
 const RETRY_MAX_MS = 30_000
 const FIRST_CONNECT_TIMEOUT_MS = 45_000
 
-function hello(peer: RpcPeer, deviceName: string): Promise<{ hostName: string; protocol: number }> {
-  return peer.call('remote.hello', { deviceName }).then(result => {
-    const r = result as { hostName?: unknown; protocol?: unknown }
+function hello(peer: RpcPeer, deviceName: string): Promise<{ hostName: string; protocol: number; access: RemoteAccessRole }> {
+  return peer.call('remote.hello', { deviceName, protocol: PROTOCOL_VERSION }).then(result => {
+    const r = result as { hostName?: unknown; protocol?: unknown; access?: unknown }
     if (r?.protocol !== PROTOCOL_VERSION) throw new Error('The host runs an incompatible sPi version; update both computers')
-    return { hostName: typeof r.hostName === 'string' && r.hostName.trim() ? r.hostName.trim().slice(0, 64) : 'sPi host', protocol: r.protocol }
+    if (r.access !== 'control' && r.access !== 'read-only') throw new Error('The host runs an incompatible sPi version; update both computers')
+    return { access: r.access, hostName: typeof r.hostName === 'string' && r.hostName.trim() ? r.hostName.trim().slice(0, 64) : 'sPi host', protocol: r.protocol }
   })
 }
 
@@ -148,6 +149,7 @@ const REJECTED_DETAIL: Record<RemoteRejectReason, string> = {
 
 export class RemoteConnection {
   state: RemoteConnectionState = 'connecting'
+  access: RemoteAccessRole = 'read-only'
   detail: string | undefined
   reason: RemoteRejectReason | undefined
   hostName: string
@@ -242,11 +244,20 @@ export class RemoteConnection {
       const channel = await clientHandshake(stream, { mode: 'resume', identity: this.deps.identity(), hostKey })
       peer = new RpcPeer(channel)
       peer.onEvent((name, data) => {
+        if (name === 'remote.access') {
+          const access = (data as { access?: unknown })?.access
+          if (access === 'control' || access === 'read-only') {
+            this.access = access
+            if (this.state === 'connected') this.setState('connected', undefined, true)
+          }
+          return
+        }
         if (name !== 'ipc.event') return
         const { channel: target, payload } = (data ?? {}) as { channel?: unknown; payload?: unknown }
         if (typeof target === 'string' && REMOTE_EVENT_CHANNELS.has(target)) for (const cb of this.eventListeners) cb(target, payload)
       })
-      const { hostName } = await hello(peer, this.deps.deviceName())
+      const { hostName, access } = await hello(peer, this.deps.deviceName())
+      this.access = access
       if (this.stopped) { await peer.close('client closing'); return }
       if (hostName !== this.hostName) { this.hostName = hostName; this.update(undefined, hostName) }
       const current = peer

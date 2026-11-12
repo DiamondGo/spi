@@ -7,7 +7,7 @@ import { TitleSelect } from './TitleSelect'
 import { Icon, IconControl } from './IconControl'
 import { AppSettingsPanel } from './AppSettingsPanel'
 import { usePathFormatter } from '../homePath'
-import { useRemoteStatus, useRemoteWindow } from '../remote'
+import { useRemoteReadOnly, useRemoteStatus, useRemoteWindow } from '../remote'
 
 /** Remote window: which host and whether it is reachable. Local window: devices using this computer. */
 function RemoteBadge(): React.JSX.Element | null {
@@ -31,6 +31,7 @@ export function TitleBar({ sidebarOpen, onToggleSidebar }: { sidebarOpen: boolea
   const t = useT(), formatPath = usePathFormatter()
   const { settings: appSettings } = usePreferences()
   const { sessions, activeId } = useStore()
+  const readOnly = useRemoteReadOnly()
   const { state: yolo, error: yoloError } = useYoloSnapshot()
   const active = activeId ? sessions[activeId] : null
   const settings = useSessionSettings(active)
@@ -63,7 +64,7 @@ export function TitleBar({ sidebarOpen, onToggleSidebar }: { sidebarOpen: boolea
   return (
     <header className={`titlebar${isMac ? ' mac' : ''}`} data-session-id={activeId ?? ''}>
       <IconControl tooltip={t(sidebarOpen ? '收起侧栏' : '展开侧栏')}>
-        <button type="button" className="tb-btn tb-icon-button sidebar-toggle" aria-label={t(sidebarOpen ? '收起侧栏' : '展开侧栏')} aria-expanded={sidebarOpen} onClick={onToggleSidebar}><Icon name="sidebar" /></button>
+        <button type="button" className="tb-btn tb-icon-button sidebar-toggle" aria-label={t(sidebarOpen ? '收起侧栏' : '展开侧栏')} aria-expanded={sidebarOpen} disabled={readOnly} onClick={onToggleSidebar}><Icon name="sidebar" /></button>
       </IconControl>
       <span className="tb-brand">sPi</span>
       <RemoteBadge />
@@ -71,21 +72,21 @@ export function TitleBar({ sidebarOpen, onToggleSidebar }: { sidebarOpen: boolea
         {active ? <span className="tb-name" title={t('会话：{name}\n工作目录：{cwd}', { name, cwd: formatPath(active.cwd) })}>{name}</span> : <span className="tb-name dim">{t('未打开会话')}</span>}
       </div>
       {active && <div className="tb-details">
-        <TitleSelect label={t('模型')} text={t('模型：{name}', { name: model?.name || model?.id || t('未选择') })} detail={model ? `${model.name} · ${model.provider}/${model.id}` : undefined} className="tb-model" value={model ? `${model.provider}/${model.id}` : ''} disabled={settings.busy || !settings.models.length} onChange={e => void settings.changeModel(e.target.value)}>
+        <TitleSelect label={t('模型')} text={t('模型：{name}', { name: model?.name || model?.id || t('未选择') })} detail={model ? `${model.name} · ${model.provider}/${model.id}` : undefined} className="tb-model" value={model ? `${model.provider}/${model.id}` : ''} disabled={readOnly || settings.busy || !settings.models.length} onChange={e => void settings.changeModel(e.target.value)}>
           {!settings.models.length && <option value={model ? `${model.provider}/${model.id}` : ''}>{model?.name || t('加载中…')}</option>}
           {settings.models.map(m => <option key={`${m.provider}/${m.id}`} value={`${m.provider}/${m.id}`}>{m.name} · {m.provider}</option>)}
         </TitleSelect>
         <label className={`tb-yolo${policy?.enabled ? ' enabled' : ''}`} title={yoloError || t(policy?.enabled ? 'YOLO 开启：自动单次 Allow 兼容的 Pi 工具审批；其他确认和直接拒绝仍有效。' : 'YOLO 关闭：不自动代答，遵循 Pi 当前会话设置；不额外增加 sPi 审批。')}>
-          <input type="checkbox" role="switch" aria-label="YOLO" data-control="yolo" checked={policy?.enabled ?? false} disabled={!policy?.ready || yoloBusy || !!yoloError} onChange={e => void setYolo(e.target.checked)} />
+          <input type="checkbox" role="switch" aria-label="YOLO" data-control="yolo" checked={policy?.enabled ?? false} disabled={readOnly || !policy?.ready || yoloBusy || !!yoloError} onChange={e => void setYolo(e.target.checked)} />
           <span>YOLO</span>
         </label>
-        <TitleSelect label={t('思考')} text={t('思考：{level}', { level: thinkingText })} className="tb-thinking" value={settings.level} disabled={settings.busy || !settings.levels.length || !(model?.reasoning || settings.levels.some(level => level !== 'off'))} onChange={e => void settings.changeLevel(e.target.value)}>
+        <TitleSelect label={t('思考')} text={t('思考：{level}', { level: thinkingText })} className="tb-thinking" value={settings.level} disabled={readOnly || settings.busy || !settings.levels.length || !(model?.reasoning || settings.levels.some(level => level !== 'off'))} onChange={e => void settings.changeLevel(e.target.value)}>
           {!settings.levels.length && <option value={settings.level}>{settings.level}</option>}
           {settings.levels.map(level => <option key={level} value={level}>{level === 'off' ? t('关闭（off）') : level}</option>)}
         </TitleSelect>
         <span className={`tb-field tb-status${waiting ? ' waiting' : active.streaming ? ' running' : ''}`} title={error || undefined}>{t(error ? '设置失败' : waiting ? '等待审批' : active.streaming ? '运行中' : '空闲')}</span>
       </div>}
-      {active && <button className="tb-btn tb-close-session" title={t('关闭当前会话')} onClick={() => { if (!active.pendingQueue.items.length || window.confirm(t('关闭会话将丢弃 {count} 条待执行消息，确定关闭？', { count: active.pendingQueue.items.length }))) void window.spi.closeSession(active.id) }}>{t('关闭')}</button>}
+      {active && <button className="tb-btn tb-close-session" title={t('关闭当前会话')} disabled={readOnly} onClick={() => { if (!active.pendingQueue.items.length || window.confirm(t('关闭会话将丢弃 {count} 条待执行消息，确定关闭？', { count: active.pendingQueue.items.length }))) void window.spi.closeSession(active.id) }}>{t('关闭')}</button>}
       <IconControl tooltip={t('设置')}>
         <button type="button" className="tb-btn tb-icon-button app-settings-button" aria-label={t('设置')} aria-haspopup="dialog" aria-expanded={settingsOpen} onClick={() => setSettingsOpen(true)}><Icon name="settings" /></button>
       </IconControl>

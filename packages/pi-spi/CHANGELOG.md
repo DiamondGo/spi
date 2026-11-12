@@ -4,6 +4,11 @@
 
 - macOS Apple Silicon/Intel candidates remain separate from public Linux releases. Developer ID signing and notarization are not configured.
 
+## 0.2.1
+
+- Configurable single-use pairing code lifetime: default 1 hour, up to 60 days (1440 hours), with host-side validation and an explicit expiry display. Codes remain in-memory and are invalidated on quit, remote-access disable, cancellation or replacement; paired devices are unaffected.
+- Fix macOS packaging of rebuilt websocket native addons before signing. Apple Silicon and Intel manual downloads require native build and installed-ZIP verification; ad-hoc signed, not Developer ID signed or notarized. Existing public assets remain unchanged.
+
 ## 0.2.0
 
 - Remote access: open a window on one sPi desktop that drives another sPi host behind NAT/firewalls, relayed through Microsoft Dev Tunnels and end-to-end encrypted by sPi with Noise. One-time pairing codes, pinned keys, device revocation, reconnect with resync and automatic tunnel recreation. Requires the GitHub CLI signed in to the same account on both computers; local use never needs it. A paired device has full control of the host's sPi. Linux keyring required; macOS/Windows unverified.

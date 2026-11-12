@@ -75,9 +75,18 @@ module.exports = async function ({ app: host, launch, stop, waitFor, pass, fill,
     await host.eval(`document.querySelector('[data-setting="remoteHost"]').click()`)
     await waitFor(() => host.eval(`!!document.querySelector('[data-remote-host-state="online"]')`), 'host online', relayMs)
     await waitFor(() => host.eval(`!document.querySelector('[data-action="remote-add-device"]').disabled`), 'add device enabled')
+    assert.equal(await host.eval(`document.querySelector('[data-setting="remotePairingHours"]').value`), '1')
+    await host.eval(`(()=>{const e=document.querySelector('[data-setting="remotePairingHours"]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(e,'1441');e.dispatchEvent(new Event('input',{bubbles:true}))})()`)
+    await waitFor(() => host.eval(`document.querySelector('[data-action="remote-add-device"]').disabled`), 'over-limit lifetime rejected')
+    await host.eval(`(()=>{const e=document.querySelector('[data-setting="remotePairingHours"]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(e,'1440');e.dispatchEvent(new Event('input',{bubbles:true}))})()`)
+    await waitFor(() => host.eval(`!document.querySelector('[data-action="remote-add-device"]').disabled`), '60 day lifetime accepted')
+    const generatedAt = Date.now()
     await host.eval(`document.querySelector('[data-action="remote-add-device"]').click()`)
     const original = await waitFor(() => host.eval(`document.querySelector('[data-remote-pairing-code]')?.value || ''`), 'pairing code')
     assert.match(original, /^spi1\.[A-Za-z0-9_-]+$/)
+    const offerExpires = JSON.parse(Buffer.from(original.slice(5), 'base64url').toString()).x
+    assert.ok(offerExpires >= generatedAt + 60 * 24 * 3_600_000)
+    assert.ok(offerExpires <= Date.now() + 60 * 24 * 3_600_000)
     await capture(host, 'remote-host-settings')
     let code = original
     if (!live) {

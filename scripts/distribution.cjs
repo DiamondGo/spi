@@ -47,7 +47,7 @@ const NATIVE_ADDONS={
 }
 function pruneAddon(directory,platform,arch,localArtifacts){
   if(!fs.existsSync(directory))return
-  for(const name of fs.readdirSync(directory))if(!['lib','package.json','LICENSE','LICENSE.txt','build','prebuilds'].includes(name))fs.rmSync(path.join(directory,name),{recursive:true,force:true})
+  for(const name of fs.readdirSync(directory))if(!['lib','index.js','fallback.js','package.json','LICENSE','LICENSE.txt','build','prebuilds'].includes(name))fs.rmSync(path.join(directory,name),{recursive:true,force:true})
   const buildDir=path.join(directory,'build')
   if(fs.existsSync(buildDir))for(const name of fs.readdirSync(buildDir))if(name!=='Release')fs.rmSync(path.join(buildDir,name),{recursive:true,force:true})
   function runtimeOnly(dir){
@@ -74,7 +74,7 @@ function pruneAddon(directory,platform,arch,localArtifacts){
 function keepPty(directory,platform=process.platform,arch=process.arch){
   for(const [name,artifacts] of Object.entries(NATIVE_ADDONS)){
     const base=path.join(path.dirname(directory),name)
-    pruneAddon(base,platform,arch,artifacts)
+    if(name==='node-pty'||platform==='darwin')pruneAddon(base,platform,arch,artifacts)
   }
 }
 function stripMacDebug(directory,platform=process.platform,run=execFileSync){
@@ -92,6 +92,8 @@ function stripMacDebug(directory,platform=process.platform,run=execFileSync){
   for(const [addon,filename] of Object.entries({bufferutil:'bufferutil.node','utf-8-validate':'utf-8-validate.node'})){
     const file=path.join(directory,'..',addon,'build/Release',filename)
     if(fs.existsSync(file))run('/usr/bin/strip',['-S',file],{stdio:['ignore','pipe','pipe']})
+    const addonDirectory=path.join(directory,'..',addon)
+    if(fs.existsSync(addonDirectory))require('./privacy.cjs').scanTree(addonDirectory,{binary:true})
   }
   require('./privacy.cjs').scanTree(directory,{binary:true})
 }

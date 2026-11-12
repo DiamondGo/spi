@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { PAIRING_TTL_MS, MAX_PAIRING_TTL_MS } from '../../../shared/pairing'
 import type { RemoteAccountStatus, RemoteConnectionState, RemoteHostState } from '../../../shared/types'
 import { useT } from '../preferences'
 import { remoteErrorText, useRemoteStatus, useRemoteWindow } from '../remote'
@@ -34,6 +35,7 @@ function LocalRemoteSettings(): React.JSX.Element {
   const [error, setError] = useState('')
   const [pairing, setPairing] = useState<{ code: string; expiresAt: number; confirmed?: boolean } | null>(null)
   const [copied, setCopied] = useState(false)
+  const [lifetimeHours, setLifetimeHours] = useState(String(PAIRING_TTL_MS / 3_600_000))
   const [code, setCode] = useState('')
   const [now, setNow] = useState(Date.now())
   const relay = status?.relay
@@ -81,10 +83,18 @@ function LocalRemoteSettings(): React.JSX.Element {
     </label>
     <p className="settings-help" data-remote-host-state={host.state}>{t('状态：{state}', { state: t(hostStateText[host.state]) })}{host.error ? ' · ' + host.error : ''}</p>
     {host.enabled && <p className="settings-help">{t('已配对的设备拥有与本机窗口相同的权限，包括终端和 YOLO。只配对你自己的设备；关闭本机 sPi 后远程连接也会断开。')}</p>}
-    {host.enabled && !pairing && <button type="button" data-action="remote-add-device" disabled={host.state !== 'online'} onClick={() => void run(async () => { setPairing(await window.spi.createPairingCode()); setCopied(false); setNow(Date.now()) })}>{t('添加设备…')}</button>}
+    {host.enabled && !pairing && <>
+      <label className="app-settings-row" htmlFor="remote-pairing-hours">
+        <span>{t('配对码有效期（小时）')}</span>
+        <input id="remote-pairing-hours" data-setting="remotePairingHours" type="number" min="1" max={MAX_PAIRING_TTL_MS / 3_600_000} step="1" value={lifetimeHours} onChange={e => setLifetimeHours(e.target.value)} />
+      </label>
+      <p className="settings-help">{t('默认 1 小时，最长 60 天（1440 小时）。仅限本次运行；重启、关闭远程访问或取消后失效。有效期不影响已配对设备。')}</p>
+      <button type="button" data-action="remote-add-device" disabled={host.state !== 'online' || !Number.isInteger(Number(lifetimeHours)) || Number(lifetimeHours) < 1 || Number(lifetimeHours) > MAX_PAIRING_TTL_MS / 3_600_000} onClick={() => void run(async () => { setPairing(await window.spi.createPairingCode(Number(lifetimeHours) * 3_600_000)); setCopied(false); setNow(Date.now()) })}>{t('添加设备…')}</button>
+    </>}
     {pairing && <div className="remote-pairing">
       <label htmlFor="remote-pairing-code">{t('在另一台电脑的 sPi 设置中粘贴此配对码：')}</label>
       <textarea id="remote-pairing-code" data-remote-pairing-code readOnly rows={3} value={pairing.code} onFocus={e => e.currentTarget.select()} />
+      <p className="settings-help">{t('到期时间：{date}', { date: new Date(pairing.expiresAt).toLocaleString() })}</p>
       <p className="settings-help">{t('{minutes} 分钟内有效，只能使用一次。请像密码一样保管，不要发到公开的地方。', { minutes })}</p>
       <div className="node-settings-actions">
         <button type="button" onClick={() => void navigator.clipboard.writeText(pairing.code).then(() => setCopied(true)).catch(e => setError(String(e)))}>{t(copied ? '已复制' : '复制配对码')}</button>

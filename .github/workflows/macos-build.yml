@@ -34,7 +34,7 @@ jobs:
       - name: Install locked build tools without unrelocated addon postinstall
         run: npm ci --ignore-scripts
       - run: npm audit --audit-level=high
-      - run: npm run typecheck && npm run test:launch && npm run test:settings && npm run test:yolo && npm run test:extension-ui && npm run test:workspace-ui && npm run test:icons && npm run test:native-build && npm run check:privacy
+      - run: npm run typecheck && npm run test:launch && npm run test:settings && npm run test:yolo && npm run test:extension-ui && npm run test:workspace-ui && npm run test:icons && npm run test:native-build && npm run test:remote && npm run check:privacy
       - name: Install Pi for isolated RPC integration (bounded registry retry)
         shell: bash
         run: |
@@ -43,6 +43,8 @@ jobs:
             if [ "$attempt" -lt 3 ]; then sleep 20; fi
           done
           exit 1
+      - name: Verify two-instance pairing UI and configurable lifetime
+        run: npm run test:remote-smoke
       - name: Build native app, sanitize before signing, archive and scan
         run: npm run dist -- --production
       - name: Verify native binaries, bundle icon and ad-hoc signatures

@@ -4,7 +4,8 @@ import { createHash } from 'crypto'
 import { randomSecret } from './noise'
 import type { TransportAddress } from './transport'
 
-export const PAIRING_TTL_MS = 10 * 60_000
+import { PAIRING_TTL_MS, validatePairingTtl } from '../../shared/pairing'
+export { PAIRING_TTL_MS, MAX_PAIRING_TTL_MS } from '../../shared/pairing'
 export const PAIRING_ATTEMPTS = 3
 const PREFIX = 'spi1.'
 
@@ -44,14 +45,14 @@ export function decodePairingCode(text: unknown): PairingCode {
   return { address: raw.a, hostKey, psk, expiresAt: raw.x }
 }
 
-/** Host-side single active offer: one use, 10 minutes, invalidated after 3 failed handshakes. */
+/** Host-side single active offer: configurable lifetime, one use, 3 failed handshakes. */
 export class PairingOffer {
   readonly psk = randomSecret()
   readonly expiresAt: number
   private attemptsLeft = PAIRING_ATTEMPTS
   private inFlight = false
   private finished = false
-  constructor(now = Date.now()) { this.expiresAt = now + PAIRING_TTL_MS }
+  constructor(now = Date.now(), ttlMs: unknown = PAIRING_TTL_MS) { this.expiresAt = now + validatePairingTtl(ttlMs) }
 
   get active(): boolean { return !this.finished && Date.now() <= this.expiresAt }
   /** Claims the PSK for one handshake at a time; concurrent attempts are refused. */

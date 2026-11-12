@@ -84,9 +84,9 @@ export class RemoteHostService {
     else await this.stop()
   }
 
-  createPairingCode(): { code: string; expiresAt: number } {
+  createPairingCode(ttlMs?: unknown): { code: string; expiresAt: number } {
     if (this.state !== 'online' || !this.listener) throw new Error('Remote access is not online yet')
-    this.offer = new PairingOffer()
+    this.offer = new PairingOffer(Date.now(), ttlMs)
     const code = encodePairingCode({ address: this.listener.address, hostKey: this.deps.identity().publicKey, psk: this.offer.psk, expiresAt: this.offer.expiresAt })
     this.deps.changed()
     return { code, expiresAt: this.offer.expiresAt }

@@ -201,7 +201,7 @@ export interface IpcApi {
   getRemoteStatus(): Promise<RemoteStatusSnapshot>
   checkRemoteAccount(): Promise<RemoteAccountStatus>
   setRemoteHostEnabled(enabled: boolean): Promise<RemoteStatusSnapshot>
-  createPairingCode(): Promise<{ code: string; expiresAt: number }>
+  createPairingCode(ttlMs?: number): Promise<{ code: string; expiresAt: number }>
   cancelPairingCode(): Promise<void>
   revokeRemoteDevice(deviceId: string): Promise<void>
   pairRemoteHost(code: string): Promise<RemoteHostEntry>

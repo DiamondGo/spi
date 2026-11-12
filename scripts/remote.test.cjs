@@ -229,6 +229,15 @@ const rewritePort = (code, port) => { const decoded = R.decodePairingCode(code);
     assert.throws(() => R.decodePairingCode(42), /Invalid/)
     assert.match(R.keyFingerprint(hostKey), /^[0-9a-f]{4}(-[0-9a-f]{4}){3}$/)
 
+    assert.equal(R.PAIRING_TTL_MS, 3_600_000)
+    assert.equal(R.MAX_PAIRING_TTL_MS, 60 * 24 * 3_600_000)
+    const now = Date.now()
+    assert.equal(new R.PairingOffer(now).expiresAt, now + 3_600_000)
+    assert.equal(new R.PairingOffer(now, R.MAX_PAIRING_TTL_MS).expiresAt, now + R.MAX_PAIRING_TTL_MS)
+    assert.equal(new R.PairingOffer(now, 60_000).expiresAt, now + 60_000)
+    for (const invalid of [0, -1, 59_999, NaN, Infinity, null, '3600000', 3_600_000.5, R.MAX_PAIRING_TTL_MS + 1]) {
+      assert.throws(() => new R.PairingOffer(now, invalid), /between 1 minute and 60 days/)
+    }
     const offer = new R.PairingOffer()
     assert.ok(offer.active); assert.equal(offer.expiresAt - Date.now() <= R.PAIRING_TTL_MS, true)
     assert.ok(offer.claim()); assert.equal(offer.claim(), null, 'one handshake at a time'); offer.release()
@@ -394,7 +403,11 @@ const rewritePort = (code, port) => { const decoded = R.decodePairingCode(code);
     await host.setEnabled(true)
     assert.equal(host.snapshot().state, 'online')
     const client = clientHarness(clientDir, deviceId)
-    const { code, expiresAt } = host.createPairingCode()
+    for (const invalid of [0, NaN, '3600000', R.MAX_PAIRING_TTL_MS + 1]) assert.throws(() => host.createPairingCode(invalid), /between 1 minute and 60 days/)
+    const beforeOffer = Date.now()
+    const { code, expiresAt } = host.createPairingCode(R.MAX_PAIRING_TTL_MS)
+    assert.ok(expiresAt >= beforeOffer + R.MAX_PAIRING_TTL_MS)
+    assert.ok(expiresAt <= Date.now() + R.MAX_PAIRING_TTL_MS)
     assert.equal(host.snapshot().pairingExpiresAt, expiresAt)
     const entry = await client.pair(code)
     assert.equal(entry.name, 'Host A'); assert.equal(entry.id, R.keyFingerprint(hostId.publicKey))

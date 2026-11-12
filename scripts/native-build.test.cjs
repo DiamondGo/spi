@@ -38,12 +38,13 @@ try{
     const nm=path.join(tmp,'asan4','node_modules')
     for(const f of ['node-pty/build/Release/pty.node','node-pty/build/Release/spawn-helper','node-pty/prebuilds/darwin-arm64/pty.node'])write(nm,f)
     for(const addon of ['bufferutil','utf-8-validate']){
-      const name=addon==='bufferutil'?'bufferutil.node':'utf-8-validate.node'
+      const name=addon==='bufferutil'?'bufferutil.node':'validation.node'
+      assert.ok(fs.readFileSync(path.join(__dirname,'..','node_modules',addon,'binding.gyp'),'utf8').includes("'target_name': '"+name.slice(0,-5)+"'"))
       for(const f of [addon+'/build/Release/'+name,addon+'/prebuilds/darwin-x64/'+name,addon+'/prebuilds/darwin-arm64/'+name,addon+'/package.json',addon+'/index.js',addon+'/fallback.js',addon+'/src/'+name+'.c'])write(nm,f)
     }
     keepPty(path.join(nm,'node-pty'),'darwin','arm64')
     for(const addon of ['bufferutil','utf-8-validate']){
-      const name=addon==='bufferutil'?'bufferutil.node':'utf-8-validate.node'
+      const name=addon==='bufferutil'?'bufferutil.node':'validation.node'
       assert.ok(fs.existsSync(path.join(nm,addon,'build/Release',name)))
       assert.equal(fs.existsSync(path.join(nm,addon,'prebuilds')),false)
       assert.equal(fs.existsSync(path.join(nm,addon,'src')),false)
@@ -51,7 +52,7 @@ try{
       assert.ok(fs.existsSync(path.join(nm,addon,'fallback.js')))
     }
     const calls=[];stripMacDebug(path.join(nm,'node-pty'),'darwin',(cmd,args)=>calls.push(path.basename(args[1])))
-    assert.deepEqual(calls,['pty.node','spawn-helper','bufferutil.node','utf-8-validate.node'])
+    assert.deepEqual(calls,['pty.node','spawn-helper','bufferutil.node','validation.node'])
   })
   check('websocket accelerator prebuilds remain a fallback when no local rebuild exists',()=>{
     const nm=path.join(tmp,'asan5','node_modules')

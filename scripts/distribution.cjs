@@ -43,7 +43,7 @@ async function prepare(){
 const NATIVE_ADDONS={
   'node-pty':['build/Release/pty.node','build/Release/spawn-helper'],
   'bufferutil':['build/Release/bufferutil.node'],
-  'utf-8-validate':['build/Release/utf-8-validate.node']
+  'utf-8-validate':['build/Release/validation.node']
 }
 function pruneAddon(directory,platform,arch,localArtifacts){
   if(!fs.existsSync(directory))return
@@ -89,7 +89,7 @@ function stripMacDebug(directory,platform=process.platform,run=execFileSync){
   }
   // Optional websocket accelerators are rebuilt alongside node-pty on native
   // runners and need the same debug-metadata removal before the privacy scan.
-  for(const [addon,filename] of Object.entries({bufferutil:'bufferutil.node','utf-8-validate':'utf-8-validate.node'})){
+  for(const [addon,filename] of Object.entries({bufferutil:'bufferutil.node','utf-8-validate':'validation.node'})){
     const file=path.join(directory,'..',addon,'build/Release',filename)
     if(fs.existsSync(file))run('/usr/bin/strip',['-S',file],{stdio:['ignore','pipe','pipe']})
     const addonDirectory=path.join(directory,'..',addon)

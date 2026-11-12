@@ -22,21 +22,21 @@
 
 **Linux 桌面/npm 0.2.0 已发布：** 可选的[端到端加密远程访问](docs/remote-access.md)。在一台电脑上打开窗口操作另一台电脑上的 sPi，两边都在 NAT 或防火墙后面也可以；流量经 Microsoft Dev Tunnels 中继，由 sPi 自己加密。**两台电脑都要安装 GitHub CLI（`gh`）并登录同一个 GitHub 账号**；本地使用不需要 `gh`，也不会连接 GitHub 或 Dev Tunnels。已配对的设备拥有 host 上 sPi 的全部权限，包括终端和 YOLO。已在 Linux 上验证（含真实 Dev Tunnels 服务）；macOS 和 Windows 未验证。另修复了推理模型上的 AI 命名，以及过期的会话健康提示。
 
-**桌面版 0.3.0 已公开：** [待配对/在线设备列表、单远程控制端与其余只读、浮动用户提问跳转按钮](docs/releases/0.3.0.md)。远程协议 v2 要求 **host 和 client 一起升级**，已保存配对保留。Linux x64/arm64 和 Mac [Apple Silicon](https://github.com/DiamondGo/spi/releases/download/v0.3.0/spi-0.3.0-darwin-arm64.zip)/[Intel](https://github.com/DiamondGo/spi/releases/download/v0.3.0/spi-0.3.0-darwin-x64.zip) 手动下载包均通过原生与安装后的验收，包含新增 GUI 测试。Mac 为 ad-hoc 签名，未公证。关闭远程访问时，本地启动不再探测钥匙串。**npm 0.3.0 等待维护者重新认证，npm latest 仍为 0.2.1。** 已有 Linux 桌面安装可用 `spi update` 更新；请完全退出旧窗口后再打开。
+**桌面版 0.3.0 已公开：** [待配对/在线设备列表、单远程控制端与其余只读、浮动用户提问跳转按钮](docs/releases/0.3.0.md)。远程协议 v2 要求 **host 和 client 一起升级**，已保存配对保留。Linux x64/arm64 和 Mac [Apple Silicon](https://github.com/DiamondGo/spi/releases/download/v0.3.0/spi-0.3.0-darwin-arm64.zip)/[Intel](https://github.com/DiamondGo/spi/releases/download/v0.3.0/spi-0.3.0-darwin-x64.zip) 手动下载包均通过原生与安装后的验收，包含新增 GUI 测试。Mac 为 ad-hoc 签名，未公证。关闭远程访问时，本地启动不再探测钥匙串。**npm `spi-agent-gui@0.3.0` 已公开，latest 为 0.3.0。** 公开七文件 tarball 与审核包逐字节一致；两个隔离的本机 profile 分别通过公开固定版本/latest Pi 安装及安装包 PTY/GUI/Pi RPC 验证。 已有 Linux 桌面安装可用 `spi update` 更新；请完全退出旧窗口后再打开。
 
-**桌面版 0.2.1 已公开：** [配对码有效期可配置](docs/releases/0.2.1.md)，默认 **1 小时**，最长 **60 天**；仍然只能使用一次，取消、关闭远程访问或重启 sPi 后失效。新增已验证的手动 **[Apple Silicon](https://github.com/DiamondGo/spi/releases/download/v0.2.1/spi-0.2.1-darwin-arm64.zip)** 和 **[Intel](https://github.com/DiamondGo/spi/releases/download/v0.2.1/spi-0.2.1-darwin-x64.zip)** Mac 下载包（ad-hoc 签名，**未公证**）。两个 Mac 原生目标均通过回环远程 GUI 和 ZIP 安装验收，Mac 真实中继服务尚未验证。**npm `spi-agent-gui@0.2.1` 已公开，latest 为 0.2.1；公开的七文件 tarball 与审查载荷逐字节一致。** [Mac 验收与限制](docs/macos-build.md)。
+**桌面版 0.2.1 已公开：** [配对码有效期可配置](docs/releases/0.2.1.md)，默认 **1 小时**，最长 **60 天**；仍然只能使用一次，取消、关闭远程访问或重启 sPi 后失效。新增已验证的手动 **[Apple Silicon](https://github.com/DiamondGo/spi/releases/download/v0.2.1/spi-0.2.1-darwin-arm64.zip)** 和 **[Intel](https://github.com/DiamondGo/spi/releases/download/v0.2.1/spi-0.2.1-darwin-x64.zip)** Mac 下载包（ad-hoc 签名，**未公证**）。两个 Mac 原生目标均通过回环远程 GUI 和 ZIP 安装验收，Mac 真实中继服务尚未验证。**此前 npm `spi-agent-gui@0.2.1` 的发布已验收；公开的七文件 tarball 与审查载荷逐字节一致。** [Mac 验收与限制](docs/macos-build.md)。
 
 ## 发布状态与依赖
 
 源码仓库：[DiamondGo/spi](https://github.com/DiamondGo/spi)。npm 包为 **[`spi-agent-gui`](https://www.npmjs.com/package/spi-agent-gui)**，可执行命令仍为 **`spi`**；公开默认值集中在 `release.config.json`。
 
-**Linux 桌面 Release [v0.2.0](https://github.com/DiamondGo/spi/releases/tag/v0.2.0) 和 npm 包 `spi-agent-gui@0.2.0` 均已公开，npm latest 为 0.2.0。** 两个原生架构均通过新增的远程访问单元测试、双实例 GUI 测试和安装包检查，以及原有全部安装后测试和匿名下载校验；公开 npm 包的七个文件与审核包逐字节一致。两个独立的全新非 root x64 容器均通过公开固定版本/latest Pi 安装、安装包远程访问检查和全部五组 GUI 测试，并验证启用中的 renderer sandbox；未挂载主机凭据、配置或应用二进制。[发布验收](docs/verification.md)。
+**Linux 桌面 Release [v0.2.0](https://github.com/DiamondGo/spi/releases/tag/v0.2.0) 和 npm 包 `spi-agent-gui@0.2.0` 均保持公开，当时的 npm latest 为 0.2.0。** 两个原生架构均通过新增的远程访问单元测试、双实例 GUI 测试和安装包检查，以及原有全部安装后测试和匿名下载校验；公开 npm 包的七个文件与审核包逐字节一致。两个独立的全新非 root x64 容器均通过公开固定版本/latest Pi 安装、安装包远程访问检查和全部五组 GUI 测试，并验证启用中的 renderer sandbox；未挂载主机凭据、配置或应用二进制。[发布验收](docs/verification.md)。
 
 **前一版桌面/npm 0.1.5 的验收：** 两个原生架构均通过新增的安装包交互/恢复测试和匿名下载校验；公开 npm 包的七个文件与审核包逐字节一致。两个独立的全新非 root x64 容器均通过公开固定版本/latest Pi 安装、全部五组 GUI 测试（工作区、Node 恢复、会话管理/窗口位置、按需 RPC 恢复、终端菜单），并验证启用中的 renderer sandbox；未挂载主机凭据、配置或应用二进制。[发布验收](docs/verification.md)。
 
 **前一版桌面/npm 0.1.4 的干净安装验收：** 两个 Linux 原生架构均通过安装后验收；两个全新非 root x64 容器分别从公开 registry 安装固定版本和 latest，约 7 分钟完成，并通过新增的 9 项缺失桌面 Node/手动设置会话检查、8 项工作区/消息缓冲区检查，以及 GUI/PTY/Pi RPC、图标/桌面入口归属、单实例和启用中的 renderer sandbox 验证。[百分比、慢速下载和续传修复](docs/downloads.md) 仍保留。没有挂载主机凭据、配置或应用二进制；旧版本资源未覆盖。
 
-可通过 `pi install npm:spi-agent-gui@0.2.0` 更新，或使用 `spi update` 获取最新稳定桌面版本。重新安装更早的不可变 npm 版本会选择对应的旧桌面版本，不会获得这些新功能。请先另存未完成/原生队列中的文字，并完全退出旧窗口后再打开：安装新版二进制不会热更新正在运行的窗口。Pi 认证、历史会话和 sPi 偏好设置会保留。
+可通过 `pi install npm:spi-agent-gui@0.3.0` 更新，或使用 `spi update` 获取最新稳定桌面版本。重新安装更早的不可变 npm 版本会选择对应的旧桌面版本，不会获得这些新功能。请先另存未完成/原生队列中的文字，并完全退出旧窗口后再打开：安装新版二进制不会热更新正在运行的窗口。Pi 认证、历史会话和 sPi 偏好设置会保留。
 
 发布准备已升级到 Electron 45.2.3 和 electron-builder 26.18.0，high/critical 审计告警已清除；仍有六条 minimatch 构建工具链 moderate 审计条目。发布流水线继续拦截 high/critical 问题。
 

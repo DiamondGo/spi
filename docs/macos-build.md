@@ -7,7 +7,7 @@
 - Source: immutable v0.3.0, `26121e2ea67dca7f78ed4250dc1fff6b88d75d04`.
 - [Native build and installed-ZIP acceptance](https://github.com/DiamondGo/spi/actions/runs/43305763506): both macos-26 arm64 and macos-15-intel x64 passed. Includes pending invitation recovery, three-instance single-controller/read-only viewing and automatic takeover, and Previous/Next user-question GUI tests. Question navigation also passed against the extracted installed ZIP on both architectures.
 - Both installed ZIPs passed native architecture, signatures/ASAR/icon, real PTY/GUI/Pi RPC and single-instance/application-quit tests. Local startup with hosting off no longer probes Keychain; explicit remote use retains mandatory credential protection. Live Dev Tunnels testing of these new features is not claimed.
-- [Additive publication](https://github.com/DiamondGo/spi/actions/runs/43308412403) and anonymous hash verification passed; existing Linux assets and the canonical installer manifest were not replaced. Mac ZIPs remain manual downloads only. npm 0.3.0 awaits renewed maintainer authentication; public npm latest remains 0.2.1.
+- [Additive publication](https://github.com/DiamondGo/spi/actions/runs/43308412403) and anonymous hash verification passed; existing Linux assets and the canonical installer manifest were not replaced. Mac ZIPs remain manual downloads only. npm 0.3.0 is public and latest is 0.3.0; the seven-file tarball matches the reviewed payload byte-for-byte. Public pinned/latest Pi installation passed in isolated Linux local profiles; this does not add automatic Mac installation.
 - Remote protocol v2 requires both ends to update to 0.3.0; saved pairings are retained. Save drafts and quit old windows before reopening. [Release notes](releases/0.3.0.md).
 
 ## Historical public 0.2.1 downloads / 历史 0.2.1 包
@@ -17,7 +17,7 @@
 - Source: immutable v0.2.1, `a7ddf900dd296bd9bf761ecb531616ec3edc00ab`.
 - [Native build and installed-ZIP acceptance](https://github.com/DiamondGo/spi/actions/runs/43244952768): both macos-26 arm64 and macos-15-intel x64 passed. Includes new two-instance loopback remote GUI coverage: configurable pairing lifetime (default 1 hour, maximum 60 days), prompt execution, remote PTY, reconnects and revocation.
 - Both installed ZIPs passed native architecture, signatures/ASAR/icon, PTY/GUI/Pi RPC and single-instance tests. Packaged runtime checks load Dev Tunnels; actual live-service Mac remote access remains unverified.
-- [Publication and anonymous hash verification](https://github.com/DiamondGo/spi/actions/runs/43247225350) passed without changing the Linux assets, canonical installer manifest or npm version. Both ZIPs are manual downloads only. npm 0.2.1 is now public and latest is 0.2.1; the public seven-file tarball was verified byte-for-byte against the reviewed payload. This does not promote Mac to automatic installation.
+- [Publication and anonymous hash verification](https://github.com/DiamondGo/spi/actions/runs/43247225350) passed without changing the Linux assets, canonical installer manifest or npm version. Both ZIPs are manual downloads only. The historical npm 0.2.1 publication is verified; the public seven-file tarball was verified byte-for-byte against the reviewed payload. This does not promote Mac to automatic installation.
 - Pairing codes are in-memory, single-use and cancelled on restart/disable; a long lifetime is not persistence across app restarts.
 
 ## Historical public 0.1.5 downloads / 历史 0.1.5 包
@@ -43,7 +43,7 @@ Both bundles declare macOS 13.0 minimum. Native execution was verified on the li
 
 ## Installer boundary / 自动安装边界
 
-**These are supplemental manual Mac downloads, not new automatic Pi/npm targets.** The immutable 0.1.5 `release-manifest.json` still lists Linux x64/arm64 only. Normal `pi install npm:spi-agent-gui@0.1.5` or `spi update` does not automatically install the Mac ZIPs. The independent `release-manifest-macos.json` documents the two Mac archives without rewriting that canonical manifest. Public npm latest remains the verified 0.1.5 package.
+**These are supplemental manual Mac downloads, not new automatic Pi/npm targets.** The immutable 0.1.5 `release-manifest.json` still lists Linux x64/arm64 only. Normal `pi install npm:spi-agent-gui@0.1.5` or `spi update` does not automatically install the Mac ZIPs. The independent `release-manifest-macos.json` documents the two Mac archives without rewriting that canonical manifest. These historical 0.1.5 assets remain unchanged; see the latest-release section above for current npm status.
 
 目前 Mac 提供手动下载包；已有 npm/自动安装清单没有被偷偷改写。若要把 Mac 纳入正常自动安装，应在新的匹配桌面/npm 版本中发布完整清单，并完成相应签名、公证及分发门槛。
 

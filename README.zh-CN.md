@@ -22,7 +22,7 @@
 
 **Linux 桌面/npm 0.2.0 已发布：** 可选的[端到端加密远程访问](docs/remote-access.md)。在一台电脑上打开窗口操作另一台电脑上的 sPi，两边都在 NAT 或防火墙后面也可以；流量经 Microsoft Dev Tunnels 中继，由 sPi 自己加密。**两台电脑都要安装 GitHub CLI（`gh`）并登录同一个 GitHub 账号**；本地使用不需要 `gh`，也不会连接 GitHub 或 Dev Tunnels。已配对的设备拥有 host 上 sPi 的全部权限，包括终端和 YOLO。已在 Linux 上验证（含真实 Dev Tunnels 服务）；macOS 和 Windows 未验证。另修复了推理模型上的 AI 命名，以及过期的会话健康提示。
 
-**桌面版 0.2.1 已公开：** [配对码有效期可配置](docs/releases/0.2.1.md)，默认 **1 小时**，最长 **60 天**；仍然只能使用一次，取消、关闭远程访问或重启 sPi 后失效。新增已验证的手动 **[Apple Silicon](https://github.com/DiamondGo/spi/releases/download/v0.2.1/spi-0.2.1-darwin-arm64.zip)** 和 **[Intel](https://github.com/DiamondGo/spi/releases/download/v0.2.1/spi-0.2.1-darwin-x64.zip)** Mac 下载包（ad-hoc 签名，**未公证**）。两个 Mac 原生目标均通过回环远程 GUI 和 ZIP 安装验收，Mac 真实中继服务尚未验证。**npm 0.2.1 等待交互认证，npm latest 仍为 0.2.0。** [Mac 验收与限制](docs/macos-build.md)。
+**桌面版 0.2.1 已公开：** [配对码有效期可配置](docs/releases/0.2.1.md)，默认 **1 小时**，最长 **60 天**；仍然只能使用一次，取消、关闭远程访问或重启 sPi 后失效。新增已验证的手动 **[Apple Silicon](https://github.com/DiamondGo/spi/releases/download/v0.2.1/spi-0.2.1-darwin-arm64.zip)** 和 **[Intel](https://github.com/DiamondGo/spi/releases/download/v0.2.1/spi-0.2.1-darwin-x64.zip)** Mac 下载包（ad-hoc 签名，**未公证**）。两个 Mac 原生目标均通过回环远程 GUI 和 ZIP 安装验收，Mac 真实中继服务尚未验证。**npm `spi-agent-gui@0.2.1` 已公开，latest 为 0.2.1；公开的七文件 tarball 与审查载荷逐字节一致。** [Mac 验收与限制](docs/macos-build.md)。
 
 ## 发布状态与依赖
 

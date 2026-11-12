@@ -7,7 +7,7 @@
 - Source: immutable v0.2.1, `a7ddf900dd296bd9bf761ecb531616ec3edc00ab`.
 - [Native build and installed-ZIP acceptance](https://github.com/DiamondGo/spi/actions/runs/43244952768): both macos-26 arm64 and macos-15-intel x64 passed. Includes new two-instance loopback remote GUI coverage: configurable pairing lifetime (default 1 hour, maximum 60 days), prompt execution, remote PTY, reconnects and revocation.
 - Both installed ZIPs passed native architecture, signatures/ASAR/icon, PTY/GUI/Pi RPC and single-instance tests. Packaged runtime checks load Dev Tunnels; actual live-service Mac remote access remains unverified.
-- [Publication and anonymous hash verification](https://github.com/DiamondGo/spi/actions/runs/43247225350) passed without changing the Linux assets, canonical installer manifest or npm version. Both ZIPs are manual downloads only. npm 0.2.1 awaits interactive authentication; latest remains 0.2.0.
+- [Publication and anonymous hash verification](https://github.com/DiamondGo/spi/actions/runs/43247225350) passed without changing the Linux assets, canonical installer manifest or npm version. Both ZIPs are manual downloads only. npm 0.2.1 is now public and latest is 0.2.1; the public seven-file tarball was verified byte-for-byte against the reviewed payload. This does not promote Mac to automatic installation.
 - Pairing codes are in-memory, single-use and cancelled on restart/disable; a long lifetime is not persistence across app restarts.
 
 ## Historical public 0.1.5 downloads / 历史 0.1.5 包

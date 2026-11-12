@@ -43,6 +43,12 @@ Linux desktop 0.1.2 has a boolean YOLO switch, default off per new/reopened sess
 
 The previous sPi permission modes and rule editor are removed in source. Existing `spi-permissions.json` files are retained without reads/rewrites/deletion; they do not influence the new switch. No persistent YOLO default is saved. The session scanner respects `PI_CODING_AGENT_DIR`; without it, the normal personal Pi agent directory is used.
 
+## Remote access and GitHub CLI / 远程访问与 gh（开发中）
+
+Remote access is in development and not part of any release. When it ships, it will **depend on the GitHub CLI (`gh`) signed in to the same GitHub account on both machines**, because Dev Tunnels rejects GitHub tokens from third-party OAuth Apps. sPi will read `gh auth token` on demand, keep it in memory only, never write it to its own files/logs, and send it only to the Dev Tunnels service. Local use never requires `gh`. [Details, risks and setup](remote-access.md).
+
+远程访问仍在开发中。发布后将依赖 `gh`：两台机器都要安装并登录同一个 GitHub 账号。sPi 只在内存中临时使用 `gh auth token`，不落盘、不写日志，只发给 Dev Tunnels 服务；本地使用不需要 gh。
+
 ## Checks before staging or publishing / 提交与发布前检查
 
 ```bash

@@ -43,7 +43,8 @@ async function deleteLiveTunnel(hostStateFile) {
 module.exports = async function ({ app: host, launch, stop, waitFor, pass, fill, results, artifacts, profile, workspace, connectPage }) {
   const live = process.argv.includes('--live')
   const relayMs = live ? 120000 : 20000
-  const hostName = os.hostname()
+  // The client bounds the display name returned by the host hello to 64 characters.
+  const hostName = os.hostname().trim().slice(0, 64)
   const capture = async (page, name) => { const s = await page.send('Page.captureScreenshot', { format: 'png' }); fs.writeFileSync(path.join(artifacts, name + '.png'), Buffer.from(s.data, 'base64')) }
   const openSettings = async page => {
     await page.eval(`document.querySelector('.app-settings-button').click()`)

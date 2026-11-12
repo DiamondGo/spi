@@ -37,7 +37,15 @@ async function prepare(){
   fs.writeFileSync(path.join(release,'install.sh'),bootstrap,{mode:0o755})
   console.log('Prepared light npm package and bootstrap (no desktop binaries in npm)')
 }
-function keepPty(directory,platform=process.platform,arch=process.arch){
+// Native addon modules shipped in the runtime. node-pty is always rebuilt
+// from source; bufferutil/utf-8-validate are optional websocket accelerators
+// pulled in by the dev-tunnels relay and are rebuilt on native runners too.
+const NATIVE_ADDONS={
+  'node-pty':['build/Release/pty.node','build/Release/spawn-helper'],
+  'bufferutil':['build/Release/bufferutil.node'],
+  'utf-8-validate':['build/Release/utf-8-validate.node']
+}
+function pruneAddon(directory,platform,arch,localArtifacts){
   if(!fs.existsSync(directory))return
   for(const name of fs.readdirSync(directory))if(!['lib','package.json','LICENSE','LICENSE.txt','build','prebuilds'].includes(name))fs.rmSync(path.join(directory,name),{recursive:true,force:true})
   const buildDir=path.join(directory,'build')
@@ -54,12 +62,19 @@ function keepPty(directory,platform=process.platform,arch=process.arch){
   }
   runtimeOnly(path.join(buildDir,'Release'))
   const prebuilt=path.join(directory,'prebuilds')
-  // node-pty loads build/Release first. Do not ship unused upstream macOS
-  // prebuilds (which can contain their producer's absolute build paths).
-  if(platform==='darwin'&&fs.existsSync(path.join(buildDir,'Release/pty.node'))&&fs.existsSync(path.join(buildDir,'Release/spawn-helper')))fs.rmSync(prebuilt,{recursive:true,force:true})
+  // Rebuilt addons load build/Release first. Do not ship unused upstream
+  // prebuilds (which can contain their producer's absolute build paths); keep
+  // them only as a fallback when no local rebuild is present.
+  if(platform==='darwin'&&localArtifacts.every(a=>fs.existsSync(path.join(directory,a))))fs.rmSync(prebuilt,{recursive:true,force:true})
   if(fs.existsSync(prebuilt))for(const name of fs.readdirSync(prebuilt)){
     if(name!==platform+'-'+arch)fs.rmSync(path.join(prebuilt,name),{recursive:true,force:true})
     else runtimeOnly(path.join(prebuilt,name))
+  }
+}
+function keepPty(directory,platform=process.platform,arch=process.arch){
+  for(const [name,artifacts] of Object.entries(NATIVE_ADDONS)){
+    const base=path.join(path.dirname(directory),name)
+    pruneAddon(base,platform,arch,artifacts)
   }
 }
 function stripMacDebug(directory,platform=process.platform,run=execFileSync){
@@ -71,6 +86,12 @@ function stripMacDebug(directory,platform=process.platform,run=execFileSync){
     const file=path.join(directory,'build/Release',name)
     if(!fs.existsSync(file))throw Error('Missing rebuilt macOS PTY runtime: '+name)
     run('/usr/bin/strip',['-S',file],{stdio:['ignore','pipe','pipe']})
+  }
+  // Optional websocket accelerators are rebuilt alongside node-pty on native
+  // runners and need the same debug-metadata removal before the privacy scan.
+  for(const [addon,filename] of Object.entries({bufferutil:'bufferutil.node','utf-8-validate':'utf-8-validate.node'})){
+    const file=path.join(directory,'..',addon,'build/Release',filename)
+    if(fs.existsSync(file))run('/usr/bin/strip',['-S',file],{stdio:['ignore','pipe','pipe']})
   }
   require('./privacy.cjs').scanTree(directory,{binary:true})
 }
@@ -139,4 +160,4 @@ function manifest(){
   fs.writeFileSync(path.join(release,'SHA256SUMS'),files.map(n=>crypto.createHash('sha256').update(fs.readFileSync(path.join(release,n))).digest('hex')+'  '+n).join('\n')+'\n')
 }
 if(require.main===module)(async()=>{const cmd=process.argv[2];if(cmd==='prepare')await prepare();else if(cmd==='archive')await archive();else if(cmd==='manifest')manifest();else throw Error('prepare | archive | manifest')})().catch(e=>{console.error(e.message);process.exitCode=1})
-module.exports={config,prepare,archive,manifest,sanitizeRuntime,keepPty,stripMacDebug,copyRuntime,restoreUnpackedModes}
+module.exports={config,prepare,archive,manifest,sanitizeRuntime,keepPty,stripMacDebug,copyRuntime,restoreUnpackedModes,NATIVE_ADDONS}

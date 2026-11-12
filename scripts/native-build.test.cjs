@@ -22,17 +22,41 @@ try{
     fs.rmSync(from,{recursive:true});assert.equal(fs.readFileSync(path.join(to,'file'),'utf8'),'signed-content')
   })
   check('mac sanitizer keeps rebuilt addon/helper and removes unused vendor prebuilds and metadata',()=>{
-    const dir=path.join(tmp,'rebuilt');for(const f of ['build/Release/pty.node','build/Release/spawn-helper','build/Release/obj.target/private.o','build/config.gypi','prebuilds/darwin-arm64/pty.node','lib/index.js','package.json','src/private.cc'])write(dir,f)
+    const dir=path.join(tmp,'asan1','node_modules','node-pty');for(const f of ['build/Release/pty.node','build/Release/spawn-helper','build/Release/obj.target/private.o','build/config.gypi','prebuilds/darwin-arm64/pty.node','lib/index.js','package.json','src/private.cc'])write(dir,f)
     keepPty(dir,'darwin','arm64');assert.ok(fs.existsSync(path.join(dir,'build/Release/pty.node')));assert.ok(fs.existsSync(path.join(dir,'build/Release/spawn-helper')))
     for(const f of ['prebuilds','build/config.gypi','build/Release/obj.target','src'])assert.equal(fs.existsSync(path.join(dir,f)),false)
   })
   check('missing rebuilt helper does not silently remove the only prebuilt runtime',()=>{
-    const dir=path.join(tmp,'fallback');for(const f of ['build/Release/pty.node','prebuilds/darwin-arm64/pty.node','prebuilds/darwin-arm64/spawn-helper','prebuilds/darwin-x64/pty.node'])write(dir,f)
+    const dir=path.join(tmp,'asan2','node_modules','node-pty');for(const f of ['build/Release/pty.node','prebuilds/darwin-arm64/pty.node','prebuilds/darwin-arm64/spawn-helper','prebuilds/darwin-x64/pty.node'])write(dir,f)
     keepPty(dir,'darwin','arm64');assert.ok(fs.existsSync(path.join(dir,'prebuilds/darwin-arm64/pty.node')));assert.equal(fs.existsSync(path.join(dir,'prebuilds/darwin-x64')),false)
   })
   check('Windows runtime helper prebuilds are not removed by mac-only pruning',()=>{
-    const dir=path.join(tmp,'windows');for(const f of ['build/Release/conpty.node','prebuilds/win32-x64/conpty/OpenConsole.exe','prebuilds/win32-x64/conpty/conpty.dll'])write(dir,f)
+    const dir=path.join(tmp,'asan3','node_modules','node-pty');for(const f of ['build/Release/conpty.node','prebuilds/win32-x64/conpty/OpenConsole.exe','prebuilds/win32-x64/conpty/conpty.dll'])write(dir,f)
     keepPty(dir,'win32','x64');assert.ok(fs.existsSync(path.join(dir,'prebuilds/win32-x64/conpty/OpenConsole.exe')))
+  })
+  check('mac sanitizer also prunes and strips the rebuilt websocket accelerator addons',()=>{
+    const nm=path.join(tmp,'asan4','node_modules')
+    for(const f of ['node-pty/build/Release/pty.node','node-pty/build/Release/spawn-helper','node-pty/prebuilds/darwin-arm64/pty.node'])write(nm,f)
+    for(const addon of ['bufferutil','utf-8-validate']){
+      const name=addon==='bufferutil'?'bufferutil.node':'utf-8-validate.node'
+      for(const f of [addon+'/build/Release/'+name,addon+'/prebuilds/darwin-x64/'+name,addon+'/prebuilds/darwin-arm64/'+name,addon+'/package.json',addon+'/src/'+name+'.c'])write(nm,f)
+    }
+    keepPty(path.join(nm,'node-pty'),'darwin','arm64')
+    for(const addon of ['bufferutil','utf-8-validate']){
+      const name=addon==='bufferutil'?'bufferutil.node':'utf-8-validate.node'
+      assert.ok(fs.existsSync(path.join(nm,addon,'build/Release',name)))
+      assert.equal(fs.existsSync(path.join(nm,addon,'prebuilds')),false)
+      assert.equal(fs.existsSync(path.join(nm,addon,'src')),false)
+    }
+    const calls=[];stripMacDebug(path.join(nm,'node-pty'),'darwin',(cmd,args)=>calls.push(path.basename(args[1])))
+    assert.deepEqual(calls,['pty.node','spawn-helper','bufferutil.node','utf-8-validate.node'])
+  })
+  check('websocket accelerator prebuilds remain a fallback when no local rebuild exists',()=>{
+    const nm=path.join(tmp,'asan5','node_modules')
+    for(const f of ['node-pty/build/Release/pty.node','node-pty/build/Release/spawn-helper','bufferutil/prebuilds/darwin-arm64/bufferutil.node','bufferutil/prebuilds/darwin-x64/bufferutil.node','bufferutil/package.json'])write(nm,f)
+    keepPty(path.join(nm,'node-pty'),'darwin','arm64')
+    assert.ok(fs.existsSync(path.join(nm,'bufferutil/prebuilds/darwin-arm64/bufferutil.node')))
+    assert.equal(fs.existsSync(path.join(nm,'bufferutil/prebuilds/darwin-x64')),false)
   })
   check('native debug stripping is mac-only, complete, and privacy-checked before signing',()=>{
     const dir=path.join(tmp,'strip');for(const f of ['build/Release/pty.node','build/Release/spawn-helper'])write(dir,f)

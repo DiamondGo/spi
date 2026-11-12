@@ -111,9 +111,12 @@ async function launch(options = {}) {
   if (process.argv.includes('--terminal') || process.argv.includes('--remote')) env.HISTFILE = path.join(artifacts, 'terminal-shell-history')
   // The remote suite uses a loopback relay unless --live opts into the real Dev Tunnels service.
   // --live lets the app run the user's own `gh auth token`; the token itself never enters this environment.
-  if (process.argv.includes('--remote')) env.SPI_TEST_REMOTE = process.argv.includes('--live') ? 'devtunnels' : 'loopback'
+  // Source-only navigation tests must not claim a real macOS Keychain item under
+  // Electron's signature before the differently signed installed app accesses it.
+  // Packaged builds ignore this override and retain their real credential-store checks.
+  if (process.argv.includes('--remote') || process.argv.includes('--question-navigation')) env.SPI_TEST_REMOTE = process.argv.includes('--live') ? 'devtunnels' : 'loopback'
   if (process.argv.includes('--live')) env.GH_CONFIG_DIR = process.env.GH_CONFIG_DIR || path.join(process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config'), 'gh')
-  if (['--yolo','--settings','--terminal','--extension-ui','--workspace-ui','--runtime-env','--session-health','--session-actions','--remote'].some(flag => process.argv.includes(flag))) {
+  if (['--yolo','--settings','--terminal','--extension-ui','--workspace-ui','--runtime-env','--session-health','--session-actions','--remote','--question-navigation'].some(flag => process.argv.includes(flag))) {
     env.PI_CODING_AGENT_DIR = path.join(artifacts, 'agent')
     env.HOME = path.join(artifacts, 'home')
     env.XDG_CONFIG_HOME = path.join(artifacts, 'xdg-config')

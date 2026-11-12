@@ -4,6 +4,7 @@ import type { AppLanguage, AppSettings, AppTheme } from '../../../shared/types'
 import { updatePreferences, usePreferences, useT } from '../preferences'
 import { Icon, IconControl } from './IconControl'
 import { NodeSettings } from './NodeSettings'
+import { RemoteSettings } from './RemoteSettings'
 
 export function AppSettingsPanel({ onClose }: { onClose: () => void }): React.JSX.Element {
   const { settings, error } = usePreferences()
@@ -50,6 +51,7 @@ export function AppSettingsPanel({ onClose }: { onClose: () => void }): React.JS
         <p className="settings-help">{busy ? t('保存中…') : t('设置会自动保存，只影响 sPi，不修改 pi 配置。')}</p>
         {error && <p role="alert" className="settings-error">{error}</p>}
         <NodeSettings />
+        <RemoteSettings />
       </div>
     </dialog>, document.body
   )

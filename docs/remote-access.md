@@ -1,10 +1,20 @@
 # Remote access and the GitHub CLI dependency / 远程访问与 gh 依赖
 
-**Status: in development, not included in any release (0.1.5 and earlier do not contain it).** The design and a standalone prototype have been verified; the feature is not yet wired into the application.
+**Status: implemented in the source tree, not included in any release (0.1.5 and earlier do not contain it).** Pairing, the remote window, reconnects and revocation are covered by unit tests and a two-instance GUI test on a loopback relay (Linux). The integrated app has not yet been re-checked against the live Dev Tunnels service, and macOS/Windows are unverified.
 
 **Summary (English).** Remote access lets one sPi desktop open a window onto another sPi host behind NAT/firewalls, relayed through Microsoft Dev Tunnels and end-to-end encrypted by sPi itself. **It requires the GitHub CLI (`gh`) to be installed and signed in to the same GitHub account on both machines.** Dev Tunnels rejects GitHub tokens issued to third-party OAuth Apps (`invalid_token`), but accepted the token from `gh auth token` in our tests. sPi reads that token on demand, keeps it in memory only and sends it only to the Dev Tunnels management/relay service. Local use of sPi never needs `gh`, GitHub or Dev Tunnels.
 
-下文中 gh 的验证结果是实测；sPi 如何查找和使用 gh、界面提示等是已确定的设计，将在功能接入时实现，并在发布前用测试核实。
+**实现状态。**
+
+- **已实现**：功能已接入应用源码，尚未发布。
+- **已在 Linux 上验证**：
+  - 单元测试；
+  - 两个 sPi 实例通过本机回环中继的 GUI 测试：配对、远程会话、远程终端、断线重连、host 重启、撤销。
+- **未验证**：
+  - 接入后的版本还没有在真实的 Dev Tunnels 服务上复测；原型阶段曾在真实服务上验证过。
+  - macOS 和 Windows 的代码已写好，但没有测试过。
+
+下文中 gh 的验证结果是实测。
 
 ## 一句话说明
 
@@ -49,7 +59,60 @@ sPi 不会借用 VS Code 或 `devtunnel` CLI 的应用身份（Client ID），�
 
 4. 两台机器必须登录**同一个** GitHub 账号。远程访问只支持 GitHub 账号，不支持 Microsoft 账号登录。远程隧道默认私有，只有创建它的账号能连接；账号不一致时，client 找不到 host。
 
-`gh` 必须以运行 sPi 的同一个系统用户登录。sPi 用查找 Pi 的同一种方式查找 `gh`：先查图形界面的 PATH，再查登录 shell 的 PATH。如果 `gh` 装在非常规位置，需要确保登录 shell 能找到它。
+`gh` 必须以运行 sPi 的同一个系统用户登录。sPi 按以下顺序查找 `gh`：
+
+1. 图形界面的 PATH；
+2. 登录 shell 的 PATH（Windows 上用 PowerShell 查找）；
+3. 常见安装位置，例如 Homebrew、`/usr/bin`、snap，以及 Windows 的 `Program Files`。
+
+如果 `gh` 装在非常规位置，需要确保登录 shell 能找到它。
+
+## 使用方法
+
+**在 host（被访问的电脑）上：**
+
+1. 打开"设置 → 远程访问"，确认 GitHub CLI 显示"已登录"。
+2. 勾选"开启远程访问"，等待状态变为"在线，等待设备连接"。
+3. 点"添加设备…"，复制显示的配对码。配对码 10 分钟内有效，只能用一次，连续 3 次握手失败后作废。它相当于临时密码，请通过你信任的方式带到另一台电脑，不要发到公开的地方。
+
+**在 client（发起访问的电脑）上：**
+
+1. 打开"设置 → 远程访问 → 连接到其他电脑"。
+2. 粘贴配对码，点"配对并打开"。
+3. 配对成功后会打开一个远程窗口，标题栏显示"远程：host 名称"。之后可以在"已配对的电脑"列表里点"打开"直接连接，不再需要配对码。
+
+**远程窗口的行为：**
+
+- **和本地窗口一样**：远程窗口与本地窗口使用同一套界面。会话、文件浏览、Pi 进程和终端都运行在 host 上，Node.js 路径等设置也是 host 上的。
+- **断线时**：窗口顶部显示"连接已断开，正在重新连接"。期间的操作会立即失败，不会排队，也不会在重连后自动重放。
+- **重连后**：窗口自动从 host 重新加载会话内容。如果断开时间不长，终端也会恢复。
+- **按电脑区分的设置**：外观、语言、退出确认和窗口布局属于每台电脑自己。远程窗口的布局按 host 分别保存在 client 上。
+- **文件选择**：远程窗口不能弹出本机文件选择框，需要的路径请直接输入 host 上的路径。
+- **host 的标题栏**：显示"N 台远程设备已连接"；退出 host 上的 sPi 时，确认框会提示这些设备将断开。
+
+**撤销与移除：**
+
+- **在 host 上撤销**：被撤销的设备会立即断开，之后不能再连接，远程窗口会提示"不再接受此设备"。要再次使用，需要重新配对。
+- **在 client 上移除**：只删除 client 保存的连接信息。host 上的配对记录需要在 host 上撤销。
+
+**远程设备打开的终端：**以下情况发生时，host 会关闭这些终端：
+
+- 远程窗口被关闭；
+- 设备被撤销；
+- host 关闭了远程访问或退出；
+- 连接意外断开超过 2 分钟。
+
+## 本机保存的文件
+
+以下文件都在 sPi 的用户数据目录里（与 `spi-settings.json` 同一目录），权限为仅当前用户可读写（0600）：
+
+| 文件 | 内容 |
+|---|---|
+| `spi-remote-identity.json` | 本机的 X25519 私钥。先用系统凭据存储加密再写入：macOS 用钥匙串，Windows 用 DPAPI，Linux 用 GNOME Keyring 或 KWallet |
+| `spi-remote-host.json` | 是否开启托管、隧道 ID 和端口、已配对设备的公钥和名称 |
+| `spi-remote-hosts.json` | 已配对的 host：公钥、名称、隧道地址，以及每个 host 的远程窗口布局 |
+
+这些文件里没有 GitHub token。Linux 上如果没有可用的系统密钥环，Electron 只能明文保存密钥（`basic_text`），这种情况下 sPi 拒绝开启远程访问，并在设置里说明原因。删除这些文件会清除配对关系，需要重新配对。
 
 ## sPi 如何使用 gh 的 token
 
@@ -70,10 +133,24 @@ sPi 不会借用 VS Code 或 `devtunnel` CLI 的应用身份（Client ID），�
 
 | 情况 | 结果 |
 |---|---|
-| 没有安装 gh | 远程访问不可开启，设置里提示安装方法；本地功能不受影响 |
-| gh 未登录或 token 失效 | host 停止托管并显示原因，client 提示"主机账号未登录"；本地会话继续运行，不会被中断 |
-| 两端账号不一致 | client 找不到 host |
+| 没有安装 gh | 设置里提示安装方法，远程访问开关和配对输入不可用；本地功能不受影响 |
+| gh 未登录 | 设置里提示运行 `gh auth login`，开关和配对输入同样不可用 |
+| 已开启托管后 token 失效或中继连不上 | host 在设置里显示原因，并在 15 秒到 5 分钟之间逐步拉长间隔自动重试；本地会话继续运行，不会被中断 |
+| host 离线或网络中断 | client 的远程窗口显示断线提示并自动重连，间隔从 1 秒逐步增加到 30 秒 |
+| 两端账号不一致 | client 连接不到 host（私有隧道只对创建它的账号开放） |
+| host 撤销了设备或重置了密钥 | 远程窗口提示"不再接受此设备"，停止重连，需要重新配对 |
+| Linux 没有系统密钥环 | 远程访问不可开启，设置里说明原因 |
 | Dev Tunnels 不再接受 gh 的 token | 远程访问不可用，需要换用其他登录方式或中继（见下） |
+
+## 测试
+
+- `npm run test:remote`：单元测试，覆盖以下内容：
+  - Noise 握手：用 cacophony 和 snow 的官方测试向量核对，测试向量摘录在 `scripts/fixtures/noise-vectors.json`；
+  - 分帧、篡改检测、配对码、RPC；
+  - gh 读取逻辑：使用假的命令执行器，不会运行真实的 `gh`；
+  - host 的鉴权，以及断线重连和撤销。
+- `npm run test:remote-smoke`：启动两个互相隔离的 sPi 实例，通过本机回环中继完成配对、远程会话、远程终端、断线重连、host 重启和撤销。需要 Xvfb；没有安装时，可以用 `SPI_XVFB_BINARY` 指定 Xvfb 程序的路径。
+- **测试模式**：`SPI_TEST_REMOTE=loopback` 把中继换成本机 127.0.0.1，不联系 Dev Tunnels，也不读取 gh 的 token。这个模式只在未打包的开发版本中生效，发布版会忽略这个变量。测试模式下密钥以明文保存在测试用的临时 profile 里。
 
 ## 风险与后续替代
 

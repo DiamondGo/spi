@@ -134,5 +134,23 @@ html, body, #root { background: var(--bg); color: var(--fg); }
 .node-settings-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .node-settings button { padding: 5px 9px; color: var(--fg); background: var(--input); border: 1px solid var(--border); border-radius: 5px; cursor: pointer; }
 .node-settings .settings-error { overflow-wrap: anywhere; }
+.remote-settings { margin: 18px 0 0; padding: 12px; border: 1px solid var(--border); min-width: 0; }
+.remote-settings legend { padding: 0 5px; }
+.remote-settings h3 { margin: 16px 0 4px; font-size: 13px; font-weight: 600; }
+.remote-settings label:not(.app-settings-row) { display: block; margin: 10px 0 7px; }
+.remote-settings input[type="text"], .remote-settings textarea { box-sizing: border-box; width: 100%; padding: 7px 9px; background: var(--input); color: var(--fg); border: 1px solid var(--border); border-radius: 5px; font: inherit; }
+.remote-settings textarea { font-family: ui-monospace, monospace; font-size: 11px; resize: none; word-break: break-all; }
+.remote-settings button { padding: 5px 9px; color: var(--fg); background: var(--input); border: 1px solid var(--border); border-radius: 5px; cursor: pointer; white-space: nowrap; }
+.remote-settings .settings-error, .remote-settings .settings-help { overflow-wrap: anywhere; }
+.remote-account { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; color: var(--muted); }
+.remote-pair-row { display: flex; gap: 8px; }
+.remote-list { list-style: none; margin: 10px 0 0; padding: 0; }
+.remote-list li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid var(--subtle); }
+.remote-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.remote-state { font-size: 12px; color: var(--muted); }
+.remote-state.connected { color: var(--accent-fg); }
+.tb-remote { flex: none; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; padding: 2px 8px; border-radius: 10px; background: var(--raised); color: var(--accent-fg); -webkit-app-region: no-drag; }
+.tb-remote.offline { color: var(--danger); }
+.remote-banner { padding: 6px 12px; font-size: 12px; background: var(--raised); color: var(--fg); border-bottom: 1px solid var(--border); }
 .app-settings-dialog :disabled { opacity: .6; cursor: default; }
 :root[data-theme="high-contrast"] .app-settings-dialog { border-width: 2px; }

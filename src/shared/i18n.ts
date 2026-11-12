@@ -111,7 +111,32 @@ const english: Record<string, string> = {
   '重试成功': 'Retry succeeded', '重试失败：{message}': 'Retry failed: {message}', '队列中 {count} 条待发消息': '{count} queued messages',
   '消息队列已清空': 'Message queue cleared', '[扩展] {message}': '[Extension] {message}', '[扩展错误] {message}': '[Extension error] {message}',
   '退出 sPi': 'Quit sPi', '确定退出 sPi 吗？': 'Quit sPi?', '还有 {count} 个已打开的会话。退出将中止这些会话，已产生的内容会保存在会话文件中。': '{count} sessions are open. Quitting stops them; existing messages remain in the session files.',
-  '应用程序将关闭。': 'The application will close.', '退出': 'Quit'
+  '应用程序将关闭。': 'The application will close.', '退出': 'Quit',
+  '{count} 台远程设备已连接，退出后将断开。': '{count} remote devices are connected and will be disconnected.',
+  '远程访问': 'Remote access', '已关闭': 'Off', '正在连接中继…': 'Connecting to the relay…', '在线，等待设备连接': 'Online, waiting for devices',
+  '正在重新连接中继…': 'Reconnecting to the relay…', '无法启动，稍后自动重试': 'Could not start; retrying automatically',
+  '正在连接…': 'Connecting…', '已连接': 'Connected', '正在重新连接…': 'Reconnecting…', '已被拒绝': 'Rejected', '未连接': 'Not connected',
+  'GitHub CLI 已登录。两台电脑需要登录同一个 GitHub 账号。': 'GitHub CLI is signed in. Both computers must use the same GitHub account.',
+  '未找到 GitHub CLI（gh）。远程访问依赖它：请安装后运行 gh auth login。': 'GitHub CLI (gh) was not found. Remote access requires it: install it, then run gh auth login.',
+  'GitHub CLI 尚未登录 github.com。请运行 gh auth login --hostname github.com。': 'GitHub CLI is not signed in to github.com. Run gh auth login --hostname github.com.',
+  'GitHub CLI 没有返回可用的登录凭据。请运行 gh auth status 检查。': 'GitHub CLI returned no usable credentials. Check with gh auth status.',
+  '此窗口连接到 {name}，会话、文件和终端都在那台电脑上运行。请在本机的 sPi 窗口中管理远程访问。': 'This window is connected to {name}; sessions, files and terminals run on that computer. Manage remote access from a local sPi window.',
+  '通过 Microsoft Dev Tunnels 中继，在另一台电脑上打开本机的 sPi；内容在两台电脑之间端到端加密，中继只转发密文。': 'Open this computer’s sPi from another computer through the Microsoft Dev Tunnels relay. Content is end-to-end encrypted between the two computers; the relay only forwards ciphertext.',
+  '正在检查 GitHub CLI…': 'Checking GitHub CLI…', '重新检查': 'Check again', '允许其他设备访问本机': 'Allow other devices to use this computer',
+  '开启远程访问': 'Enable remote access', '状态：{state}': 'Status: {state}',
+  '已配对的设备拥有与本机窗口相同的权限，包括终端和 YOLO。只配对你自己的设备；关闭本机 sPi 后远程连接也会断开。': 'Paired devices have the same power as a local window, including terminals and YOLO. Pair only your own devices. Quitting sPi here also disconnects them.',
+  '添加设备…': 'Add device…', '在另一台电脑的 sPi 设置中粘贴此配对码：': 'Paste this pairing code into sPi settings on the other computer:',
+  '{minutes} 分钟内有效，只能使用一次。请像密码一样保管，不要发到公开的地方。': 'Valid for {minutes} min and only once. Treat it like a password; never post it publicly.',
+  '复制配对码': 'Copy pairing code', '已配对的设备': 'Paired devices', '撤销': 'Revoke',
+  '撤销“{name}”？该设备会立即断开，之后需要重新配对才能连接。': 'Revoke “{name}”? It is disconnected immediately and must pair again to reconnect.',
+  '连接到其他电脑': 'Connect to another computer', '配对码': 'Pairing code', '配对并打开': 'Pair and open', '已配对的电脑': 'Paired computers', '打开': 'Open',
+  '移除“{name}”？之后需要在那台电脑上生成新的配对码才能再连接。': 'Remove “{name}”? Connecting again requires a new pairing code from that computer.',
+  '这是 {name} 上的设置，请填写那台电脑上的路径。': 'These settings belong to {name}; enter a path that exists on that computer.',
+  '远程：{name}': 'Remote: {name}', '远程：{name}（未连接）': 'Remote: {name} (disconnected)', '{count} 台远程设备已连接': '{count} remote devices connected',
+  '{name} 的密钥变了：可能重装过系统，也可能是攻击。只有确认可信时才重新配对。': 'The key of {name} changed: it may have been reinstalled, or this may be an attack. Pair again only if you trust it.',
+  '{name} 上的 sPi 版本不兼容，请把两台电脑都更新到最新版。': 'sPi on {name} is incompatible; update both computers to the latest version.',
+  '{name} 不再接受此设备（已被撤销或远程访问被重置）。请在那台电脑上生成新的配对码重新配对。': '{name} no longer accepts this device (revoked, or remote access was reset). Create a new pairing code on that computer to pair again.',
+  '与 {name} 的连接已断开，正在重新连接…期间的操作不会执行；连上后会自动刷新。': 'Disconnected from {name}; reconnecting… Actions are not performed meanwhile; the window refreshes once reconnected.'
 }
 
 export type TextParams = Record<string, string | number>

@@ -7,6 +7,25 @@ import { TitleSelect } from './TitleSelect'
 import { Icon, IconControl } from './IconControl'
 import { AppSettingsPanel } from './AppSettingsPanel'
 import { usePathFormatter } from '../homePath'
+import { useRemoteStatus, useRemoteWindow } from '../remote'
+
+/** Remote window: which host and whether it is reachable. Local window: devices using this computer. */
+function RemoteBadge(): React.JSX.Element | null {
+  const t = useT()
+  const remote = useRemoteWindow()
+  const { status } = useRemoteStatus(!remote)
+  if (remote) {
+    const ok = remote.state === 'connected'
+    return <span className={`tb-remote${ok ? '' : ' offline'}`} data-remote-window={remote.state} title={remote.detail || undefined}>
+      {t(ok ? '远程：{name}' : '远程：{name}（未连接）', { name: remote.hostName })}
+    </span>
+  }
+  const count = status?.host.devices.filter(device => device.connected).length ?? 0
+  if (!count) return null
+  return <span className="tb-remote host" data-remote-connected={count} title={status!.host.devices.filter(d => d.connected).map(d => d.name).join(', ')}>
+    {t('{count} 台远程设备已连接', { count })}
+  </span>
+}
 
 export function TitleBar({ sidebarOpen, onToggleSidebar }: { sidebarOpen: boolean; onToggleSidebar: () => void }): React.JSX.Element {
   const t = useT(), formatPath = usePathFormatter()
@@ -47,6 +66,7 @@ export function TitleBar({ sidebarOpen, onToggleSidebar }: { sidebarOpen: boolea
         <button type="button" className="tb-btn tb-icon-button sidebar-toggle" aria-label={t(sidebarOpen ? '收起侧栏' : '展开侧栏')} aria-expanded={sidebarOpen} onClick={onToggleSidebar}><Icon name="sidebar" /></button>
       </IconControl>
       <span className="tb-brand">sPi</span>
+      <RemoteBadge />
       <div className="tb-center">
         {active ? <span className="tb-name" title={t('会话：{name}\n工作目录：{cwd}', { name, cwd: formatPath(active.cwd) })}>{name}</span> : <span className="tb-name dim">{t('未打开会话')}</span>}
       </div>

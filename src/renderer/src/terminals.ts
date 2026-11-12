@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react'
 import type { TerminalInfo } from '../../shared/types'
 import { getStore } from './store'
 
-type TerminalView = TerminalInfo & { focusRequest: number; hidden: boolean }
+type TerminalView = TerminalInfo & { focusRequest: number; hidden: boolean; attachment?: number }
 let state: { terminals: Record<string, TerminalView>; opening: Record<string, boolean>; errors: Record<string, string> } = { terminals: {}, opening: {}, errors: {} }
 const listeners = new Set<() => void>()
 const requests = new Map<string, Promise<void>>()
@@ -55,6 +55,20 @@ export function openSessionTerminal(id: string): Promise<void> {
   })()
   requests.set(id, request)
   return request
+}
+/**
+ * Remounts every terminal view so it attaches again: a fresh snapshot replaces output missed while
+ * disconnected. Terminals the host closed meanwhile (it restarted or the grace period ran out) are dropped.
+ */
+export async function reattachTerminals(): Promise<void> {
+  for (const [id, view] of Object.entries(state.terminals)) {
+    let live: string | undefined
+    try { live = (await window.spi.getTerminal(id))?.terminalId } catch { return }
+    const current = state.terminals[id]
+    if (!current || current.terminalId !== view.terminalId) continue
+    if (live !== view.terminalId) { forgetTerminalSession(id); continue }
+    state = { ...state, terminals: { ...state.terminals, [id]: { ...current, attachment: (current.attachment ?? 0) + 1 } } }; emit()
+  }
 }
 export function hideSessionTerminal(id: string): void {
   const current = state.terminals[id]

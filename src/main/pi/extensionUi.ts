@@ -87,6 +87,11 @@ export class ExtensionUi {
     return true
   }
 
+  /** Unanswered dialogs, so a window that reconnected can show them again. */
+  pendingRequests(sessionId: string): PiRecord[] {
+    return [...(this.pending.get(sessionId)?.values() ?? [])].map(p => structuredClone(p.request))
+  }
+
   refresh(): void {
     for (const [sessionId, entries] of [...this.pending]) {
       for (const [id, p] of [...entries]) this.autoAllow(sessionId, id, p)

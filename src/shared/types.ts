@@ -112,6 +112,30 @@ export type TerminalEvent =
   | { type: 'exit'; sessionId: string; terminalId: string; exitCode?: number; reason: 'exit' | 'closed' }
   | { type: 'error'; sessionId: string; terminalId: string; message: string }
 
+export type RemoteAccountState = 'ready' | 'missing' | 'logged_out' | 'failed'
+export interface RemoteAccountStatus { state: RemoteAccountState; message?: string }
+export type RemoteHostState = 'off' | 'starting' | 'online' | 'reconnecting' | 'error'
+export interface RemoteDeviceInfo { id: string; name: string; pairedAt: number; lastSeenAt?: number; connected: boolean }
+export interface RemoteHostSnapshot {
+  enabled: boolean
+  state: RemoteHostState
+  error?: string
+  devices: RemoteDeviceInfo[]
+  pairingExpiresAt?: number
+}
+export type RemoteConnectionState = 'connecting' | 'connected' | 'reconnecting' | 'rejected' | 'closed'
+/** Why a host stopped accepting this device; set only in the rejected state. */
+export type RemoteRejectReason = 'revoked' | 'key_changed' | 'incompatible'
+export interface RemoteHostEntry { id: string; name: string; pairedAt: number; connection?: RemoteConnectionState; detail?: string; reason?: RemoteRejectReason }
+export interface RemoteStatusSnapshot {
+  relay: 'devtunnels' | 'loopback'
+  /** Set when keys cannot be protected on this computer; remote access is then unavailable. */
+  storageProblem?: string
+  host: RemoteHostSnapshot
+  hosts: RemoteHostEntry[]
+}
+export interface RemoteWindowInfo { hostId: string; hostName: string; state: RemoteConnectionState; detail?: string; reason?: RemoteRejectReason; resync?: boolean }
+
 // 渲染进程可调用的 API（preload 暴露）
 export interface IpcApi {
   getLaunchRequest(): Promise<{ id: string; cwd: string } | null>
@@ -173,4 +197,18 @@ export interface IpcApi {
   setThinkingLevel(sessionId: string, level: string): Promise<void>
   onPiEvent(cb: (e: PiEventPayload) => void): () => void
   onSessionClosed(cb: (sessionId: string) => void): () => void
+  getPendingDialogs(sessionId: string): Promise<PiRecord[]>
+  getRemoteStatus(): Promise<RemoteStatusSnapshot>
+  checkRemoteAccount(): Promise<RemoteAccountStatus>
+  setRemoteHostEnabled(enabled: boolean): Promise<RemoteStatusSnapshot>
+  createPairingCode(): Promise<{ code: string; expiresAt: number }>
+  cancelPairingCode(): Promise<void>
+  revokeRemoteDevice(deviceId: string): Promise<void>
+  pairRemoteHost(code: string): Promise<RemoteHostEntry>
+  connectRemoteHost(hostId: string): Promise<void>
+  forgetRemoteHost(hostId: string): Promise<void>
+  onRemoteStatusChanged(cb: (status: RemoteStatusSnapshot) => void): () => void
+  /** Null in a local window; the connected host in a remote window. */
+  getRemoteWindow(): Promise<RemoteWindowInfo | null>
+  onRemoteWindowChanged(cb: (info: RemoteWindowInfo) => void): () => void
 }

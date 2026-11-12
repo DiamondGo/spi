@@ -4,6 +4,8 @@ const asar=require('@electron/asar')
 const patterns=[
   ['credential',/(?:gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}|npm_[A-Za-z0-9]{30,}|sk-[A-Za-z0-9_-]{25,})/],
   ['private-key',/-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----/],
+  // A pasted remote-access pairing code carries a one-time secret.
+  ['pairing-code',/spi1\.[A-Za-z0-9_-]{100,}/],
   ['credential-assignment',/(?:api[_-]?key|password|token)\s*[:=]\s*["'][A-Za-z0-9_-]{24,}["']/i],
   ['private-network',/https?:\/\/(?:10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.\d+\.\d+)/]
 ]

@@ -149,6 +149,49 @@ export function openSession(cwd: string, sessionPath?: string): Promise<string> 
   return shared
 }
 
+/**
+ * After a remote window reconnects it may have missed events: reload each session from the host.
+ * Sessions the host no longer knows (it restarted) are reopened from their saved history under a
+ * new ID, keeping the draft. Returns the IDs that were replaced so callers can drop their terminals.
+ */
+let resyncing: Promise<string[]> | null = null
+let queuedResync: Promise<string[]> | null = null
+const DISCONNECTED = /Not connected to the remote host|connection to the remote host was lost|no longer accepts this device/
+export function resyncSessions(): Promise<string[]> {
+  // A reconnect during a resync needs one more pass afterwards, not one per event.
+  if (resyncing) return queuedResync ??= resyncing.then(() => { queuedResync = null; return resyncSessions() })
+  const request = (async () => {
+    const replaced: string[] = []
+    for (const s of Object.values(store.sessions)) {
+      try {
+        const state = await window.spi.getState(s.id)
+        if (!state) throw new Error('session not found')
+        const [messages, pending, dialogs] = await Promise.all([window.spi.getMessages(s.id), window.spi.getPendingMessages(s.id), window.spi.getPendingDialogs(s.id)])
+        const items = messagesToItems(messages)
+        patchSession(s.id, cur => ({ ...cur, state, streaming: state.isStreaming, pendingQueue: pending, items: state.isStreaming ? items : items.map(it => it.kind === 'assistant' ? { ...it, done: true, blocks: it.blocks.map(b => ({ ...b, done: true })) } : it) }))
+        for (const dialog of dialogs) applyEvent(s.id, dialog)
+      } catch (error) {
+        // Losing the link again is not "the host forgot this session"; the next reconnect resyncs.
+        if (DISCONNECTED.test(String(error))) break
+        if (!store.sessions[s.id]) continue
+        replaced.push(s.id)
+        removeSession(s.id)
+        const file = s.state?.sessionFile
+        if (!file) continue
+        try {
+          const id = await openSession(s.cwd, file)
+          patchSession(id, cur => cur.draft || cur.pendingImages.length ? cur : { ...cur, draft: s.draft, draftRevision: cur.draftRevision + 1, pendingImages: s.pendingImages, sendMode: s.sendMode })
+        } catch {}
+      }
+    }
+    return replaced
+  })()
+  resyncing = request
+  const clear = () => { if (resyncing === request) resyncing = null }
+  request.then(clear, clear)
+  return request
+}
+
 const openingDirectories = new Map<string, Promise<string>>()
 export function openDirectory(cwd: string): Promise<string> {
   const existing = Object.values(store.sessions).find(s => s.cwd === cwd && s.id === store.activeId)

@@ -50,7 +50,7 @@ function signalOwned(pids: Map<number, string>, signal: NodeJS.Signals): void {
 
 interface Entry {
   info: TerminalInfo
-  owner: number
+  owner: string
   started: string | null
   pty: IPty
   history: string
@@ -66,13 +66,13 @@ interface Entry {
 export class TerminalManager {
   private entries = new Map<string, Entry>()
   private cleanup = new Map<ReturnType<typeof setTimeout>, () => void>()
-  constructor(private emit: (owner: number, event: TerminalEvent) => void, private spawn: Spawn = spawnNative) {}
+  constructor(private emit: (owner: string, event: TerminalEvent) => void, private spawn: Spawn = spawnNative) {}
 
   private size(cols: number, rows: number): [number, number] {
     if (!Number.isFinite(cols) || !Number.isFinite(rows)) throw new Error('Invalid terminal size')
     return [Math.max(10, Math.min(500, Math.floor(cols))), Math.max(2, Math.min(200, Math.floor(rows)))]
   }
-  open(sessionId: string, cwd: string, owner: number, cols: number, rows: number): TerminalInfo {
+  open(sessionId: string, cwd: string, owner: string, cols: number, rows: number): TerminalInfo {
     const existing = this.entries.get(sessionId)
     if (existing) { this.owned(sessionId, existing.info.terminalId, owner); return { ...existing.info } }
     if (!statSync(cwd).isDirectory()) throw new Error('Terminal working directory does not exist')
@@ -127,19 +127,19 @@ export class TerminalManager {
     return { ...info }
   }
 
-  private owned(sessionId: string, terminalId: string, owner: number): Entry {
+  private owned(sessionId: string, terminalId: string, owner: string): Entry {
     const entry = this.entries.get(sessionId)
     if (!entry || entry.info.terminalId !== terminalId || entry.owner !== owner) throw new Error('Terminal is closed or belongs to another window')
     return entry
   }
   private snapshot(entry: Entry): TerminalSnapshot { return { ...entry.info, history: entry.history, seq: entry.seq } }
-  get(sessionId: string, owner: number): TerminalSnapshot | null {
+  get(sessionId: string, owner: string): TerminalSnapshot | null {
     const entry = this.entries.get(sessionId)
     if (!entry) return null
     this.owned(sessionId, entry.info.terminalId, owner)
     return this.snapshot(entry)
   }
-  attach(sessionId: string, terminalId: string, owner: number): TerminalSnapshot {
+  attach(sessionId: string, terminalId: string, owner: string): TerminalSnapshot {
     const entry = this.owned(sessionId, terminalId, owner)
     if (entry.timer) clearTimeout(entry.timer)
     entry.timer = undefined
@@ -151,12 +151,12 @@ export class TerminalManager {
     entry.pty.resume()
     return snapshot
   }
-  write(sessionId: string, terminalId: string, owner: number, data: string): void {
+  write(sessionId: string, terminalId: string, owner: string, data: string): void {
     const entry = this.owned(sessionId, terminalId, owner)
     if (typeof data !== 'string' || data.length > 64 * 1024) throw new Error('Invalid terminal input')
     entry.pty.write(data)
   }
-  resize(sessionId: string, terminalId: string, owner: number, cols: number, rows: number): void {
+  resize(sessionId: string, terminalId: string, owner: string, cols: number, rows: number): void {
     const entry = this.owned(sessionId, terminalId, owner)
     const [width, height] = this.size(cols, rows)
     if (entry.info.cols === width && entry.info.rows === height) return
@@ -164,7 +164,7 @@ export class TerminalManager {
     entry.info.cols = width
     entry.info.rows = height
   }
-  ack(sessionId: string, terminalId: string, owner: number, seq: number): void {
+  ack(sessionId: string, terminalId: string, owner: string, seq: number): void {
     const entry = this.owned(sessionId, terminalId, owner)
     if (!entry.waiting || entry.waiting !== seq) return
     entry.waiting = 0
@@ -191,7 +191,7 @@ export class TerminalManager {
     entry.subscriptions.forEach(s => s.dispose())
     removeRc(entry.rcDir)
   }
-  close(sessionId: string, terminalId: string, owner?: number, force = false): void {
+  close(sessionId: string, terminalId: string, owner?: string, force = false): void {
     const entry = this.entries.get(sessionId)
     if (!entry || entry.info.terminalId !== terminalId) return // late close must never kill a replacement shell
     if (owner !== undefined) this.owned(sessionId, terminalId, owner)
@@ -218,7 +218,7 @@ export class TerminalManager {
     const entry = this.entries.get(sessionId)
     if (entry) this.close(sessionId, entry.info.terminalId, undefined, force)
   }
-  closeOwner(owner: number): void {
+  closeOwner(owner: string): void {
     for (const entry of [...this.entries.values()]) if (entry.owner === owner) this.closeSession(entry.info.sessionId, true)
   }
   closeAll(): void {

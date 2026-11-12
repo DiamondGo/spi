@@ -38,6 +38,7 @@ async function testMainClose(language, confirmOnExit, answer, ownsInstance = tru
   const windows = []
   class Window extends EventEmitter {
     constructor(options) { super(); this.options = options; this.webContents = { id: 1, send() {}, on() {}, isDestroyed: () => false }; windows.push(this) }
+    isDestroyed() { return false }
     static getAllWindows() { return windows }
     static getFocusedWindow() { return windows[0] }
     setBackgroundColor(color) { this.background = color }
@@ -76,6 +77,12 @@ async function testMainClose(language, confirmOnExit, answer, ownsInstance = tru
     if (name === './pi/piManager') return { PiManager: Manager }
     if (name === './pi/yolo') return load('src/main/pi/yolo.ts')
     if (name === './pi/sessionScanner') return {}
+    if (name === './api/registry') return load('src/main/api/registry.ts')
+    if (name === './remote/protocol') return load('src/main/remote/protocol.ts')
+    if (name === './remote/backend') return { DevTunnelsBackend: class { kind = 'devtunnels' }, LoopbackBackend: class { kind = 'loopback' } }
+    if (name === './remote/identity') return { electronSecretStorage: () => ({ problem: () => 'no keyring in this test' }), loadOrCreateIdentity() { throw Error('unused') } }
+    if (name === './remote/hostService') return { RemoteHostService: class { connectedDevices = 0; resume() {} broadcast() {} sendToOwner() {} async stop() {} } }
+    if (name === './remote/clientService') return { RemoteClientService: class { async closeAll() {} } }
     return require(name)
   }
   mod._compile(compile('src/main/index.ts'), filename)

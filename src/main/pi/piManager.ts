@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto'
 import { existsSync, realpathSync } from 'fs'
 import { resolve } from 'path'
-import type { ImageRef, MessageSubmission, PiEventPayload, PiQueue, PiState, SessionHealth, SessionNameErrorCode } from '../../shared/types'
+import type { ImageRef, MessageSubmission, PiEventPayload, PiQueue, PiRecord, PiState, SessionHealth, SessionNameErrorCode } from '../../shared/types'
 import { PiSession } from './piSession'
 import { YoloPolicy } from './yolo'
 import { ExtensionUi } from './extensionUi'
@@ -499,6 +499,11 @@ export class PiManager {
     const data = (await s.sendCommand('get_messages')) as { messages: unknown[] }
     if (this.sessions.get(sessionId) !== s || s.hasExited || this.closing.has(sessionId)) throw new Error('session changed while reading history')
     return data.messages
+  }
+
+  getPendingExtensionUi(sessionId: string): PiRecord[] {
+    if (!this.sessions.has(sessionId)) throw new Error('session not found')
+    return this.extensionUi.pendingRequests(sessionId)
   }
 
   async answerExtensionUi(

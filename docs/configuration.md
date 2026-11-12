@@ -43,11 +43,11 @@ Linux desktop 0.1.2 has a boolean YOLO switch, default off per new/reopened sess
 
 The previous sPi permission modes and rule editor are removed in source. Existing `spi-permissions.json` files are retained without reads/rewrites/deletion; they do not influence the new switch. No persistent YOLO default is saved. The session scanner respects `PI_CODING_AGENT_DIR`; without it, the normal personal Pi agent directory is used.
 
-## Remote access and GitHub CLI / 远程访问与 gh（开发中）
+## Remote access and GitHub CLI / 远程访问与 gh（未发布）
 
-Remote access is in development and not part of any release. When it ships, it will **depend on the GitHub CLI (`gh`) signed in to the same GitHub account on both machines**, because Dev Tunnels rejects GitHub tokens from third-party OAuth Apps. sPi will read `gh auth token` on demand, keep it in memory only, never write it to its own files/logs, and send it only to the Dev Tunnels service. Local use never requires `gh`. [Details, risks and setup](remote-access.md).
+Remote access is implemented in the source tree but not part of any release. It **depends on the GitHub CLI (`gh`) signed in to the same GitHub account on both machines**, because Dev Tunnels rejects GitHub tokens from third-party OAuth Apps. sPi reads `gh auth token` on demand, keeps it in memory only, never writes it to its own files/logs, and sends it only to the Dev Tunnels service. Local use never requires `gh`. Pairing keys and paired devices are stored in `spi-remote-identity.json` (encrypted with the OS credential store), `spi-remote-host.json` and `spi-remote-hosts.json` in sPi's userData. [Details, usage, risks and setup](remote-access.md).
 
-远程访问仍在开发中。发布后将依赖 `gh`：两台机器都要安装并登录同一个 GitHub 账号。sPi 只在内存中临时使用 `gh auth token`，不落盘、不写日志，只发给 Dev Tunnels 服务；本地使用不需要 gh。
+远程访问已在源码中实现，尚未发布。它依赖 `gh`：两台机器都要安装并登录同一个 GitHub 账号。sPi 只在内存中临时使用 `gh auth token`，不落盘、不写日志，只发给 Dev Tunnels 服务；本地使用不需要 gh。配对密钥和设备列表保存在 sPi 用户数据目录下的 `spi-remote-identity.json`（用系统凭据存储加密）、`spi-remote-host.json` 和 `spi-remote-hosts.json` 中。
 
 ## Checks before staging or publishing / 提交与发布前检查
 

@@ -8,9 +8,10 @@ import { InputBar } from './components/InputBar'
 import { SessionTabs } from './components/SessionTabs'
 import { TitleBar } from './components/TitleBar'
 import { TerminalDock } from './components/TerminalDock'
-import { forgetTerminalSession, subscribeTerminalState } from './terminals'
+import { forgetTerminalSession, reattachTerminals, subscribeTerminalState } from './terminals'
+import { onRemoteResync, useRemoteWindow } from './remote'
 import { Icon, IconControl } from './components/IconControl'
-import { applyEvent, getStore, openDirectory, openSession, removeSession, refreshSessionCatalog, setActive, setPiPath, useStore } from './store'
+import { applyEvent, getStore, openDirectory, openSession, removeSession, refreshSessionCatalog, resyncSessions, setActive, setPiPath, useStore } from './store'
 import type { SessionMeta } from '../../shared/types'
 import { useT } from './preferences'
 import { HomeDirectory } from './homePath'
@@ -76,6 +77,11 @@ export default function App() {
       offCatalog?.()
     }
   }, [])
+
+  const remote = useRemoteWindow()
+  useEffect(() => onRemoteResync(() => {
+    void resyncSessions().then(replaced => { replaced.forEach(forgetTerminalSession); return reattachTerminals() })
+  }), [])
 
   const active = activeId ? sessions[activeId] : null
 
@@ -173,6 +179,13 @@ export default function App() {
   return (
     <HomeDirectory.Provider value={homeDir}><SessionActionsProvider><div className="app-root">
       <TitleBar sidebarOpen={sidebarOpen} onToggleSidebar={() => setSidebarOpen((o) => !o)} />
+      {remote && remote.state !== 'connected' && <div className="remote-banner" role="status" data-remote-banner={remote.state}>
+        {remote.state === 'rejected'
+          ? t(remote.reason === 'key_changed' ? '{name} 的密钥变了：可能重装过系统，也可能是攻击。只有确认可信时才重新配对。'
+            : remote.reason === 'incompatible' ? '{name} 上的 sPi 版本不兼容，请把两台电脑都更新到最新版。'
+            : '{name} 不再接受此设备（已被撤销或远程访问被重置）。请在那台电脑上生成新的配对码重新配对。', { name: remote.hostName })
+          : t('与 {name} 的连接已断开，正在重新连接…期间的操作不会执行；连上后会自动刷新。', { name: remote.hostName })}
+      </div>}
       {openError && <div className="session-error" role="alert">{openError} <button onClick={() => setOpenError('')}>{t('关闭提示')}</button></div>}
       <div className="layout">
       {sidebarOpen && (

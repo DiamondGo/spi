@@ -91,6 +91,14 @@ function fake() {
     assert.equal(m.get('a',1),null);assert.ok(m.get('b',2));m.closeSession('b');assert.equal(m.get('b',2),null)
     m.closeAll();assert.equal(m.cleanup.size,0)
   })
+  await check('local window and remote device owners are distinct string keys',()=>{
+    const emitted=[],m=new TerminalManager((owner,event)=>emitted.push(owner),()=>fake())
+    const remote='remote:0123-4567-89ab-cdef',local='local:1'
+    const a=m.open('a',tmp,remote,80,12);m.open('b',tmp,local,80,12)
+    assert.throws(()=>m.attach('a',a.terminalId,local));assert.throws(()=>m.write('a',a.terminalId,'remote:other','x'))
+    m.closeOwner(remote);assert.equal(m.get('a',remote),null);assert.ok(m.get('b',local))
+    assert.deepEqual(emitted,[remote]);m.closeAll()
+  })
   await check('native spawn failure leaves no orphan terminal entry',()=>{
     const m=new TerminalManager(()=>{},()=>{throw Error('native missing')})
     assert.throws(()=>m.open('a',tmp,1,80,12));assert.equal(m.get('a',1),null)

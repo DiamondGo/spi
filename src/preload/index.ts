@@ -88,6 +88,27 @@ const api: IpcApi = {
     const listener = (_e: unknown, id: string) => cb(id)
     ipcRenderer.on('session:closed', listener)
     return () => ipcRenderer.removeListener('session:closed', listener)
+  },
+  getPendingDialogs: id => ipcRenderer.invoke('session:pending-ui', id),
+  getRemoteStatus: () => ipcRenderer.invoke('remote:status'),
+  checkRemoteAccount: () => ipcRenderer.invoke('remote:check-account'),
+  setRemoteHostEnabled: enabled => ipcRenderer.invoke('remote:host-enable', enabled),
+  createPairingCode: () => ipcRenderer.invoke('remote:pairing-code'),
+  cancelPairingCode: () => ipcRenderer.invoke('remote:cancel-pairing'),
+  revokeRemoteDevice: id => ipcRenderer.invoke('remote:revoke', id),
+  pairRemoteHost: code => ipcRenderer.invoke('remote:pair', code),
+  connectRemoteHost: id => ipcRenderer.invoke('remote:connect', id),
+  forgetRemoteHost: id => ipcRenderer.invoke('remote:forget', id),
+  onRemoteStatusChanged: cb => {
+    const listener = (_e: unknown, status: unknown) => cb(status as never)
+    ipcRenderer.on('remote:changed', listener)
+    return () => ipcRenderer.removeListener('remote:changed', listener)
+  },
+  getRemoteWindow: () => ipcRenderer.invoke('remote:window-info'),
+  onRemoteWindowChanged: cb => {
+    const listener = (_e: unknown, info: unknown) => cb(info as never)
+    ipcRenderer.on('remote:window-changed', listener)
+    return () => ipcRenderer.removeListener('remote:window-changed', listener)
   }
 }
 

@@ -69,13 +69,49 @@ async function stop(app) {
   app.child.stderr.destroy()
   await Promise.race([new Promise(r => app.child.once('exit', r)), delay(2000)])
 }
+/** Attaches CDP to one renderer page; `page` may be an app record (first window) or a fresh object (extra windows). */
+async function connectPage(target, page = { errors: [], pending: new Map() }) {
+  const ws = page.ws = new WebSocket(target.webSocketDebuggerUrl)
+  await new Promise((resolve, reject) => { ws.onopen = resolve; ws.onerror = reject })
+  let seq = 0
+  ws.onmessage = event => {
+    const msg = JSON.parse(event.data)
+    if (msg.id) {
+      const request = page.pending.get(msg.id)
+      if (!request) return
+      page.pending.delete(msg.id)
+      msg.error ? request.reject(new Error(JSON.stringify(msg.error))) : request.resolve(msg.result)
+    } else if (msg.method === 'Runtime.exceptionThrown' || (msg.method === 'Log.entryAdded' && msg.params.entry.level === 'error')) {
+      page.errors.push(msg)
+    }
+  }
+  page.send = (method, params = {}) => new Promise((resolve, reject) => {
+    const id = ++seq
+    const timer = setTimeout(() => { page.pending.delete(id); reject(new Error('CDP timeout: ' + method)) }, 20000)
+    page.pending.set(id, {
+      resolve: v => { clearTimeout(timer); resolve(v) },
+      reject: e => { clearTimeout(timer); reject(e) }
+    })
+    ws.send(JSON.stringify({ id, method, params }))
+  })
+  page.eval = async expression => {
+    const response = await page.send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true })
+    if (response.exceptionDetails) throw new Error(JSON.stringify(response.exceptionDetails))
+    return response.result.value
+  }
+  await page.send('Runtime.enable')
+  await page.send('Log.enable')
+  return page
+}
 async function launch(options = {}) {
   const index = apps.length + 1
   const env = { ...process.env }
   delete env.ELECTRON_RUN_AS_NODE
   delete env.ELECTRON_VITE_DEV_SERVER_URL
-  if (process.argv.includes('--terminal')) env.HISTFILE = path.join(artifacts, 'terminal-shell-history')
-  if (['--yolo','--settings','--terminal','--extension-ui','--workspace-ui','--runtime-env','--session-health','--session-actions'].some(flag => process.argv.includes(flag))) {
+  if (process.argv.includes('--terminal') || process.argv.includes('--remote')) env.HISTFILE = path.join(artifacts, 'terminal-shell-history')
+  // Loopback relay only: the remote suite must never reach Dev Tunnels or read a GitHub CLI token.
+  if (process.argv.includes('--remote')) env.SPI_TEST_REMOTE = 'loopback'
+  if (['--yolo','--settings','--terminal','--extension-ui','--workspace-ui','--runtime-env','--session-health','--session-actions','--remote'].some(flag => process.argv.includes(flag))) {
     env.PI_CODING_AGENT_DIR = path.join(artifacts, 'agent')
     env.HOME = path.join(artifacts, 'home')
     env.XDG_CONFIG_HOME = path.join(artifacts, 'xdg-config')
@@ -89,7 +125,7 @@ async function launch(options = {}) {
   if (process.platform === 'linux' && process.env.SPI_TEST_VIRTUAL_DISPLAY !== '1') throw new Error('Use scripts/with-display.cjs for isolated GUI tests')
   const isolatedDisplay = process.platform === 'linux' ? ['--ozone-platform=x11', '--disable-gpu'] : []
   const child = spawn(installed || path.join(repo, 'node_modules/electron/dist', executable), [
-    ...(installed ? [] : [repo]), ...isolatedDisplay, `--user-data-dir=${profile}`, '--remote-debugging-port=0'
+    ...(installed ? [] : [repo]), ...isolatedDisplay, `--user-data-dir=${options.profile || profile}`, '--remote-debugging-port=0'
   ], { cwd: repo, env, stdio: ['ignore', 'pipe', 'pipe'] })
   const app = { child, started: startTime(child.pid), log: '', exited: false, errors: [], pending: new Map(), index }
   current = app
@@ -113,36 +149,9 @@ async function launch(options = {}) {
       return targets.find(t => t.type === 'page')
     } catch { return null }
   }, 'Electron renderer')
-  const ws = app.ws = new WebSocket(page.webSocketDebuggerUrl)
-  await new Promise((resolve, reject) => { ws.onopen = resolve; ws.onerror = reject })
-  let seq = 0
-  ws.onmessage = event => {
-    const msg = JSON.parse(event.data)
-    if (msg.id) {
-      const request = app.pending.get(msg.id)
-      if (!request) return
-      app.pending.delete(msg.id)
-      msg.error ? request.reject(new Error(JSON.stringify(msg.error))) : request.resolve(msg.result)
-    } else if (msg.method === 'Runtime.exceptionThrown' || (msg.method === 'Log.entryAdded' && msg.params.entry.level === 'error')) {
-      app.errors.push(msg)
-    }
-  }
-  app.send = (method, params = {}) => new Promise((resolve, reject) => {
-    const id = ++seq
-    const timer = setTimeout(() => { app.pending.delete(id); reject(new Error('CDP timeout: ' + method)) }, 20000)
-    app.pending.set(id, {
-      resolve: v => { clearTimeout(timer); resolve(v) },
-      reject: e => { clearTimeout(timer); reject(e) }
-    })
-    ws.send(JSON.stringify({ id, method, params }))
-  })
-  app.eval = async expression => {
-    const response = await app.send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true })
-    if (response.exceptionDetails) throw new Error(JSON.stringify(response.exceptionDetails))
-    return response.result.value
-  }
-  await app.send('Runtime.enable')
-  await app.send('Log.enable')
+  app.origin = origin
+  app.targetId = page.id
+  await connectPage(page, app)
   await waitFor(() => app.eval(options.waitForSession === false ? `!!document.querySelector('.titlebar')` : `!!document.querySelector('textarea')`), 'restored session input', 30000)
   assert.equal(await app.eval('location.protocol'), 'file:')
   const layout = await app.eval('window.spi.loadLayout()')
@@ -164,8 +173,8 @@ const text = (app, selector) => app.eval(`document.querySelector(${JSON.stringif
 
 async function main() {
   console.log('ARTIFACTS', artifacts)
-  if (process.argv.includes('--yolo') || process.argv.includes('--settings') || process.argv.includes('--terminal') || process.argv.includes('--extension-ui') || process.argv.includes('--workspace-ui') || process.argv.includes('--runtime-env') || process.argv.includes('--session-health') || process.argv.includes('--session-actions')) {
-    await require('./gui-fixture-smoke.cjs')({ launch, stop, waitFor, pass, fill, text, results, workspace, profile, repo, artifacts, descendants })
+  if (process.argv.includes('--yolo') || process.argv.includes('--settings') || process.argv.includes('--terminal') || process.argv.includes('--extension-ui') || process.argv.includes('--workspace-ui') || process.argv.includes('--runtime-env') || process.argv.includes('--session-health') || process.argv.includes('--session-actions') || process.argv.includes('--remote')) {
+    await require('./gui-fixture-smoke.cjs')({ launch, stop, waitFor, pass, fill, text, results, workspace, profile, repo, artifacts, descendants, connectPage })
     return
   }
   let app = await launch()
@@ -271,7 +280,7 @@ async function main() {
   pass('no renderer exceptions / error-level browser logs')
 }
 
-const watchdog = setTimeout(() => { console.error('SMOKE global timeout'); finish(1) }, process.argv.includes('--advanced') || process.argv.includes('--yolo') || process.argv.includes('--settings') || process.argv.includes('--terminal') || process.argv.includes('--extension-ui') || process.argv.includes('--workspace-ui') ? 300000 : 210000)
+const watchdog = setTimeout(() => { console.error('SMOKE global timeout'); finish(1) }, process.argv.includes('--advanced') || process.argv.includes('--yolo') || process.argv.includes('--settings') || process.argv.includes('--terminal') || process.argv.includes('--extension-ui') || process.argv.includes('--workspace-ui') || process.argv.includes('--remote') ? 300000 : 210000)
 let finishing = false
 async function finish(code) {
   if (finishing) return

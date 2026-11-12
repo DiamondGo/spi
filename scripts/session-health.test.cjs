@@ -228,7 +228,7 @@ async function check(name, fn) { await fn(); count++; console.log('PASS',name) }
   })
   const React=require('react'),{renderToStaticMarkup}=require('react-dom/server'),preferences={useT:()=>text=>text}
   const {SessionHealthBanner}=load('src/renderer/src/components/SessionHealthBanner.tsx',{'../store':store,'../preferences':preferences})
-  const {ChatView}=load('src/renderer/src/components/ChatView.tsx',{'../store':store,'../preferences':preferences,'../ansi':{renderAnsi:text=>text},'./DiffView':{DiffView:()=>null}})
+  const {ChatView}=load('src/renderer/src/components/ChatView.tsx',{'../store':store,'../preferences':preferences,'../ansi':{renderAnsi:text=>text},'../remote':{useRemoteReadOnly:()=>false},'../userMessageNavigation':load('src/renderer/src/userMessageNavigation.ts'),'./DiffView':{DiffView:()=>null}})
   const base={id:'render',cwd:tmp,items:[],streaming:false,submitting:false}
   const banner=patch=>renderToStaticMarkup(React.createElement(SessionHealthBanner,{session:{...base,...patch}}))
   await check('healthy sessions render no connection banner/buttons; every fault renders only one',()=>{

@@ -139,6 +139,10 @@ module.exports = async function ({ app: host, launch, stop, waitFor, pass, fill,
     await closeSettings(host); await closeSettings(client)
     await step('client pairs from settings and opens a remote window; both sides show the connection')
 
+    // Pairing briefly uses its own connection; wait for its lease to close and
+    // for the renderer's initial debounced layout save before replacing that layout.
+    await waitFor(() => remote.eval(`window.spi.getRemoteWindow().then(r=>r.access==='control')`), 'initial remote controller lease')
+    await waitFor(() => remote.eval(`window.spi.loadLayout().then(l=>Array.isArray(l.sessions))`), 'initial remote layout persisted')
     await remote.eval(`window.spi.saveLayout({viewMode:'dir',selectedDir:${JSON.stringify(workspace)},sessions:[{cwd:${JSON.stringify(workspace)}}]})`)
     await remote.eval(`setTimeout(()=>location.reload(),0)`)
     await waitFor(() => remote.eval(`!!document.querySelector('.input-bar textarea') && !!document.querySelector('.session-tab.active')`), 'remote session restored on the host', 30000)
@@ -294,6 +298,10 @@ module.exports = async function ({ app: host, launch, stop, waitFor, pass, fill,
     fs.writeFileSync(path.join(artifacts, 'remote-heaps.json'), JSON.stringify(heaps, null, 2))
     for (const [name, page] of [['host', host], ['client', client], ['remote', remote]]) {
       if (!page?.eval) continue
+      try {
+        const diagnostic = await page.eval(`(async()=>{const r=await window.spi.getRemoteWindow();return{state:r?.state,access:r?.access,readOnly:!!document.querySelector('[data-remote-read-only]'),input:!!document.querySelector('.input-bar textarea'),tabs:document.querySelectorAll('.session-tab').length,liveSessions:await window.spi.listLiveSessions().then(s=>s.length).catch(()=>null),savedSessions:await window.spi.loadLayout().then(l=>l.sessions?.length).catch(()=>null),openError:!!document.querySelector('.session-error')}})()`)
+        console.log('REMOTE FAILURE STATE', name, JSON.stringify(diagnostic))
+      } catch {}
       try { fs.writeFileSync(path.join(artifacts, `remote-failure-${name}.json`), JSON.stringify(await page.eval(`({body:document.body.innerText.slice(-8000),states:window.__remoteStates})`), null, 2)) } catch (dumpError) { fs.writeFileSync(path.join(artifacts, `remote-failure-${name}.json`), JSON.stringify({ dumpError: String(dumpError) })) }
       try { await capture(page, `remote-failure-${name}`) } catch {}
     }

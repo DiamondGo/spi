@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),os=require('node:os'),ts=require('typescript'),Module=require('node:module')
 const root=path.resolve(__dirname,'..'),tmp=fs.mkdtempSync(path.join(os.tmpdir(),'spi-workspace-unit-'))
-function load(relative,mocks={}){const file=path.join(tmp,path.basename(relative,'.ts')+'.cjs'),m=new Module(file,module);m.paths=module.paths;m.require=n=>n in mocks?mocks[n]:require(n);m._compile(ts.transpileModule(fs.readFileSync(path.join(root,relative),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,file);return m.exports}
+function load(relative,mocks={}){const file=path.join(tmp,path.basename(relative,'.ts')+'.cjs'),m=new Module(file,module);m.paths=module.paths;m.require=n=>n in mocks?mocks[n]:n==='../../shared/sessionHealth'?load('src/shared/sessionHealth.ts'):require(n);m._compile(ts.transpileModule(fs.readFileSync(path.join(root,relative),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,file);return m.exports}
 const {MessageQueue}=load('src/main/pi/messageQueue.ts'),tick=()=>new Promise(r=>setImmediate(r));let count=0
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b});return{promise,resolve,reject}}
 async function check(name,fn){await fn();count++;console.log('PASS',name)}

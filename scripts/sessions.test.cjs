@@ -14,7 +14,7 @@ function load(relative, mocks = {}) {
   const filename = path.join(tmp, path.basename(relative, '.ts') + '.cjs')
   const mod = new Module(filename, module)
   mod.paths = module.paths
-  mod.require = name => name in mocks ? mocks[name] : require(name)
+  mod.require = name => name in mocks ? mocks[name] : name === '../../shared/sessionHealth' ? load('src/shared/sessionHealth.ts') : require(name)
   mod._compile(ts.transpileModule(fs.readFileSync(path.join(root, relative), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText, filename)
   return mod.exports
 }

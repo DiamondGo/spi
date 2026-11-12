@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { SessionTarget } from '../../../shared/types'
-import { openSession, refreshSessionCatalog } from '../store'
+import { getStore, openSession, recoverSession, refreshSessionCatalog, setSessionHealthError } from '../store'
 import { usePreferences, useT } from '../preferences'
 import { ContextMenu, menuPosition, type MenuPosition } from './ContextMenu'
 
@@ -18,12 +18,27 @@ export function SessionActionsProvider({ children }: { children: ReactNode }) {
   const next = useRef(0)
   const closeMenu = useCallback(() => setMenu(null), [])
   const rename = useCallback((target: SessionActionTarget) => setDialog({ mode: 'rename', target, key: ++next.current }), [])
+  const liveId = menu?.target.sessionId
+  const live = liveId ? getStore().sessions[liveId] : undefined
+  async function checkConnection(id: string): Promise<void> {
+    setSessionHealthError(id, undefined)
+    try { await window.spi.checkSession(id) }
+    catch (error) { setSessionHealthError(id, String(error)) }
+  }
+  async function recoverConnection(id: string): Promise<void> {
+    if (!window.confirm(t('恢复将终止当前 Pi 进程并重新加载已保存的会话。草稿和待发送消息会保留，队列保持暂停，不会自动重发。外部工具可能仍在运行，请先检查。继续？'))) return
+    try { await recoverSession(id) } catch {}
+  }
   return <Context.Provider value={{ rename, menu: (event, target) => { event.preventDefault(); event.stopPropagation(); setMenu({ position: menuPosition(event), target }) } }}>
     {children}
     {menu && <ContextMenu position={menu.position} onClose={closeMenu} items={[
       { label: t('重命名会话'), action: () => rename(menu.target) },
       { label: t('AI 生成名称'), action: () => setDialog({ mode: 'rename', target: menu.target, ai: true, key: ++next.current }) },
-      { label: t('删除会话'), danger: true, disabled: !menu.target.path || menu.target.path.startsWith('open:'), action: () => setDialog({ mode: 'delete', target: menu.target, key: ++next.current }) }
+      { label: t('删除会话'), danger: true, disabled: !menu.target.path || menu.target.path.startsWith('open:'), action: () => setDialog({ mode: 'delete', target: menu.target, key: ++next.current }) },
+      ...(liveId ? [
+        { label: t('检查连接'), disabled: live?.health?.status === 'recovering', action: () => { void checkConnection(liveId) } },
+        { label: t('恢复会话'), danger: true, disabled: live?.health?.status === 'recovering' || live?.submitting, action: () => { void recoverConnection(liveId) } }
+      ] : [])
     ]} />}
     {dialog && <SessionActionDialog key={dialog.key} mode={dialog.mode} target={dialog.target} autoGenerate={dialog.ai} onClose={() => setDialog(null)} />}
   </Context.Provider>

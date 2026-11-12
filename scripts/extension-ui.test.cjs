@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),os=require('node:os'),Module=require('node:module'),ts=require('typescript')
 const root=path.resolve(__dirname,'..'),tmp=fs.mkdtempSync(path.join(os.tmpdir(),'spi-extension-ui-test-'))
-function load(relative,mocks={}){const file=path.join(tmp,path.basename(relative,'.ts')+'.cjs'),m=new Module(file,module);m.paths=module.paths;m.require=n=>n in mocks?mocks[n]:require(n);m._compile(ts.transpileModule(fs.readFileSync(path.join(root,relative),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,file);return m.exports}
+function load(relative,mocks={}){const file=path.join(tmp,path.basename(relative,'.ts')+'.cjs'),m=new Module(file,module);m.paths=module.paths;m.require=n=>n in mocks?mocks[n]:n==='../../shared/sessionHealth'?load('src/shared/sessionHealth.ts'):require(n);m._compile(ts.transpileModule(fs.readFileSync(path.join(root,relative),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,file);return m.exports}
 const ui=load('src/main/pi/extensionUi.ts'),{YoloPolicy}=load('src/main/pi/yolo.ts')
 const instances=[],managers=[];let count=0
 class FakePi {

@@ -31,6 +31,10 @@ export interface SessionHealth {
   stalled?: boolean
 }
 
+export type SessionNameErrorCode = 'not_ready' | 'no_model' | 'unsupported' | 'busy' | 'empty_history'
+  | 'timeout' | 'cancelled' | 'auth' | 'rate_limit' | 'context_limit' | 'request_options'
+  | 'model_unavailable' | 'network' | 'output_limit' | 'empty_response' | 'provider_error'
+
 export interface SessionTarget { sessionId?: string; path?: string }
 export interface SessionCatalogChange { path?: string; name?: string }
 

@@ -5,9 +5,21 @@ module.exports=async function(context){
   const legacy=path.join(profile,'spi-permissions.json');fs.writeFileSync(legacy,'{intentionally invalid legacy configuration')
   const configFiles=[path.join(os.homedir(),'.pi/agent/settings.json'),path.join(workspace,'.pi/settings.json'),legacy]
   const hashes=()=>configFiles.map(f=>[f,fs.existsSync(f)?createHash('sha256').update(fs.readFileSync(f)).digest('hex'):null]),before=hashes(),errors=[]
+  const namingRequests=[]
   const server=http.createServer(async(req,res)=>{try{
     let raw='';for await(const chunk of req)raw+=chunk
-    const body=JSON.parse(raw),last=body.messages.at(-1),chunks=[]
+    const body=JSON.parse(raw)
+    if(req.url?.endsWith('/responses')){
+      namingRequests.push({model:body.model,reasoning:body.reasoning?.effort,maxTokens:body.max_output_tokens,tools:body.tools?.length||0})
+      if(!raw.includes('SPI_SESSION_TITLE')||body.model==='fixture-reasoning-reject'||body.reasoning?.effort!=='low'||body.max_output_tokens<2048){
+        res.writeHead(400,{'Content-Type':'application/json'});res.end(JSON.stringify({error:{message:'Unsupported reasoning title request PRIVATE_PROVIDER_RESPONSE',type:'invalid_request_error',param:'reasoning',code:'unsupported_value'}}));return
+      }
+      const item={type:'message',id:'msg_title_fixture',status:'completed',role:'assistant',content:[{type:'output_text',text:'推理模型会话标题',annotations:[]}]}
+      const response={id:'resp_title_fixture',object:'response',created_at:1,model:body.model,status:'completed',output:[item],usage:{input_tokens:1,output_tokens:10,total_tokens:11,input_tokens_details:{cached_tokens:0},output_tokens_details:{reasoning_tokens:0}}}
+      const events=[{type:'response.created',response:{...response,status:'in_progress',output:[]}},{type:'response.output_item.added',output_index:0,item:{...item,status:'in_progress',content:[]}},{type:'response.output_text.delta',item_id:item.id,output_index:0,content_index:0,delta:'推理模型会话标题'},{type:'response.output_item.done',output_index:0,item},{type:'response.completed',response}]
+      res.writeHead(200,{'Content-Type':'text/event-stream'});events.forEach((event,index)=>res.write('event: '+event.type+'\ndata: '+JSON.stringify({...event,sequence_number:index+1})+'\n\n'));res.end();return
+    }
+    const last=body.messages.at(-1),chunks=[]
     // A private stalled-network fixture: killing Pi closes this request; no external tool is launched.
     if(process.argv.includes('--session-health') && last.role==='user' && JSON.stringify(last.content).includes('SPI_HEALTH_HANG')) return
     if(raw.includes('SPI_SESSION_TITLE')){
@@ -20,7 +32,7 @@ module.exports=async function(context){
   }catch(error){errors.push(error.message);res.writeHead(500);res.end('{}')}})
   await new Promise(r=>server.listen(0,'127.0.0.1',r))
   const provider=path.join(artifacts,'provider.mjs')
-  fs.writeFileSync(provider,`export default function(pi){pi.registerCommand('spi-title',{description:'isolated title fixture',handler:async args=>pi.setSessionName(args)});pi.registerProvider('spi-test',{api:'openai-completions',baseUrl:'http://127.0.0.1:${server.address().port}/v1',apiKey:'local-fixture',models:[{id:'fixture',name:'sPi deterministic test',reasoning:false,input:['text'],contextWindow:32768,maxTokens:1024,cost:{input:0,output:0,cacheRead:0,cacheWrite:0}}]})}`)
+  fs.writeFileSync(provider,`export default function(pi){pi.registerCommand('spi-title',{description:'isolated title fixture',handler:async args=>pi.setSessionName(args)});pi.registerProvider('spi-test',{api:'openai-completions',baseUrl:'http://127.0.0.1:${server.address().port}/v1',apiKey:'local-fixture',models:[{id:'fixture',name:'sPi deterministic test',reasoning:false,input:['text'],contextWindow:32768,maxTokens:1024,cost:{input:0,output:0,cacheRead:0,cacheWrite:0}},...['fixture-reasoning','fixture-reasoning-reject'].map(id=>({id,name:id,api:'openai-responses',reasoning:true,input:['text'],contextWindow:32768,maxTokens:8192,cost:{input:0,output:0,cacheRead:0,cacheWrite:0}}))]})}`)
   const approvals=path.join(artifacts,'approval-fixture.mjs')
   fs.writeFileSync(approvals,`export default function(pi){let policy='ask';pi.registerCommand('fixture-policy',{description:'isolated Pi policy fixture',handler:async(args,ctx)=>{if(['ask','bypass','deny'].includes(args.trim()))policy=args.trim();ctx.ui.notify('SPI_POLICY:'+policy,'info')}});pi.on('tool_call',async(event,ctx)=>{
     const command=String(event.input.command||'');let title,options=['Allow','Allow always (this project)','Allow always (global)','Block'];
@@ -51,7 +63,7 @@ module.exports=async function(context){
   try{
     app=await launch(launchOptions)
     const suite=process.argv.includes('--session-actions')?'session-actions-smoke.cjs':process.argv.includes('--session-health')?'session-health-smoke.cjs':process.argv.includes('--runtime-env')?'runtime-env-smoke.cjs':process.argv.includes('--terminal')?'terminal-smoke.cjs':process.argv.includes('--settings')?'settings-smoke.cjs':process.argv.includes('--extension-ui')?'extension-ui-smoke.cjs':process.argv.includes('--workspace-ui')?'workspace-ui-smoke.cjs':'yolo-smoke.cjs'
-    await require('./'+suite)({...context,app,hashes,before,launchOptions})
+    await require('./'+suite)({...context,app,hashes,before,launchOptions,namingRequests})
     assert.deepEqual(hashes(),before);assert.deepEqual(errors,[])
   }catch(error){if(app&&!app.exited){try{fs.writeFileSync(path.join(artifacts,'gui-failure.json'),JSON.stringify(await app.eval('(async()=>({yolo:await window.spi.getYoloState(),events:window.__smokeEvents,body:document.body.innerText}))()')))}catch{}}throw error}
   finally{await stop(app);server.closeAllConnections();await new Promise(r=>server.close(r))}

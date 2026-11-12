@@ -33,7 +33,7 @@ export function SessionTabs({ onActivate }: Props) {
               onActivate?.(id)
             }}
           >
-            <span className={`state-dot ${s.health && (s.health.status !== 'healthy' || s.health.stalled) ? 'warning' : s.streaming ? 'running' : ''}`} />
+            <span className={`state-dot ${s.health && (s.health.status !== 'healthy' || s.health.stalled) ? 'warning' : s.streaming ? 'running' : ''}`} title={s.health?.stalled ? t('Pi RPC 正常，但任务已超过两分钟没有新事件。可能在等待网络或工具；不会自动重启。') : undefined} />
             <span className="session-tab-label" onDoubleClick={event => { event.stopPropagation(); actions.rename(target) }}>{label}</span>
             <button
               className="session-tab-close"

@@ -362,7 +362,10 @@ body,
 }
 .session-health.warning { color: var(--fg, #ddd); border-left: 3px solid var(--accent, #c88a23); }
 .session-health-actions { display: flex; gap: 6px; margin-left: auto; }
-.session-health .session-error { flex-basis: 100%; padding: 2px 0; }
+.session-health-error { flex-basis: 100%; padding: 2px 0; }
+.session-error-notice { flex-shrink: 0; display: flex; align-items: center; gap: 12px; }
+.session-error-notice > div { flex: 1; overflow-wrap: anywhere; }
+.session-error-notice button { flex-shrink: 0; }
 
 .session-error {
   padding: 6px 12px;

@@ -3,8 +3,8 @@ const fs = require('node:fs'), os = require('node:os'), path = require('node:pat
 const root = path.resolve(__dirname, '..'), tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'spi-health-'))
 function load(relative, mocks = {}) {
   const file = path.join(tmp, path.basename(relative, '.ts') + '.cjs'), mod = new Module(file, module)
-  mod.paths = module.paths; mod.require = name => name in mocks ? mocks[name] : require(name)
-  mod._compile(ts.transpileModule(fs.readFileSync(path.join(root, relative), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText, file)
+  mod.paths = module.paths; mod.require = name => name in mocks ? mocks[name] : name === '../../shared/sessionHealth' ? load('src/shared/sessionHealth.ts') : require(name)
+  mod._compile(ts.transpileModule(fs.readFileSync(path.join(root, relative), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } }).outputText, file)
   return mod.exports
 }
 function deferred() { let resolve, reject; const promise = new Promise((a,b) => { resolve=a; reject=b }); return {promise,resolve,reject} }
@@ -79,6 +79,38 @@ async function check(name, fn) { await fn(); count++; console.log('PASS',name) }
     assert.equal((await manager.checkSession(id)).status,'healthy'); await tick()
     assert.ok(!pi.commands.includes('prompt')); assert.equal(manager.getPendingMessages(id).items[0].text,'keep')
     manager.resumePendingMessages(id); await tick(); assert.equal(pi.commands.filter(x=>x==='prompt').length,1)
+  })
+  await check('fresh work clears stale transport alerts but never resumes queued work or approval holds',async()=>{
+    const {manager,id,pi,events,yolo}=await setup();yolo.setEnabled(id,true)
+    pi.state.isStreaming=true;pi.onEvent({type:'agent_start'});manager.submitMessage(id,{clientId:'paused',text:'keep'});await tick()
+    pi.probe=()=>Promise.reject(new Error('timeout'));await manager.checkSession(id)
+    const n=pi.commands.length
+    pi.onEvent({type:'message_update',assistantMessageEvent:{type:'text_delta',delta:'working'}})
+    assert.equal(events.filter(e=>e.event.type==='spi_session_health').at(-1).event.health.status,'healthy')
+    assert.equal(pi.commands.length,n);assert.equal(manager.getPendingMessages(id).paused,true);assert.equal(manager.getPendingMessages(id).items[0].text,'keep')
+    assert.equal(yolo.canAutoAllowExtension(id),false)
+  })
+  await check('a late probe failure cannot overwrite more recent agent output or pause a live task',async()=>{
+    const {manager,id,pi,events,yolo}=await setup();yolo.setEnabled(id,true);pi.onEvent({type:'agent_start'})
+    const gate=deferred();pi.probe=()=>gate.promise
+    const request=manager.checkSession(id)
+    pi.onEvent({type:'tool_execution_update',toolCallId:'tool',partialResult:{content:[]}})
+    gate.reject(new Error('old timeout'));assert.equal((await request).status,'healthy')
+    assert.ok(!events.some(e=>e.event.health?.status==='unresponsive'));assert.equal(manager.getPendingMessages(id).paused,false);assert.equal(yolo.canAutoAllowExtension(id),true)
+  })
+  await check('private notifications are not working-state evidence and late exited events cannot revive a tab',async()=>{
+    const {manager,id,pi,events}=await setup();pi.probe=()=>Promise.reject(new Error('timeout'));await manager.checkSession(id)
+    pi.onEvent({type:'extension_ui_request',method:'notify',message:'ordinary notification'})
+    assert.equal(events.filter(e=>e.event.type==='spi_session_health').at(-1).event.health.status,'unresponsive')
+    pi.exit();const n=events.length;pi.onEvent({type:'agent_start'});assert.equal(events.length,n)
+    assert.equal((await manager.checkSession(id)).status,'exited')
+  })
+  await check('stdout activity cannot declare a closed RPC input stream healthy',async()=>{
+    const {manager,id,pi,events}=await setup();pi.probe=()=>Promise.reject(new Error('pipe unavailable'));await manager.checkSession(id)
+    pi.child.stdin.writable=false
+    pi.onEvent({type:'message_update',assistantMessageEvent:{type:'text_delta',delta:'old task output'}})
+    assert.equal(events.filter(e=>e.event.type==='spi_session_health').at(-1).event.health.status,'unresponsive')
+    assert.equal((await manager.checkSession(id)).status,'unresponsive')
   })
   await check('an idle send RPC failure triggers one diagnostic check and preserves the unsent message',async()=>{
     const {manager,id,pi,events}=await setup();pi.probe=()=>Promise.reject(new Error('RPC unavailable'))
@@ -164,6 +196,54 @@ async function check(name, fn) { await fn(); count++; console.log('PASS',name) }
     const s=store.getStore().sessions.ui; assert.equal(s.streaming,false); assert.equal(s.draft,'draft'); assert.equal(s.pendingImages.length,1); assert.equal(s.items[0].text,'restored')
     store.applyEvent('ui',{type:'message_end',message:{role:'assistant',stopReason:'error',errorMessage:'network unavailable'}})
     assert.equal(store.getStore().sessions.ui.error,'network unavailable')
+  })
+  await check('renderer progress clears old health/stalled/action errors without accumulating notices',async()=>{
+    store.addSession('progress',tmp,{isStreaming:true});store.setDraft('progress','keep draft')
+    for(let n=0;n<8;n++)store.applyEvent('progress',{type:'spi_session_health',health:{status:'unresponsive',checkedAt:n}})
+    assert.equal(store.getStore().sessions.progress.items.length,0)
+    store.setSessionHealthError('progress','old check failure')
+    assert.doesNotThrow(()=>store.applyEvent('progress',{type:'message_update',assistantMessageEvent:{type:'text_delta',delta:'resumed'}}))
+    assert.equal(store.getStore().sessions.progress.health.status,'unresponsive') // Only the owner can confirm its input pipe is usable.
+    store.applyEvent('progress',{type:'spi_session_health',health:{status:'healthy',checkedAt:9}})
+    let s=store.getStore().sessions.progress;assert.equal(s.health.status,'healthy');assert.equal(s.healthError,undefined);assert.equal(s.draft,'keep draft')
+    store.applyEvent('progress',{type:'spi_session_health',health:{status:'healthy',checkedAt:9,stalled:true}})
+    store.applyEvent('progress',{type:'tool_execution_start',toolCallId:'t',toolName:'read',args:{}})
+    assert.equal(store.getStore().sessions.progress.health.stalled,undefined)
+    store.applyEvent('progress',{type:'spi_session_health',health:{status:'recovering',checkedAt:10}})
+    store.applyEvent('progress',{type:'agent_start'});assert.equal(store.getStore().sessions.progress.health.status,'recovering')
+    store.applyEvent('progress',{type:'spi_session_health',health:{status:'exited',checkedAt:11}})
+    store.applyEvent('progress',{type:'agent_settled'});assert.equal(store.getStore().sessions.progress.health.status,'exited')
+  })
+  await check('successful model output clears only a prior model failure, not unrelated operation errors',async()=>{
+    store.addSession('model',tmp,{isStreaming:true})
+    store.applyEvent('model',{type:'message_end',message:{role:'assistant',stopReason:'error',errorMessage:'old model failure'}})
+    store.applyEvent('model',{type:'message_start',message:{role:'assistant',content:[]}})
+    store.applyEvent('model',{type:'message_update',assistantMessageEvent:{type:'text_delta',delta:'success'}})
+    assert.equal(store.getStore().sessions.model.error,undefined)
+    store.setSessionError('model','settings failure')
+    store.applyEvent('model',{type:'message_update',assistantMessageEvent:{type:'thinking_delta',delta:'working'}})
+    assert.equal(store.getStore().sessions.model.error,'settings failure')
+    store.setSessionError('model','retry failure','model');store.applyEvent('model',{type:'auto_retry_end',success:true})
+    assert.equal(store.getStore().sessions.model.error,undefined)
+  })
+  const React=require('react'),{renderToStaticMarkup}=require('react-dom/server'),preferences={useT:()=>text=>text}
+  const {SessionHealthBanner}=load('src/renderer/src/components/SessionHealthBanner.tsx',{'../store':store,'../preferences':preferences})
+  const {ChatView}=load('src/renderer/src/components/ChatView.tsx',{'../store':store,'../preferences':preferences,'../ansi':{renderAnsi:text=>text},'./DiffView':{DiffView:()=>null}})
+  const base={id:'render',cwd:tmp,items:[],streaming:false,submitting:false}
+  const banner=patch=>renderToStaticMarkup(React.createElement(SessionHealthBanner,{session:{...base,...patch}}))
+  await check('healthy sessions render no connection banner/buttons; every fault renders only one',()=>{
+    assert.equal(banner({}),'');assert.equal(banner({health:{status:'healthy',checkedAt:1}}),'')
+    for(const status of ['unresponsive','exited','recovering'])assert.equal((banner({health:{status,checkedAt:2}}).match(/class="session-health warning"/g)||[]).length,1)
+    assert.equal(banner({health:{status:'healthy',stalled:true,checkedAt:2}}),'')
+    const html=banner({health:{status:'healthy',checkedAt:3},healthError:'check action failed'})
+    assert.ok(!html.includes('检查连接'));assert.ok(!html.includes('恢复会话'));assert.ok(html.includes('check action failed'))
+  })
+  await check('ordinary errors display once, without recovery controls or duplicate empty-chat errors',()=>{
+    const session={...base,error:'ONE_MODEL_ERROR',health:{status:'healthy',checkedAt:1}}
+    const html=renderToStaticMarkup(React.createElement(React.Fragment,null,React.createElement(SessionHealthBanner,{session}),React.createElement(ChatView,{session})))
+    assert.equal((html.match(/ONE_MODEL_ERROR/g)||[]).length,1);assert.ok(!html.includes('检查连接'));assert.ok(!html.includes('恢复会话'))
+    const duplicate=banner({health:{status:'unresponsive',checkedAt:2},error:'SAME_ERROR',healthError:'SAME_ERROR'})
+    assert.equal((duplicate.match(/SAME_ERROR/g)||[]).length,1)
   })
   console.log(`RESULT PASS ${count} session health/recovery checks`)
 } finally {for(const manager of managers)manager.closeAll();fs.rmSync(tmp,{recursive:true,force:true})} })().catch(error=>{console.error(error);process.exitCode=1})

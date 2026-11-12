@@ -2,6 +2,16 @@
 
 **Included in published Linux desktop/npm 0.1.5.** npm latest is 0.1.5. Existing v0.1.4 archives remain unchanged. [Release notes](releases/0.1.5.md).
 
+## Unreleased AI naming compatibility fix / 尚未发布的 AI 命名修复
+
+The source now uses Pi's provider-neutral `modelRegistry.streamSimple(...).result()` for naming, with low reasoning effort, a requested 4096-token output budget clipped to the model's configured limit, and no automatic retries. Pi's adapter handles provider-specific thinking-budget accounting. This avoids the raw `complete()` path's implicit `reasoning: none` on Responses models that reject that effort and gives reasoning output room. An older registry with only `complete()` gets an explicit low-effort physical-model fallback rather than silently changing provider/model.
+
+The private bridge returns allowlisted error categories for busy/empty history, unsupported Pi APIs, authentication, rate/context limits, rejected request options, network errors, timeout and empty/thinking-only output. Raw provider bodies/URLs/credentials are never forwarded. A hard abort race settles the request even when a provider ignores its signal; late output is not applied.
+
+The failure was reproduced against the locally selected reasoning-model configuration using a synthetic conversation, not real chat history: the old path returned HTTP 400 indicating incompatible reasoning; the new path returned a text title. Deterministic tests now include a real Pi/Electron Responses endpoint that rejects the old effort/budget, plus safe error display and no chat/name mutation.
+
+**These source fixes are not part of the immutable published 0.1.5 artifacts.** Reinstalling 0.1.5 does not obtain them. Build/restart the updated source or wait for a separately authorized new release.
+
 ## Terminal / 终端
 
 - The composer terminal button now toggles **show / hide**. Hiding keeps the same PTY, shell variables, jobs, terminal output and selection; showing it does not start another shell. Each session remembers its own visibility while the app stays open.
@@ -35,9 +45,10 @@ A missing/corrupt state falls back safely. Removed or smaller monitors cause bou
 ## Verification
 
 - `npm run test:workspace-actions`: native/offline names, latest metadata after 2 MiB, path/header/name validation, AI naming single-flight/ownership, deletion ordering and failed-trash recovery, terminal toggling, multi-display bounds and maximized/minimized persistence.
-- `npm run test:yolo`: private bridge safety plus text-only/no-tool AI title generation.
+- `npm run test:yolo`: private bridge safety plus text-only/no-tool AI title generation and the focused naming suite below.
+- `npm run test:ai-naming`: provider-neutral reasoning/cap compatibility, legacy fallback, private input exclusion, allowlisted failure categories, hard deadline/shutdown with an uncooperative provider, late-result suppression and malformed-command rejection.
 - `npm run test:settings`: main-process startup applies saved bounds and maximizes before showing the window.
-- `npm run test:session-actions-smoke`: actual Electron/Pi/loopback-model naming, list/tab synchronization, offline rename, AI preview/no chat pollution, terminal toggling, confirmation/cancellation/trash and real X11 position/size restoration after restart.
+- `npm run test:session-actions-smoke`: actual Electron/Pi/loopback-model naming (Completions plus reasoning Responses API), safe provider rejection, list/tab synchronization, offline rename, AI preview/no chat pollution, terminal toggling, confirmation/cancellation/trash and real X11 position/size restoration after restart.
 - `npm run test:terminal-smoke`: actual shell state/output while hidden and Copy/Paste/Select all/Hide context-menu interaction, plus existing PTY isolation, resize, keyboard and cleanup checks.
 
 GUI tests run on a private display with private HOME/XDG/agent/profile/workspace/trash/clipboard data; they do not manipulate the user's desktop, real conversation history or credentials.

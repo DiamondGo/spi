@@ -30,7 +30,6 @@ export function ChatView({ session }: Props) {
       <div className="chat-messages">
         <div className="placeholder">
           {t('会话已就绪（{cwd}）。输入消息开始对话。', { cwd: session.cwd })}
-          {session.error && <div className="session-error">{session.error}</div>}
         </div>
       </div>
     )

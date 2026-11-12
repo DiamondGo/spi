@@ -2,7 +2,16 @@
 
 **Included in published Linux desktop/npm 0.1.5.** npm latest is 0.1.5. Existing v0.1.4 archives do not contain this feature. [Release notes](releases/0.1.5.md).
 
-## 使用方式
+## 尚未发布的提示清理修复 / Unreleased alert cleanup
+
+- 正常空闲、运行中或已恢复的会话不再渲染顶部连接横幅或 Check/Recover 按钮；只有未响应、进程退出或恢复中才显示一处当前连接提示。RPC 正常但任务长时间无事件时只保留标签状态点和悬停说明，不显示连接恢复工具条。手动检查/恢复仍可从已打开会话的右键菜单进入。
+- 新的 Pi 工作事件会同时清除主进程和界面的过期未响应/停滞状态，不需要新的后台轮询；正常 RPC 状态响应也能清除旧的未响应判定。晚到的旧探测失败不能再覆盖已经恢复的活动状态或暂停正在工作的任务。
+- 模型错误与连接操作错误分开。普通错误只显示一个可关闭的提示，不再重复出现在空聊天占位区，也不显示连接恢复按钮；后续正常模型输出会清除旧模型错误，不会清除无关操作错误。
+- 提示清理不会自动重发、继续已暂停的队列或解除 Stop/审批 hold；退出/恢复中的进程也不会被旧输出错误复活。
+
+**上述修复仅在当前源码，尚未包含在不可变的 0.1.5 发布包中。** 更新源码构建并重启，或等待另行授权的新版本发布；重新安装 0.1.5 不会取得修复。
+
+## 使用方式（0.1.5 原始发布行为）
 
 会话顶部显示最近一次本地 Pi RPC 状态，提供 **检查连接** 和 **恢复会话**。采用按需检查，**没有后台定时轮询，也不会因窗口聚焦或网络恢复而探测**。异常标签显示橙色状态点。
 
@@ -35,7 +44,7 @@
 
 ## Verification
 
-- `npm run test:session-health`: no background health timers, on-demand send-failure diagnosis, single-flight probes/recovery, send-triggered missed-settlement calibration, timeout/exit retention, paused queues, old acknowledgement/probe races, failed and late-exiting replacements, missing session files, long-tool warnings and renderer draft/image/history preservation.
+- `npm run test:session-health`: no background health timers, on-demand send-failure diagnosis, single-flight probes/recovery, healthy/failed/recovered banner rendering, progress-driven stale-alert cleanup, late-probe failure protection, single-copy errors and send-triggered missed-settlement calibration, timeout/exit retention, paused queues, old acknowledgement/probe races, failed and late-exiting replacements, missing session files, long-tool warnings and renderer draft/image/history preservation.
 - `npm run test:launch`: process startup diagnostics, dead/broken input streams, asynchronous EPIPE and waiting for actual termination.
-- `npm run test:session-health-smoke`: real Electron + Pi on a private Xvfb display, isolated HOME/XDG/agent/profile/workspace and a deterministic loopback model. It holds a model request, stops only an owned Pi with SIGSTOP, verifies that waiting past the old 15-second interval does not trigger any health probe, submits a message to trigger the timeout warning, recovers through the GUI, verifies retained history/draft/outbox and continued use, then exercises another recovery after SIGKILL. No real authentication/model endpoint or user desktop is used.
+- `npm run test:session-health-smoke`: real Electron + Pi on a private Xvfb display, isolated HOME/XDG/agent/profile/workspace and a deterministic loopback model. It holds a model request, stops only an owned Pi with SIGSTOP, verifies that waiting past the old 15-second interval does not trigger any health probe, submits a message to trigger a single timeout warning, confirms healthy sessions have no banner at two English desktop viewport sizes, resumes RPC work to clear the warning without unpausing messages, then recovers through the GUI, verifies retained history/draft/outbox and continued use, then exercises another recovery after SIGKILL. No real authentication/model endpoint or user desktop is used.
 - `npm run test:workspace-ui-smoke`: existing eight GUI workspace/outbox checks remain passing with the health banner present.

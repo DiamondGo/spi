@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import type { ImageRef, PendingMessagesSnapshot, PiState, SessionHealth, SessionCatalogChange } from '../../shared/types'
 import type { TextParams } from '../../shared/i18n'
+import { isSessionProgressEvent } from '../../shared/sessionHealth'
 
 // ---- 展示项 ----
 
@@ -56,6 +57,8 @@ export interface SessionUI {
   sendMode: SendMode
   pendingImages: ImageRef[]
   error?: string
+  errorKind?: 'model'
+  healthError?: string
   health?: SessionHealth
 }
 
@@ -195,7 +198,7 @@ export function submitDraft(id: string, imageLabel: string): Promise<void> {
   const nonce = reuse ? previous.id : crypto.randomUUID()
   const body = reuse ? previous.body : text.trim() || imageLabel
   nonces.set(id, { text, images, priority, id: nonce, body })
-  patchSession(id, s => ({ ...s, submitting: true, error: undefined }))
+  patchSession(id, s => ({ ...s, submitting: true, error: undefined, errorKind: undefined }))
   const request = (async () => window.spi.submitMessage(id, { clientId: nonce, text: body, images, priority }))().then(() => {
     const sent = new Set(images)
     patchSession(id, s => ({ ...s, draft: s.draftRevision === draftRevision ? '' : s.draft, draftRevision: s.draftRevision + 1, pendingImages: s.pendingImages.filter(image => !sent.has(image)) }))
@@ -237,17 +240,22 @@ const recoveries = new Map<string, Promise<void>>()
 export function recoverSession(id: string): Promise<void> {
   const pending = recoveries.get(id)
   if (pending) return pending
+  setSessionHealthError(id, undefined)
   const request = window.spi.recoverSession(id).then(() => {
     // The backend publishes history + state in one ordered event; do not overwrite newer events with an IPC reply.
     nonces.delete(id)
     setSessionError(id, undefined)
-  }).catch(error => { setSessionError(id, String(error)); throw error }).finally(() => { recoveries.delete(id) })
+  }).catch(error => { setSessionHealthError(id, String(error)); throw error }).finally(() => { recoveries.delete(id) })
   recoveries.set(id, request)
   return request
 }
 
-export function setSessionError(id: string, error: string | undefined): void {
-  patchSession(id, (s) => ({ ...s, error }))
+export function setSessionError(id: string, error: string | undefined, errorKind?: 'model'): void {
+  patchSession(id, (s) => ({ ...s, error, errorKind: error ? errorKind : undefined }))
+}
+
+export function setSessionHealthError(id: string, healthError: string | undefined): void {
+  patchSession(id, s => ({ ...s, healthError }))
 }
 
 export function setStreaming(id: string, streaming: boolean): void {
@@ -346,6 +354,20 @@ interface StreamEvent {
 
 export function applyEvent(id: string, event: Record<string, unknown>): void {
   const t = event.type
+  const current = store.sessions[id]
+  if (current && isSessionProgressEvent(event) && (!current.health || current.health.status === 'healthy')) {
+    const delta = event.assistantMessageEvent as StreamEvent | undefined
+    const message = event.message as AgentMsg | undefined
+    const modelResponded = (t === 'message_update' && ['text_delta', 'text_end', 'thinking_delta', 'thinking_end', 'toolcall_start', 'toolcall_delta', 'toolcall_end'].includes(String(delta?.type)))
+      || t === 'tool_execution_start' || (t === 'auto_retry_end' && event.success === true)
+      || (t === 'message_end' && message?.role === 'assistant' && ['stop', 'toolUse', 'length'].includes(String(message.stopReason)))
+    const heal = current.health?.stalled
+    const clearModelError = current.errorKind === 'model' && modelResponded
+    if (heal || current.healthError || clearModelError) patchSession(id, s => ({
+      ...s, health: heal ? { status: 'healthy', checkedAt: Date.now() } : s.health, healthError: undefined,
+      ...(clearModelError ? { error: undefined, errorKind: undefined } : {})
+    }))
+  }
 
   if (t === 'spi_session_health') {
     const health = event.health as SessionHealth
@@ -355,7 +377,7 @@ export function applyEvent(id: string, event: Record<string, unknown>): void {
       const resync = !!messages && (s.streaming || (s.health && s.health.status !== 'healthy'))
       const items = resync ? messagesToItems(messages!) : s.items
       return {
-        ...s, health, state: state ?? s.state,
+        ...s, health, healthError: health.status === 'healthy' ? undefined : s.healthError, state: state ?? s.state,
         streaming: state ? state.isStreaming : health.status === 'exited' || health.status === 'recovering' ? false : s.streaming,
         items: (state && !state.isStreaming) || health.status === 'exited' || health.status === 'recovering'
           ? items.map(it => it.kind === 'assistant' ? { ...it, done: true, blocks: it.blocks.map(b => ({ ...b, done: true })) } : it) : items
@@ -385,7 +407,7 @@ export function applyEvent(id: string, event: Record<string, unknown>): void {
     const msg = event.message as AgentMsg | undefined
     if (!msg) return
     if (t === 'message_end' && msg.role === 'assistant' && msg.stopReason === 'error') {
-      setSessionError(id, msg.errorMessage || 'Model request failed; check the network and try again')
+      setSessionError(id, msg.errorMessage || 'Model request failed; check the network and try again', 'model')
     }
     if (msg.role === 'user' && t === 'message_start') {
       const text = extractText(msg.content)
@@ -406,7 +428,7 @@ export function applyEvent(id: string, event: Record<string, unknown>): void {
       const items = [...s.items]
       const ai = items.length - 1
       const item = items[ai]
-      if (item.kind !== 'assistant') return s
+      if (!item || item.kind !== 'assistant') return s
       const blocks = [...item.blocks]
       const last = blocks[blocks.length - 1]
 

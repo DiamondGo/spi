@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { recoverSession, setSessionError, type SessionUI } from '../store'
+import { recoverSession, setSessionError, setSessionHealthError, type SessionUI } from '../store'
 import { useT } from '../preferences'
 
 export function SessionHealthBanner({ session }: { session: SessionUI }) {
@@ -8,11 +8,14 @@ export function SessionHealthBanner({ session }: { session: SessionUI }) {
   const [recovering, setRecovering] = useState(false)
   const status = session.health?.status ?? 'healthy'
   const busy = recovering || status === 'recovering'
-  const warning = status !== 'healthy' || session.health?.stalled
+  const warning = status !== 'healthy'
+  const showHealth = warning || busy
+  const notices = [...new Set([session.error, !showHealth ? session.healthError : undefined].filter((message): message is string => !!message))]
+    .filter(message => !showHealth || message !== session.healthError)
   async function check(): Promise<void> {
     setChecking(true)
     try { await window.spi.checkSession(session.id) }
-    catch (error) { setSessionError(session.id, String(error)) }
+    catch (error) { setSessionHealthError(session.id, String(error)) }
     finally { setChecking(false) }
   }
   async function recover(): Promise<void> {
@@ -21,17 +24,22 @@ export function SessionHealthBanner({ session }: { session: SessionUI }) {
     try { await recoverSession(session.id) } catch {}
     finally { setRecovering(false) }
   }
-  const label = status === 'recovering' ? '正在恢复会话…'
+  if (!showHealth && !notices.length) return null
+  const label = busy ? '正在恢复会话…'
     : status === 'exited' ? 'Pi 进程已退出，可恢复原会话。'
-      : status === 'unresponsive' ? 'Pi RPC 未响应，待发送队列已暂停。请检查或恢复会话。'
-        : session.health?.stalled ? 'Pi RPC 正常，但任务已超过两分钟没有新事件。可能在等待网络或工具；不会自动重启。'
-          : 'Pi RPC 正常（按需检查）'
-  return <div className={`session-health${warning ? ' warning' : ''}`}>
-    <div role={warning ? 'alert' : 'status'}>{t(label)}</div>
-    <div className="session-health-actions">
-      <button type="button" disabled={checking || busy} onClick={() => void check()}>{t(checking ? '检查中…' : '检查连接')}</button>
-      <button type="button" disabled={busy || session.submitting} onClick={() => void recover()}>{t(busy ? '正在恢复会话…' : '恢复会话')}</button>
-    </div>
-    {session.error && <div role="alert" className="session-error">{session.error}</div>}
-  </div>
+      : 'Pi RPC 未响应，待发送队列已暂停。请检查或恢复会话。'
+  return <>
+    {showHealth && <div className="session-health warning" role={busy ? 'status' : 'alert'}>
+      <div>{t(label)}</div>
+      <div className="session-health-actions">
+        <button type="button" disabled={checking || busy} onClick={() => void check()}>{t(checking ? '检查中…' : '检查连接')}</button>
+        <button type="button" disabled={busy || session.submitting} onClick={() => void recover()}>{t(busy ? '正在恢复会话…' : '恢复会话')}</button>
+      </div>
+      {session.healthError && <div className="session-health-error">{session.healthError}</div>}
+    </div>}
+    {notices.length > 0 && <div className="session-error session-error-notice" role="alert">
+      <div>{notices.map(message => <div key={message}>{message}</div>)}</div>
+      <button type="button" aria-label={t('关闭提示')} onClick={() => { setSessionError(session.id, undefined); if (!showHealth) setSessionHealthError(session.id, undefined) }}>{t('关闭提示')}</button>
+    </div>}
+  </>
 }

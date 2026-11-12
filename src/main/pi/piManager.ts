@@ -1,11 +1,31 @@
 import { randomUUID } from 'crypto'
 import { existsSync, realpathSync } from 'fs'
 import { resolve } from 'path'
-import type { ImageRef, MessageSubmission, PiEventPayload, PiQueue, PiState, SessionHealth } from '../../shared/types'
+import type { ImageRef, MessageSubmission, PiEventPayload, PiQueue, PiState, SessionHealth, SessionNameErrorCode } from '../../shared/types'
 import { PiSession } from './piSession'
 import { YoloPolicy } from './yolo'
 import { ExtensionUi } from './extensionUi'
 import { MessageQueue } from './messageQueue'
+import { isSessionProgressEvent } from '../../shared/sessionHealth'
+
+const namingErrors: Record<SessionNameErrorCode, string> = {
+  not_ready: 'The session UI is not ready. Reopen or recover the session.',
+  no_model: 'Select a model in this session before suggesting a name.',
+  unsupported: 'This Pi version lacks the model/history API required for AI naming. Update Pi and reopen the session.',
+  busy: 'Wait for the session to finish before suggesting a name.',
+  empty_history: 'There is no user/assistant text to summarize. Start a conversation first.',
+  timeout: 'The naming request timed out (model calls are limited to 30 seconds). Try again later.',
+  cancelled: 'The naming request was cancelled or the session was closed.',
+  auth: 'The selected model provider rejected authentication/permission. Check its credentials in Pi.',
+  rate_limit: 'The selected model provider reported a rate/quota limit. Try again later.',
+  context_limit: 'The selected model rejected the transcript size/context limit.',
+  request_options: 'The selected model rejected the naming request parameters (reasoning/output settings). Check its Pi model compatibility configuration.',
+  model_unavailable: 'The selected model or API endpoint is unavailable. Check the provider/model configuration in Pi.',
+  network: 'The model request could not reach the provider. Check the network/connection settings.',
+  output_limit: 'The model exhausted its output budget without a title (possibly thinking-only output). Check the model output limit.',
+  empty_response: 'The model returned no usable text title.',
+  provider_error: 'The selected model provider failed the naming request. Check its status or try again later.'
+}
 
 function sessionFileKey(cwd: string, file: string): string {
   const absolute = resolve(cwd, file)
@@ -21,7 +41,7 @@ export class PiManager {
   private extensionUi: ExtensionUi
   private messages: MessageQueue
   private health = new Map<string, SessionHealth>()
-  private activity = new Map<string, { at: number; revision: number }>()
+  private activity = new Map<string, { at: number; revision: number; progress: number }>()
   private checking = new Map<string, Promise<SessionHealth>>()
   private recovering = new Map<string, Promise<{ state: PiState; messages: unknown[] }>>()
   private shuttingDown = false
@@ -109,7 +129,9 @@ export class PiManager {
     s.onEvent = (e) => {
       if (retired || this.sessions.get(id) !== s || s.hasExited) return
       const prior = this.activity.get(id)
-      this.activity.set(id, { at: Date.now(), revision: (prior?.revision ?? 0) + 1 })
+      const progress = isSessionProgressEvent(e)
+      this.activity.set(id, { at: Date.now(), revision: (prior?.revision ?? 0) + 1, progress: (prior?.progress ?? 0) + (progress ? 1 : 0) })
+      if (progress) this.markResponsive(id, s, true)
       if (e.type === 'extension_ui_request') {
         if (e.method === 'notify' && typeof e.message === 'string' && e.message.startsWith('spi-title-result:' + token + ':')) {
           try {
@@ -117,7 +139,10 @@ export class PiManager {
             const pending = this.titleResults.get(result.requestId)
             if (pending?.session === s) {
               if (typeof result.name === 'string' && result.name.trim() && result.name.length <= 120 && !/[\x00-\x1f\x7f]/.test(result.name)) pending.resolve(result.name.trim())
-              else pending.reject(new Error('AI naming failed; check the session model/network and try again'))
+              else {
+                const code = typeof result.errorCode === 'string' && Object.hasOwn(namingErrors, result.errorCode) ? result.errorCode as SessionNameErrorCode : undefined
+                pending.reject(new Error(code ? `AI naming failed [${code}]: ${namingErrors[code]}` : 'AI naming failed; check the session model/network and try again'))
+              }
             }
           } catch {}
           return
@@ -183,7 +208,7 @@ export class PiManager {
       const file = state.sessionFile || sessionPath
       if (file) this.sessionFiles.set(id, sessionFileKey(cwd, file))
       started = true
-      this.activity.set(id, { at: Date.now(), revision: 0 })
+      this.activity.set(id, { at: Date.now(), revision: 0, progress: 0 })
       if (!reuseId) this.health.set(id, { status: 'healthy', checkedAt: Date.now() })
       return { sessionId: id, state }
     } catch (error) {
@@ -212,6 +237,20 @@ export class PiManager {
     return health
   }
 
+  private rpcWritable(session: PiSession): boolean {
+    const input = session.child.stdin
+    return !!input && !input.destroyed && !input.writableEnded && input.writable !== false
+  }
+
+  private markResponsive(id: string, session: PiSession, progressed = false): SessionHealth | undefined {
+    if (this.sessions.get(id) !== session || session.hasExited || !this.rpcWritable(session) || this.closing.has(id) || this.recovering.has(id) || this.deleting.has(id) || this.shuttingDown) return
+    const health = this.health.get(id)
+    if (health?.status === 'unresponsive' || (health?.status === 'healthy' && health.stalled && progressed)) {
+      // This only clears stale transport warnings. Never replay work, resume the outbox or release Stop/approval holds.
+      return this.publishHealth(id, { status: 'healthy', checkedAt: Date.now() })
+    }
+  }
+
   /** On-demand only: explicit checks, send failures or user submissions blocked by a stale busy state. */
   checkSession(id: string): Promise<SessionHealth> {
     const pending = this.checking.get(id)
@@ -221,6 +260,7 @@ export class PiManager {
     if (this.recovering.has(id)) return Promise.resolve(this.health.get(id)!)
     if (session.hasExited) return Promise.resolve(this.publishHealth(id, { status: 'exited', checkedAt: Date.now() }))
     const revision = this.activity.get(id)?.revision
+    const progress = this.activity.get(id)?.progress ?? 0
     const request = (async () => {
       try {
         const state = await session.sendCommand('get_state', {}, 5000) as PiState
@@ -242,6 +282,10 @@ export class PiManager {
         return health
       } catch {
         if (this.sessions.get(id) !== session || this.recovering.has(id) || this.closing.has(id) || this.shuttingDown) return this.health.get(id) || { status: 'exited' as const, checkedAt: Date.now() }
+        // A probe issued before fresh work must not resurrect an old failure or stop a live task.
+        if (!session.hasExited && this.rpcWritable(session) && (this.activity.get(id)?.progress ?? 0) !== progress) {
+          return this.markResponsive(id, session, true) || this.health.get(id) || { status: 'healthy', checkedAt: Date.now() }
+        }
         this.messages.freeze(id)
         if (this.yolo.isReady(id)) this.yolo.hold(id)
         this.extensionUi.cancel(id)
@@ -445,6 +489,7 @@ export class PiManager {
     const state = (await s.sendCommand('get_state')) as PiState
     if (this.sessions.get(sessionId) !== s || this.closing.has(sessionId)) throw new Error('session is closing')
     if (state.sessionFile) this.sessionFiles.set(sessionId, sessionFileKey(s.cwd, state.sessionFile))
+    this.markResponsive(sessionId, s)
     return state
   }
 

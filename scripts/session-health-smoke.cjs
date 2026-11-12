@@ -5,19 +5,40 @@ module.exports=async function({app,waitFor,pass,fill,workspace,artifacts,descend
   const id=await app.eval(`document.querySelector('.session-tab.active').dataset.sessionId`), key=JSON.stringify(id)
   const state=()=>app.eval(`window.spi.getState(${key})`),queue=()=>app.eval(`window.spi.getPendingMessages(${key})`)
   const send=async text=>{await fill(app,text);await waitFor(()=>app.eval('!document.querySelector(".btn-send").disabled'),'send enabled');await app.eval('document.querySelector(".btn-send").click()')}
+  const capture=async name=>{const image=await app.send('Page.captureScreenshot',{format:'png'});fs.writeFileSync(path.join(artifacts,name+'.png'),Buffer.from(image.data,'base64'))}
   const prompt=JSON.stringify({tool:'read',input:{path:path.join(workspace,'smoke.txt')}})
   const ownedPi=()=>descendants(app.child.pid).filter(pid=>{try{return fs.readlinkSync(`/proc/${pid}/cwd`)===workspace && (/^(?:pi\x00|.*--mode\x00rpc)/.test(fs.readFileSync(`/proc/${pid}/cmdline`,'utf8')))}catch{return false}})
   const recover=async()=>{
     await app.eval(`window.confirm=()=>true;[...document.querySelectorAll('.session-health button')].find(b=>b.textContent==='恢复会话').click()`)
-    await waitFor(()=>app.eval(`document.querySelector('.session-health')?.textContent.includes('Pi RPC 正常')&&!document.querySelector('.session-health').classList.contains('warning')`),'recovered health',30000)
+    await waitFor(()=>app.eval(`document.querySelectorAll('.session-health').length===0`),'recovered health banner removed',30000)
+  }
+  const manualCheck=async()=>{
+    await app.eval(`(()=>{const e=document.querySelector('.session-tab.active'),r=e.getBoundingClientRect();e.dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true,clientX:r.x+10,clientY:r.y+10}))})()`)
+    await waitFor(()=>app.eval(`!!document.querySelector('.context-menu')`),'session menu')
+    await app.eval(`Array.from(document.querySelectorAll('.context-menu button')).find(b=>b.textContent==='检查连接').click()`)
   }
   await app.eval(`window.spi.setModel(${key},'spi-test','fixture')`)
   await send(prompt)
   await waitFor(()=>app.eval(`document.body.textContent.includes('SPI_FIXTURE_DONE')&&!document.querySelector('.btn-stop')`),'seed history saved')
   const file=(await state()).sessionFile;assert.ok(fs.existsSync(file))
-  await app.eval(`document.querySelector('.session-health button').click()`)
+  assert.equal(await app.eval(`document.querySelectorAll('.session-health').length`),0)
+  await manualCheck()
   await waitFor(()=>app.eval(`window.__smokeEvents.some(e=>e.event.type==='spi_session_health'&&e.event.health.status==='healthy')`),'manual healthy probe')
-  pass('real Pi healthy probe, normal model/tool roundtrip and saved history')
+  assert.equal(await app.eval(`document.querySelectorAll('.session-health').length`),0)
+  pass('normal working sessions have no health banner; manual checks remain in the session context menu')
+  await app.eval(`window.spi.updateAppSettings({language:'en'})`)
+  await waitFor(()=>app.eval(`document.documentElement.lang==='en'`),'English UI')
+  const views=[]
+  for(const [name,width,height] of [['health-working-wide',1280,800],['health-working-small',900,640]]){
+    await app.send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false})
+    const result=await app.eval(`({width:innerWidth,height:innerHeight,banners:document.querySelectorAll('.session-health').length,controls:document.querySelectorAll('.session-health-actions button').length})`)
+    assert.equal(result.banners,0);assert.equal(result.controls,0);views.push({name,...result});await capture(name)
+  }
+  fs.writeFileSync(path.join(artifacts,'health-viewport-results.json'),JSON.stringify(views,null,2))
+  await app.send('Emulation.clearDeviceMetricsOverride')
+  await app.eval(`window.spi.updateAppSettings({language:'zh'})`)
+  await waitFor(()=>app.eval(`document.documentElement.lang==='zh-CN'`),'Chinese UI restored')
+  pass('healthy connection controls are absent in English at wide and compact desktop viewports')
 
   await send('SPI_HEALTH_HANG')
   await waitFor(()=>app.eval(`!!document.querySelector('.btn-stop')`),'isolated model request stalled')
@@ -35,11 +56,23 @@ module.exports=async function({app,waitFor,pass,fill,workspace,artifacts,descend
   // No manual Check: the user's blocked send triggers one diagnostic.
   await waitFor(()=>app.eval(`document.querySelector('.session-health')?.textContent.includes('Pi RPC 未响应')`),'send-triggered RPC failure warning',15000)
   assert.equal((await queue()).paused,true)
+  assert.equal(await app.eval(`document.querySelectorAll('.session-health').length`),1)
   assert.equal(await app.eval(`document.querySelector('.btn-send').disabled`),true)
   assert.equal(await app.eval(`document.querySelector('.input-bar textarea').value`),'SPI_UNSENT_DRAFT')
   pass('stopped Pi triggers bounded timeout warning and paused queue without losing draft')
   const screenshot=await app.send('Page.captureScreenshot',{format:'png'});fs.writeFileSync(path.join(artifacts,'session-health-unresponsive.png'),Buffer.from(screenshot.data,'base64'))
 
+  process.kill(old,'SIGCONT')
+  await app.eval(`window.spi.renameSession({sessionId:${key}},'RPC activity restored')`)
+  await waitFor(()=>app.eval(`document.querySelectorAll('.session-health').length===0`),'fresh RPC work clears old warning')
+  assert.equal((await queue()).paused,true);assert.equal((await queue()).items.length,1)
+  await capture('health-resumed-no-banner')
+  pass('fresh RPC activity automatically removes stale alerts without replaying or resuming the outbox')
+
+  process.kill(old,'SIGSTOP')
+  await manualCheck()
+  await waitFor(()=>app.eval(`document.querySelector('.session-health')?.textContent.includes('Pi RPC 未响应')`),'manual context-menu check detects a new failure',15000)
+  assert.equal(await app.eval(`document.querySelectorAll('.session-health').length`),1)
   await recover()
   assert.equal(await app.eval(`document.querySelector('.session-tab.active').dataset.sessionId`),id)
   assert.equal((await state()).sessionFile,file)
@@ -57,6 +90,7 @@ module.exports=async function({app,waitFor,pass,fill,workspace,artifacts,descend
   await waitFor(()=>app.eval(`document.querySelector('.session-health')?.textContent.includes('Pi 进程已退出')`),'unexpected exit retained tab')
   assert.equal(await app.eval(`document.querySelectorAll('.session-tab').length`),1)
   await recover();assert.equal((await state()).sessionFile,file)
+  assert.equal(await app.eval(`document.querySelectorAll('.session-health').length`),0)
   assert.equal(app.errors.length,0,JSON.stringify(app.errors))
   pass('recovered session sends again; unexpected process death retains tab and can be recovered again')
 }

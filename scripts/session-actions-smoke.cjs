@@ -1,5 +1,5 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),{execFileSync}=require('node:child_process')
-module.exports=async function({app,launch,stop,waitFor,pass,fill,workspace,profile,artifacts}) {
+module.exports=async function({app,launch,stop,waitFor,pass,fill,workspace,profile,artifacts,namingRequests}) {
   const evaluate=expression=>app.eval(expression)
   let id=await evaluate(`document.querySelector('.session-tab.active').dataset.sessionId`)
   const session=()=>evaluate(`window.spi.getState(${JSON.stringify(id)})`)
@@ -28,6 +28,28 @@ module.exports=async function({app,launch,stop,waitFor,pass,fill,workspace,profi
   await evaluate(`document.querySelector('.session-action-dialog button[type=submit]').click()`)
   await waitFor(()=>evaluate(`document.querySelector('.session-tab-label')?.textContent==='会话操作与终端优化'`),'suggested name saved')
   pass('AI naming uses the real session model without adding chat entries; preview does not rename until Save')
+
+  await evaluate(`window.spi.setModel(${JSON.stringify(id)},'spi-test','fixture-reasoning')`)
+  await context('.session-tab.active');await clickMenu('AI 生成名称')
+  await waitFor(()=>evaluate(`document.querySelector('.session-action-dialog input')?.value==='推理模型会话标题'&&!document.querySelector('.session-action-dialog input').disabled`),'Responses reasoning title preview',45000)
+  assert.deepEqual(namingRequests.at(-1),{model:'fixture-reasoning',reasoning:'low',maxTokens:4096,tools:0})
+  assert.equal((await session()).sessionName,'会话操作与终端优化')
+  assert.equal(await evaluate(`window.spi.getMessages(${JSON.stringify(id)}).then(m=>m.length)`),before)
+  await evaluate(`document.querySelector('.session-action-buttons button[type=button]').click()`)
+  await waitFor(()=>evaluate(`!document.querySelector('.session-action-dialog')`),'reasoning preview cancelled')
+  pass('reasoning Responses API names use compatible low effort and enough output budget, without chat/name mutation')
+
+  await evaluate(`window.spi.setModel(${JSON.stringify(id)},'spi-test','fixture-reasoning-reject')`)
+  const requests=namingRequests.length
+  await context('.session-tab.active');await clickMenu('AI 生成名称')
+  await waitFor(()=>evaluate(`document.querySelector('.session-action-dialog .session-error')?.textContent.includes('[request_options]')`),'safe parameter-rejection feedback')
+  assert.equal(await evaluate(`document.querySelector('.session-action-dialog .session-error').textContent.includes('PRIVATE_PROVIDER_RESPONSE')`),false)
+  assert.equal(namingRequests.length,requests+1)
+  assert.equal((await session()).sessionName,'会话操作与终端优化')
+  await evaluate(`document.querySelector('.session-action-buttons button[type=button]').click()`)
+  await waitFor(()=>evaluate(`!document.querySelector('.session-action-dialog')`),'failed naming dismissed')
+  await evaluate(`window.spi.setModel(${JSON.stringify(id)},'spi-test','fixture')`)
+  pass('provider rejection is diagnosed without raw response disclosure, automatic retry or accidental rename')
 
   await evaluate(`document.querySelector('.session-tab-close').click()`)
   await waitFor(()=>evaluate(`!document.querySelector('.session-tab')`),'session closed')

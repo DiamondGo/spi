@@ -122,11 +122,11 @@ async function launch(options = {}) {
     for (const dir of [env.HOME, env.XDG_CONFIG_HOME, env.XDG_CACHE_HOME, env.XDG_DATA_HOME, path.join(env.HOME, 'fixture-a'), path.join(env.HOME, 'fixture-b')]) fs.mkdirSync(dir, { recursive: true })
   }
   Object.assign(env, options.env || {})
-  const executable = process.platform === 'win32' ? 'electron.exe' : 'electron'
   const installed = process.env.SPI_SMOKE_EXECUTABLE
   if (process.platform === 'linux' && process.env.SPI_TEST_VIRTUAL_DISPLAY !== '1') throw new Error('Use scripts/with-display.cjs for isolated GUI tests')
   const isolatedDisplay = process.platform === 'linux' ? ['--ozone-platform=x11', '--disable-gpu'] : []
-  const child = spawn(installed || path.join(repo, 'node_modules/electron/dist', executable), [
+  // Electron 45 downloads its binary on first require, not at npm install time.
+  const child = spawn(installed || require('electron'), [
     ...(installed ? [] : [repo]), ...isolatedDisplay, `--user-data-dir=${options.profile || profile}`, '--remote-debugging-port=0'
   ], { cwd: repo, env, stdio: ['ignore', 'pipe', 'pipe'] })
   const app = { child, started: startTime(child.pid), log: '', exited: false, errors: [], pending: new Map(), index }

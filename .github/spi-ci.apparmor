@@ -6,3 +6,8 @@ include <tunables/global>
 profile spi-native-ci /tmp/spi-native-install-*/runtime/releases/*/*/app/spi flags=(unconfined) {
   userns,
 }
+
+# The development Electron binary used by source-tree GUI smokes on the same runner.
+profile spi-dev-electron-ci /home/runner/work/*/*/node_modules/electron/dist/electron flags=(unconfined) {
+  userns,
+}

@@ -2,6 +2,8 @@
 
 ## 0.3.0
 
+- Local startup/passive remote badges no longer probe the OS keyring when hosting is disabled, preventing unattended Mac Keychain approval from blocking startup. Remote settings and enabled-host recovery still check credential protection; no plaintext identity fallback is added.
+
 - Floating Previous/Next question arrows at the lower-right of the chat viewport navigate to the nearest offscreen user input. Arrows appear only when a target exists in that direction, keep fixed upper/lower slots, and update for streaming output, resized windows and expanded tools. Browsing history pauses automatic following; Return to latest restores it. Available in read-only remote views too.
 
 - One remote connection controls the host at a time; other connections get a passive, read-only session viewer. Server-side fail-closed RPC allowlists block writes and terminal operations from viewers. The first connection controls; the oldest connected viewer takes over when it disconnects or is revoked, without reconnect takeover. Local windows are unaffected. Protocol v2 requires both ends to update; published v1 peers are not silently compatible.

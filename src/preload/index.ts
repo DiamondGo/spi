@@ -92,6 +92,7 @@ const api: IpcApi = {
   getPendingDialogs: id => ipcRenderer.invoke('session:pending-ui', id),
   getRemoteStatus: () => ipcRenderer.invoke('remote:status'),
   checkRemoteAccount: () => ipcRenderer.invoke('remote:check-account'),
+  checkRemoteStorage: () => ipcRenderer.invoke('remote:check-storage'),
   setRemoteHostEnabled: enabled => ipcRenderer.invoke('remote:host-enable', enabled),
   createPairingCode: (ttlMs?: number) => ipcRenderer.invoke('remote:pairing-code', ttlMs),
   getPairingCode: () => ipcRenderer.invoke('remote:pairing-code-get'),

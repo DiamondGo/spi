@@ -31,6 +31,12 @@ function LocalRemoteSettings(): React.JSX.Element {
   const t = useT()
   const { status, error: statusError } = useRemoteStatus()
   const [account, setAccount] = useState<RemoteAccountStatus | null>(null)
+  const [storageProblem, setStorageProblem] = useState<string | null | undefined>(undefined)
+  useEffect(() => {
+    let live = true
+    window.spi.checkRemoteStorage().then(problem => { if (live) setStorageProblem(problem) }).catch(e => { if (live) setStorageProblem(remoteErrorText(e)) })
+    return () => { live = false }
+  }, [])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [pairing, setPairing] = useState<{ code: string; expiresAt: number; confirmed?: boolean } | null>(null)
@@ -63,7 +69,7 @@ function LocalRemoteSettings(): React.JSX.Element {
     try { await action() } catch (e) { setError(remoteErrorText(e)) } finally { setBusy(false) }
   }
   if (!status) return <fieldset className="remote-settings"><legend>{t('远程访问')}</legend>{statusError ? <p role="alert" className="settings-error">{statusError}</p> : <p className="settings-help">{t('加载中…')}</p>}</fieldset>
-  const unavailable = !!status.storageProblem || (relay === 'devtunnels' && account?.state !== 'ready')
+  const unavailable = storageProblem !== null || (relay === 'devtunnels' && account?.state !== 'ready')
   const host = status.host
   const minutes = pairing ? Math.max(1, Math.ceil((pairing.expiresAt - now) / 60_000)) : 0
   const pendingExpiresAt = host.pairingExpiresAt && host.pairingExpiresAt > now ? host.pairingExpiresAt : undefined
@@ -71,7 +77,7 @@ function LocalRemoteSettings(): React.JSX.Element {
   return <fieldset className="remote-settings" disabled={busy}>
     <legend>{t('远程访问')}</legend>
     <p className="settings-help">{t('通过 Microsoft Dev Tunnels 中继，在另一台电脑上打开本机的 sPi；内容在两台电脑之间端到端加密，中继只转发密文。')}</p>
-    {status.storageProblem && <p role="alert" className="settings-error">{status.storageProblem}</p>}
+    {storageProblem && <p role="alert" className="settings-error">{storageProblem}</p>}
     {relay === 'devtunnels' && <div className="remote-account" data-remote-account={account?.state ?? 'checking'}>
       <span>{t(!account ? '正在检查 GitHub CLI…' : accountText[account.state])}</span>
       <button type="button" onClick={() => void checkAccount()}>{t('重新检查')}</button>

@@ -27,6 +27,7 @@ async function testMainClose(language, confirmOnExit, answer, ownsInstance = tru
   if (placement) fs.writeFileSync(path.join(home, 'spi-window.json'), JSON.stringify(placement))
   const app = new EventEmitter()
   app.getPath = () => home
+  app.getVersion = () => 'fixture'
   app.isPackaged = false
   app.setName = () => {}
   app.setDesktopName = name => { app.desktopName = name }
@@ -49,7 +50,7 @@ async function testMainClose(language, confirmOnExit, answer, ownsInstance = tru
     loadURL() {}
   }
   const handlers = new Map()
-  let dialogOptions, resolveDialog, dialogCalls = 0, stopped = 0
+  let dialogOptions, resolveDialog, dialogCalls = 0, stopped = 0, keyringChecks = 0
   class Manager {
     size = 1
     constructor(_pi, policy) { this.policy = policy }
@@ -80,9 +81,9 @@ async function testMainClose(language, confirmOnExit, answer, ownsInstance = tru
     if (name === './api/registry') return load('src/main/api/registry.ts')
     if (name === './remote/protocol') return load('src/main/remote/protocol.ts')
     if (name === './remote/backend') return { DevTunnelsBackend: class { kind = 'devtunnels' }, LoopbackBackend: class { kind = 'loopback' } }
-    if (name === './remote/identity') return { electronSecretStorage: () => ({ problem: () => 'no keyring in this test' }), loadOrCreateIdentity() { throw Error('unused') } }
-    if (name === './remote/hostService') return { RemoteHostService: class { connectedDevices = 0; resume() {} broadcast() {} sendToOwner() {} async stop() {} } }
-    if (name === './remote/clientService') return { RemoteClientService: class { async closeAll() {} } }
+    if (name === './remote/identity') return { electronSecretStorage: () => ({ problem: () => { keyringChecks++; return 'no keyring in this test' } }), loadOrCreateIdentity() { throw Error('unused') } }
+    if (name === './remote/hostService') return { RemoteHostService: class { connectedDevices = 0; snapshot() { return { enabled: false, state: 'off', devices: [] } } resume() {} broadcast() {} sendToOwner() {} async stop() {} } }
+    if (name === './remote/clientService') return { RemoteClientService: class { hosts() { return [] } async closeAll() {} } }
     return require(name)
   }
   mod._compile(compile('src/main/index.ts'), filename)
@@ -92,6 +93,11 @@ async function testMainClose(language, confirmOnExit, answer, ownsInstance = tru
     assert.deepEqual(fs.readdirSync(home), []); return
   }
   assert.deepEqual(exitCodes, [])
+  assert.equal(keyringChecks, 0, 'local startup must not access the OS keyring when remote access is disabled')
+  assert.equal((await handlers.get('remote:status')({})).host.state, 'off')
+  assert.equal(keyringChecks, 0, 'a passive status badge must not probe Keychain')
+  assert.equal(await handlers.get('remote:check-storage')({}), 'no keyring in this test')
+  assert.equal(keyringChecks, 1, 'explicit settings inspection still checks credential protection')
   await handlers.get('settings:update')({}, { language, confirmOnExit, theme: 'light' })
   await handlers.get('session:open')({}, { cwd: '/test' })
   assert.equal(handlers.has('permissions:get'), false); assert.equal(handlers.has('permissions:mode'), false)

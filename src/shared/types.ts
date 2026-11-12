@@ -201,6 +201,7 @@ export interface IpcApi {
   getPendingDialogs(sessionId: string): Promise<PiRecord[]>
   getRemoteStatus(): Promise<RemoteStatusSnapshot>
   checkRemoteAccount(): Promise<RemoteAccountStatus>
+  checkRemoteStorage(): Promise<string | null>
   setRemoteHostEnabled(enabled: boolean): Promise<RemoteStatusSnapshot>
   createPairingCode(ttlMs?: number): Promise<{ code: string; expiresAt: number }>
   getPairingCode(): Promise<{ code: string; expiresAt: number } | null>

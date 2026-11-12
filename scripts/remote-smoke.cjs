@@ -144,8 +144,11 @@ module.exports = async function ({ app: host, launch, stop, waitFor, pass, fill,
     await waitFor(() => remote.eval(`window.spi.getRemoteWindow().then(r=>r.access==='control')`), 'initial remote controller lease')
     await waitFor(() => remote.eval(`window.spi.loadLayout().then(l=>Array.isArray(l.sessions))`), 'initial remote layout persisted')
     await remote.eval(`window.spi.saveLayout({viewMode:'dir',selectedDir:${JSON.stringify(workspace)},sessions:[{cwd:${JSON.stringify(workspace)}}]})`)
-    await remote.eval(`setTimeout(()=>location.reload(),0)`)
-    await waitFor(() => remote.eval(`!!document.querySelector('.input-bar textarea') && !!document.querySelector('.session-tab.active')`), 'remote session restored on the host', 30000)
+    await remote.send('Page.reload')
+    await waitFor(async () => {
+      try { return await remote.eval(`!!document.querySelector('.input-bar textarea') && !!document.querySelector('.session-tab.active')`) }
+      catch (error) { if (/context|navigated|closed/i.test(String(error))) return false; throw error }
+    }, 'remote session restored on the host', 30000)
     await remote.eval(`window.__remoteEvents=[];window.__remoteStates=[];window.spi.onPiEvent(e=>window.__remoteEvents.push(e));window.spi.onRemoteWindowChanged(s=>window.__remoteStates.push(s))`)
     const sessionId = await remote.eval(`document.querySelector('.session-tab.active').dataset.sessionId`)
     assert.ok((await host.eval(`window.spi.getState(${JSON.stringify(sessionId)})`)).sessionId, 'the session lives in the host process')

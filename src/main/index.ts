@@ -197,8 +197,16 @@ function getRemoteClient(): RemoteClientService {
   remoteClient ??= new RemoteClientService({ dataDir: app.getPath('userData'), backend: getBackend(), identity: getIdentity, deviceName: () => os.hostname(), changed: remoteChanged, log: remoteLog })
   return remoteClient
 }
+let remoteStorageProblem: string | undefined
+/** Keychain access may require human OS approval. Never probe it merely to draw a badge. */
+function checkRemoteStorage(): string | null {
+  const problem = getSecretStorage().problem()
+  remoteStorageProblem = problem ?? undefined
+  remoteChanged()
+  return problem
+}
 function remoteStatus(): RemoteStatusSnapshot {
-  return { relay: getBackend().kind, storageProblem: getSecretStorage().problem() ?? undefined, host: getRemoteHost().snapshot(), hosts: getRemoteClient().hosts() }
+  return { relay: getBackend().kind, storageProblem: remoteStorageProblem, host: getRemoteHost().snapshot(), hosts: getRemoteClient().hosts() }
 }
 function remoteWindowInfo(remote: RemoteWindow): RemoteWindowInfo {
   const { connection } = remote
@@ -445,6 +453,7 @@ api.handle('messages:resume', async (_caller, id: string) => (await getManager()
 
 api.handle('remote:status', () => remoteStatus(), localOnly)
 api.handle('remote:check-account', () => getBackend().account(), localOnly)
+api.handle('remote:check-storage', () => checkRemoteStorage(), localOnly)
 api.handle('remote:host-enable', async (_caller, enabled: unknown) => { await getRemoteHost().setEnabled(enabled === true); return remoteStatus() }, localOnly)
 api.handle('remote:pairing-code-get', () => getRemoteHost().getPairingCode(), localOnly)
 api.handle('remote:pairing-code', (_e, ttlMs: unknown) => getRemoteHost().createPairingCode(ttlMs), localOnly)
@@ -501,7 +510,10 @@ app.whenReady().then(() => {
   if (!ownsInstance) return
   if (process.platform === 'darwin') app.dock?.setIcon(appIcon)
   createWindow()
-  try { if (!getSecretStorage().problem()) getRemoteHost().resume() } catch (error) { remoteLog(String(error)) }
+  try {
+    const host = getRemoteHost()
+    if (host.snapshot().enabled && !checkRemoteStorage()) host.resume()
+  } catch (error) { remoteLog(String(error)) }
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })

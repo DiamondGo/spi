@@ -1,13 +1,21 @@
 # Distribution verification / 分发验收
 
-## Linux 0.2.0 candidate — release verification pending
+## Linux v0.2.0 public release and clean-install acceptance
+
+- Public desktop Release: https://github.com/DiamondGo/spi/releases/tag/v0.2.0. Immutable source tag: `4bd2cdd54068c3db9f1ee559ae979bd7998f0fd1`.
+- Native release run [43158811023](https://github.com/DiamondGo/spi/actions/runs/43158811023) passed Linux x64, native arm64 and public anonymous asset verification. Source Checks run [43157784943](https://github.com/DiamondGo/spi/actions/runs/43157784943) passed. Both architectures ran the remote access unit suite, the loopback two-instance remote GUI smoke and the packaged remote access check, plus all existing installed-runtime suites.
+- The first `v0.2.0` tag (`b96ec79`) failed both native jobs before any publication: the new source-tree remote smoke spawned the Electron binary path directly, which Electron 45 only downloads on first `require`, and Ubuntu 24 arm64 also needed the CI-only AppArmor user-namespace allowlist for that development binary. No Release, asset or npm version was created from it. After the fix passed Checks and a non-publishing native dispatch on both architectures, the tag was moved to the fixed commit.
+- npm `spi-agent-gui@0.2.0` is public and latest is 0.2.0, published manually by the maintainer. The anonymously downloaded seven-file tarball is byte-for-byte identical to the reviewed payload: 62719 bytes, SHA-1 `b76ab05a9b3ec5863dc990f367801e9bb2de2677`; public SHA-512 integrity matches too. This was manual publication, not npm Trusted Publishing/OIDC.
+- Two independent UID-1000 x64 containers installed `npm:spi-agent-gui@0.2.0` and unversioned `npm:spi-agent-gui` through actual `pi install`, both resolving desktop 0.2.0. Both passed the packaged remote access check and all five GUI suites (workspace, Node recovery/manual settings, session controls/window placement, passive RPC recovery, terminal/context menus), plus public command/version/doctor, Pi extension registration, icon/desktop ownership, real GUI/PTY/Pi RPC, single-instance and active renderer sandbox checks. No host credentials/configuration/cache/application binaries were mounted. arm64 evidence remains the native release run.
+
+### Pre-release candidate record
 
 - Source adds end-to-end encrypted remote access over Microsoft Dev Tunnels (requires a signed-in GitHub CLI on both computers), plus the AI naming and stale session-health alert fixes. [Release notes](releases/0.2.0.md).
 - Local typecheck, privacy check and all unit suites passed, including 19 remote access checks (Noise vectors, framing/tamper, pairing, RPC, gh provider redaction, host/client over loopback, relay drops, revocation, tunnel 404 recreation). The launch unit suite now loads the shared session-health module it depends on.
 - Two-instance remote GUI smoke passed on the loopback relay (8 steps, 10 consecutive runs) and against the live Dev Tunnels service with the maintainer's GitHub CLI account (9 steps, including deleted-tunnel recreation and label rediscovery). The live test deleted its tunnel and the account was confirmed to have no remaining `spi-remote` tunnels; no token was printed or stored.
 - Local x64 production archive was extracted by the actual installer and passed GUI/PTY/Pi RPC/icon/single-instance/active renderer sandbox, the new packaged remote access check (real relay loaded, remote access off, no identity created, dev-only relay override ignored), workspace (8), Node recovery/manual settings (9), session controls/window placement, passive RPC recovery and terminal GUI suites, using the CI-pinned Pi 1.5.0. The full 9-case private registry/Pi installation suite also passed. The npm tarball keeps the same seven files.
 - Release workflow now also gates both native Linux architectures on the remote unit suite, the loopback remote GUI smoke and the packaged remote access check.
-- Full npm audit: 0 high/critical; 8 moderate (minimatch build toolchain, and `uuid` via the Dev Tunnels SDK with no fixed version yet). Native arm64/publication, public npm checksum and clean-install results will be recorded only after they actually pass.
+- Full npm audit: 0 high/critical; 8 moderate (minimatch build toolchain, and `uuid` via the Dev Tunnels SDK with no fixed version yet).
 
 ## Linux v0.1.5 public release and clean-install acceptance
 

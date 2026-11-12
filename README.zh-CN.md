@@ -20,17 +20,19 @@
 
 **Linux 桌面/npm 0.1.5 已发布：** [会话健康检查、状态校准、异常提醒与手动恢复](docs/session-recovery.md)。恢复保留草稿和暂停的待发送队列，不自动重发；旧版本包保持不变。另已加入[终端显示切换与右键菜单、手动/AI 会话命名、确认后删除历史及窗口位置恢复](docs/desktop-interactions.md)，均已包含在本次桌面发布中。
 
-**0.2.0 发布候选（待完成发布验证）：** 可选的[端到端加密远程访问](docs/remote-access.md)。在一台电脑上打开窗口操作另一台电脑上的 sPi，两边都在 NAT 或防火墙后面也可以；流量经 Microsoft Dev Tunnels 中继，由 sPi 自己加密。**两台电脑都要安装 GitHub CLI（`gh`）并登录同一个 GitHub 账号**；本地使用不需要 `gh`，也不会连接 GitHub 或 Dev Tunnels。已配对的设备拥有 host 上 sPi 的全部权限，包括终端和 YOLO。已在 Linux 上验证（含真实 Dev Tunnels 服务）；macOS 和 Windows 未验证。另修复了推理模型上的 AI 命名，以及过期的会话健康提示。
+**Linux 桌面/npm 0.2.0 已发布：** 可选的[端到端加密远程访问](docs/remote-access.md)。在一台电脑上打开窗口操作另一台电脑上的 sPi，两边都在 NAT 或防火墙后面也可以；流量经 Microsoft Dev Tunnels 中继，由 sPi 自己加密。**两台电脑都要安装 GitHub CLI（`gh`）并登录同一个 GitHub 账号**；本地使用不需要 `gh`，也不会连接 GitHub 或 Dev Tunnels。已配对的设备拥有 host 上 sPi 的全部权限，包括终端和 YOLO。已在 Linux 上验证（含真实 Dev Tunnels 服务）；macOS 和 Windows 未验证。另修复了推理模型上的 AI 命名，以及过期的会话健康提示。
 
 ## 发布状态与依赖
 
 源码仓库：[DiamondGo/spi](https://github.com/DiamondGo/spi)。npm 包为 **[`spi-agent-gui`](https://www.npmjs.com/package/spi-agent-gui)**，可执行命令仍为 **`spi`**；公开默认值集中在 `release.config.json`。
 
-**Linux 桌面 Release [v0.1.5](https://github.com/DiamondGo/spi/releases/tag/v0.1.5) 和 npm 包 `spi-agent-gui@0.1.5` 均已公开，npm latest 为 0.1.5。** 两个原生架构均通过新增的安装包交互/恢复测试和匿名下载校验；公开 npm 包的七个文件与审核包逐字节一致。两个独立的全新非 root x64 容器均通过公开固定版本/latest Pi 安装、全部五组 GUI 测试（工作区、Node 恢复、会话管理/窗口位置、按需 RPC 恢复、终端菜单），并验证启用中的 renderer sandbox；未挂载主机凭据、配置或应用二进制。[发布验收](docs/verification.md)。
+**Linux 桌面 Release [v0.2.0](https://github.com/DiamondGo/spi/releases/tag/v0.2.0) 和 npm 包 `spi-agent-gui@0.2.0` 均已公开，npm latest 为 0.2.0。** 两个原生架构均通过新增的远程访问单元测试、双实例 GUI 测试和安装包检查，以及原有全部安装后测试和匿名下载校验；公开 npm 包的七个文件与审核包逐字节一致。两个独立的全新非 root x64 容器均通过公开固定版本/latest Pi 安装、安装包远程访问检查和全部五组 GUI 测试，并验证启用中的 renderer sandbox；未挂载主机凭据、配置或应用二进制。[发布验收](docs/verification.md)。
+
+**前一版桌面/npm 0.1.5 的验收：** 两个原生架构均通过新增的安装包交互/恢复测试和匿名下载校验；公开 npm 包的七个文件与审核包逐字节一致。两个独立的全新非 root x64 容器均通过公开固定版本/latest Pi 安装、全部五组 GUI 测试（工作区、Node 恢复、会话管理/窗口位置、按需 RPC 恢复、终端菜单），并验证启用中的 renderer sandbox；未挂载主机凭据、配置或应用二进制。[发布验收](docs/verification.md)。
 
 **前一版桌面/npm 0.1.4 的干净安装验收：** 两个 Linux 原生架构均通过安装后验收；两个全新非 root x64 容器分别从公开 registry 安装固定版本和 latest，约 7 分钟完成，并通过新增的 9 项缺失桌面 Node/手动设置会话检查、8 项工作区/消息缓冲区检查，以及 GUI/PTY/Pi RPC、图标/桌面入口归属、单实例和启用中的 renderer sandbox 验证。[百分比、慢速下载和续传修复](docs/downloads.md) 仍保留。没有挂载主机凭据、配置或应用二进制；旧版本资源未覆盖。
 
-可通过 `pi install npm:spi-agent-gui@0.1.5` 更新，或使用 `spi update` 获取最新稳定桌面版本。重新安装不可变的 npm 0.1.4 仍会选择桌面 0.1.4，不会获得这些新功能。请先另存未完成/原生队列中的文字，并完全退出旧窗口后再打开：安装新版二进制不会热更新正在运行的窗口。Pi 认证、历史会话和 sPi 偏好设置会保留。
+可通过 `pi install npm:spi-agent-gui@0.2.0` 更新，或使用 `spi update` 获取最新稳定桌面版本。重新安装更早的不可变 npm 版本会选择对应的旧桌面版本，不会获得这些新功能。请先另存未完成/原生队列中的文字，并完全退出旧窗口后再打开：安装新版二进制不会热更新正在运行的窗口。Pi 认证、历史会话和 sPi 偏好设置会保留。
 
 发布准备已升级到 Electron 45.2.3 和 electron-builder 26.18.0，high/critical 审计告警已清除；仍有六条 minimatch 构建工具链 moderate 审计条目。发布流水线继续拦截 high/critical 问题。
 

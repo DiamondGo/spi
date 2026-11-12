@@ -21,6 +21,8 @@
 
 **Linux desktop/npm 0.2.0 published:** optional [end-to-end encrypted remote access](docs/remote-access.md). A window on one computer drives sPi on another, even behind NAT/firewalls, relayed through Microsoft Dev Tunnels and encrypted by sPi itself. **It requires the GitHub CLI (`gh`) signed in to the same GitHub account on both computers**; local use never needs `gh`, GitHub or Dev Tunnels. A paired device has full control of the host's sPi, including terminals and YOLO. Verified on Linux (including the live Dev Tunnels service); macOS/Windows unverified. Also fixes AI naming on reasoning models and stale session-health alerts.
 
+**Desktop 0.2.1 is public:** [configurable pairing code lifetime](docs/releases/0.2.1.md), default **1 hour**, up to **60 days**; codes remain single-use and valid only until cancelled, remote access disabled or sPi restarted. Includes verified manual **[Apple Silicon](https://github.com/DiamondGo/spi/releases/download/v0.2.1/spi-0.2.1-darwin-arm64.zip)** and **[Intel](https://github.com/DiamondGo/spi/releases/download/v0.2.1/spi-0.2.1-darwin-x64.zip)** Mac downloads (ad-hoc signed, **not notarized**). Both Mac native builds passed loopback remote GUI and installed-ZIP checks; live-service Mac remote access remains unverified. **npm 0.2.1 awaits interactive authentication; npm latest remains 0.2.0.** See [Mac verification and limitations](docs/macos-build.md).
+
 ## Release status and requirements
 
 Source: [DiamondGo/spi](https://github.com/DiamondGo/spi). The npm package is **[`spi-agent-gui`](https://www.npmjs.com/package/spi-agent-gui)**; the executable is **`spi`**. These public defaults are stored in `release.config.json`.

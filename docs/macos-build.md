@@ -1,6 +1,16 @@
 # macOS downloads / macOS 手动下载包
 
-## Public 0.1.5 downloads / 已公开的 0.1.5 包
+## Public 0.2.1 downloads / 已公开的 0.2.1 包
+
+**Latest manual Mac downloads: [Apple Silicon ZIP](https://github.com/DiamondGo/spi/releases/download/v0.2.1/spi-0.2.1-darwin-arm64.zip) · [Intel ZIP](https://github.com/DiamondGo/spi/releases/download/v0.2.1/spi-0.2.1-darwin-x64.zip) · [SHA-256](https://github.com/DiamondGo/spi/releases/download/v0.2.1/SHA256SUMS-macos.txt).** Ad-hoc signed, NOT Developer ID signed or notarized; do not disable OS protections.
+
+- Source: immutable v0.2.1, `a7ddf900dd296bd9bf761ecb531616ec3edc00ab`.
+- [Native build and installed-ZIP acceptance](https://github.com/DiamondGo/spi/actions/runs/43244952768): both macos-26 arm64 and macos-15-intel x64 passed. Includes new two-instance loopback remote GUI coverage: configurable pairing lifetime (default 1 hour, maximum 60 days), prompt execution, remote PTY, reconnects and revocation.
+- Both installed ZIPs passed native architecture, signatures/ASAR/icon, PTY/GUI/Pi RPC and single-instance tests. Packaged runtime checks load Dev Tunnels; actual live-service Mac remote access remains unverified.
+- [Publication and anonymous hash verification](https://github.com/DiamondGo/spi/actions/runs/43247225350) passed without changing the Linux assets, canonical installer manifest or npm version. Both ZIPs are manual downloads only. npm 0.2.1 awaits interactive authentication; latest remains 0.2.0.
+- Pairing codes are in-memory, single-use and cancelled on restart/disable; a long lifetime is not persistence across app restarts.
+
+## Historical public 0.1.5 downloads / 历史 0.1.5 包
 
 **Both native Mac ZIPs are public downloads in Release v0.1.5. They are ad-hoc signed, NOT Apple Developer ID signed and NOT notarized.** Signature integrity and native execution do not establish Gatekeeper trust. Do not disable OS protections or remove quarantine attributes to work around a block.
 

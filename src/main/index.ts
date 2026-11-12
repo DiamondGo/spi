@@ -153,7 +153,9 @@ async function getManager(): Promise<PiManager> {
 }
 
 // ---- Remote access (off until enabled; never contacts any service before that) ----
-const remoteTestMode = !app.isPackaged && process.env.SPI_TEST_REMOTE === 'loopback'
+// Dev builds only: 'loopback' replaces the relay with 127.0.0.1; 'devtunnels' keeps the real relay.
+// Both keep keys in plain text inside the throwaway test profile instead of the OS keyring.
+const remoteTestMode = !app.isPackaged && ['loopback', 'devtunnels'].includes(process.env.SPI_TEST_REMOTE ?? '') ? process.env.SPI_TEST_REMOTE : null
 let remoteBackend: RemoteBackend | null = null
 let secretStorage: SecretStorage | null = null
 let identity: KeyPair | null = null
@@ -161,11 +163,11 @@ let remoteHost: RemoteHostService | null = null
 let remoteClient: RemoteClientService | null = null
 let remoteChangeTimer: ReturnType<typeof setTimeout> | null = null
 function getBackend(): RemoteBackend {
-  remoteBackend ??= remoteTestMode ? new LoopbackBackend() : new DevTunnelsBackend(app.getVersion())
+  remoteBackend ??= remoteTestMode === 'loopback' ? new LoopbackBackend() : new DevTunnelsBackend(app.getVersion())
   return remoteBackend
 }
 function getSecretStorage(): SecretStorage {
-  secretStorage ??= electronSecretStorage(safeStorage, process.platform, remoteTestMode)
+  secretStorage ??= electronSecretStorage(safeStorage, process.platform, remoteTestMode !== null)
   return secretStorage
 }
 function getIdentity(): KeyPair {

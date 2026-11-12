@@ -109,8 +109,10 @@ async function launch(options = {}) {
   delete env.ELECTRON_RUN_AS_NODE
   delete env.ELECTRON_VITE_DEV_SERVER_URL
   if (process.argv.includes('--terminal') || process.argv.includes('--remote')) env.HISTFILE = path.join(artifacts, 'terminal-shell-history')
-  // Loopback relay only: the remote suite must never reach Dev Tunnels or read a GitHub CLI token.
-  if (process.argv.includes('--remote')) env.SPI_TEST_REMOTE = 'loopback'
+  // The remote suite uses a loopback relay unless --live opts into the real Dev Tunnels service.
+  // --live lets the app run the user's own `gh auth token`; the token itself never enters this environment.
+  if (process.argv.includes('--remote')) env.SPI_TEST_REMOTE = process.argv.includes('--live') ? 'devtunnels' : 'loopback'
+  if (process.argv.includes('--live')) env.GH_CONFIG_DIR = process.env.GH_CONFIG_DIR || path.join(process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config'), 'gh')
   if (['--yolo','--settings','--terminal','--extension-ui','--workspace-ui','--runtime-env','--session-health','--session-actions','--remote'].some(flag => process.argv.includes(flag))) {
     env.PI_CODING_AGENT_DIR = path.join(artifacts, 'agent')
     env.HOME = path.join(artifacts, 'home')
@@ -280,7 +282,7 @@ async function main() {
   pass('no renderer exceptions / error-level browser logs')
 }
 
-const watchdog = setTimeout(() => { console.error('SMOKE global timeout'); finish(1) }, process.argv.includes('--advanced') || process.argv.includes('--yolo') || process.argv.includes('--settings') || process.argv.includes('--terminal') || process.argv.includes('--extension-ui') || process.argv.includes('--workspace-ui') || process.argv.includes('--remote') ? 300000 : 210000)
+const watchdog = setTimeout(() => { console.error('SMOKE global timeout'); finish(1) }, process.argv.includes('--live') ? 600000 : process.argv.includes('--advanced') || process.argv.includes('--yolo') || process.argv.includes('--settings') || process.argv.includes('--terminal') || process.argv.includes('--extension-ui') || process.argv.includes('--workspace-ui') || process.argv.includes('--remote') ? 300000 : 210000)
 let finishing = false
 async function finish(code) {
   if (finishing) return

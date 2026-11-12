@@ -1,6 +1,9 @@
 // Two isolated sPi instances on a loopback relay (SPI_TEST_REMOTE=loopback): pair, drive the
 // host through a remote window, survive relay drops and a host restart, then revoke.
+// With --live the same flow runs over the real Dev Tunnels service using the signed-in GitHub CLI;
+// the tunnel the host created is deleted afterwards.
 const assert = require('node:assert/strict')
+const { execFileSync } = require('node:child_process')
 const fs = require('node:fs')
 const net = require('node:net')
 const os = require('node:os')
@@ -23,7 +26,23 @@ function viaPort(code, port) {
   return { hostPort: raw.a.port, code: 'spi1.' + Buffer.from(JSON.stringify({ ...raw, a: { ...raw.a, port } })).toString('base64url') }
 }
 
-module.exports = async function ({ app: host, launch, stop, waitFor, pass, fill, artifacts, profile, workspace, connectPage }) {
+/** Deletes the host's tunnel with the user's gh token (kept in memory, never printed); returns true once it is gone. */
+async function deleteLiveTunnel(hostStateFile) {
+  const saved = fs.existsSync(hostStateFile) ? JSON.parse(fs.readFileSync(hostStateFile, 'utf8')).tunnel : null
+  if (!saved?.tunnelId) return false
+  const { TunnelManagementHttpClient, ManagementApiVersions } = require('@microsoft/dev-tunnels-management')
+  const token = execFileSync('gh', ['auth', 'token', '--hostname', 'github.com'], { encoding: 'utf8', env: { ...process.env, GH_PROMPT_DISABLED: '1' } }).trim()
+  const management = new TunnelManagementHttpClient({ name: 'spi-smoke', version: '0' }, ManagementApiVersions.Version20230927preview, async () => 'github ' + token)
+  const id = { tunnelId: saved.tunnelId, clusterId: saved.clusterId }
+  // deleteTunnel returns false on 404; getTunnel throws on 404.
+  const deleted = await management.deleteTunnel(id)
+  try { await management.getTunnel(id); return false } catch (error) { if (error?.response?.status !== 404) throw error }
+  return deleted
+}
+
+module.exports = async function ({ app: host, launch, stop, waitFor, pass, fill, results, artifacts, profile, workspace, connectPage }) {
+  const live = process.argv.includes('--live')
+  const relayMs = live ? 120000 : 20000
   const hostName = os.hostname()
   const capture = async (page, name) => { const s = await page.send('Page.captureScreenshot', { format: 'png' }); fs.writeFileSync(path.join(artifacts, name + '.png'), Buffer.from(s.data, 'base64')) }
   const openSettings = async page => {
@@ -47,21 +66,25 @@ module.exports = async function ({ app: host, launch, stop, waitFor, pass, fill,
   const step = async (name, details) => { await checkHeap(name); pass(name, details) }
   try {
     const status = await host.eval('window.spi.getRemoteStatus()')
-    assert.equal(status.relay, 'loopback', 'test mode must never use Dev Tunnels')
+    assert.equal(status.relay, live ? 'devtunnels' : 'loopback', live ? 'live mode must use Dev Tunnels' : 'test mode must never use Dev Tunnels')
     assert.equal(status.host.enabled, false); assert.equal(status.host.state, 'off')
 
     await openSettings(host)
+    if (live) await waitFor(() => host.eval(`document.querySelector('[data-remote-account]')?.dataset.remoteAccount === 'ready'`), 'GitHub CLI account ready', 30000)
     await waitFor(() => host.eval(`!!document.querySelector('[data-setting="remoteHost"]') && !document.querySelector('[data-setting="remoteHost"]').disabled`), 'remote host toggle')
     await host.eval(`document.querySelector('[data-setting="remoteHost"]').click()`)
-    await waitFor(() => host.eval(`!!document.querySelector('[data-remote-host-state="online"]')`), 'host online')
+    await waitFor(() => host.eval(`!!document.querySelector('[data-remote-host-state="online"]')`), 'host online', relayMs)
     await waitFor(() => host.eval(`!document.querySelector('[data-action="remote-add-device"]').disabled`), 'add device enabled')
     await host.eval(`document.querySelector('[data-action="remote-add-device"]').click()`)
     const original = await waitFor(() => host.eval(`document.querySelector('[data-remote-pairing-code]')?.value || ''`), 'pairing code')
     assert.match(original, /^spi1\.[A-Za-z0-9_-]+$/)
     await capture(host, 'remote-host-settings')
-    proxy = await tcpProxy(viaPort(original, 1).hostPort)
-    const { code } = viaPort(original, proxy.port)
-    await step('host enables remote access from settings and shows a one-time pairing code')
+    let code = original
+    if (!live) {
+      proxy = await tcpProxy(viaPort(original, 1).hostPort)
+      code = viaPort(original, proxy.port).code
+    }
+    await step(`host enables remote access from settings and shows a one-time pairing code${live ? ' (live Dev Tunnels)' : ''}`)
 
     const clientProfile = path.join(artifacts, 'profile-client')
     fs.mkdirSync(clientProfile)
@@ -76,7 +99,7 @@ module.exports = async function ({ app: host, launch, stop, waitFor, pass, fill,
     await client.eval(`document.querySelector('[data-action="remote-pair"]').click()`)
     const target = await waitFor(async () => {
       try { return (await (await fetch(client.origin + '/json/list')).json()).find(t => t.type === 'page' && t.id !== client.targetId) } catch { return null }
-    }, 'remote window', 30000)
+    }, 'remote window', relayMs)
     remote = await connectPage(target)
     remote.ws.addEventListener('message', event => {
       const msg = JSON.parse(event.data)
@@ -129,23 +152,27 @@ module.exports = async function ({ app: host, launch, stop, waitFor, pass, fill,
     await step('the remote window gets its own host terminal rendered by xterm')
     assert.equal(remote.errors.length, 0, JSON.stringify(remote.errors))
 
-    proxy.drop()
-    await waitFor(() => remote.eval(`window.__remoteStates.some(s=>s.state!=='connected')`), 'drop noticed')
-    await waitFor(() => remote.eval(`window.__remoteStates.at(-1)?.state==='connected' && window.__remoteStates.at(-1)?.resync===true`), 'reconnected with resync', 20000)
-    await waitFor(() => remote.eval(`!document.querySelector('[data-remote-banner]')`), 'banner cleared')
-    assert.equal((await remote.eval(`window.spi.getTerminal(${JSON.stringify(sessionId)})`)).terminalId, terminal.terminalId, 'the terminal survives a short drop')
-    await waitFor(() => remote.eval(`!!document.querySelector('.terminal-panel:not([hidden]) .xterm-helper-textarea')`), 'terminal reattached')
-    await typeInTerminal('SPI_AFTER_DROP')
-    await prompt('SPI_AFTER_DROP_OUTPUT')
-    await step('a relay drop reconnects, resyncs the window and keeps the terminal')
+    // A relay drop can only be injected on the loopback relay, where the test owns the TCP path.
+    if (!live) {
+      proxy.drop()
+      await waitFor(() => remote.eval(`window.__remoteStates.some(s=>s.state!=='connected')`), 'drop noticed')
+      // The debounced status broadcast may repeat the connected state without the resync flag.
+      await waitFor(() => remote.eval(`window.__remoteStates.at(-1)?.state==='connected' && window.__remoteStates.slice(window.__remoteStates.findIndex(s=>s.state!=='connected')).some(s=>s.state==='connected'&&s.resync===true)`), 'reconnected with resync', 20000)
+      await waitFor(() => remote.eval(`!document.querySelector('[data-remote-banner]')`), 'banner cleared')
+      assert.equal((await remote.eval(`window.spi.getTerminal(${JSON.stringify(sessionId)})`)).terminalId, terminal.terminalId, 'the terminal survives a short drop')
+      await waitFor(() => remote.eval(`!!document.querySelector('.terminal-panel:not([hidden]) .xterm-helper-textarea')`), 'terminal reattached')
+      await typeInTerminal('SPI_AFTER_DROP')
+      await prompt('SPI_AFTER_DROP_OUTPUT')
+      await step('a relay drop reconnects, resyncs the window and keeps the terminal')
+    }
 
     await host.eval('window.spi.setRemoteHostEnabled(false)')
-    await waitFor(() => remote.eval(`!!document.querySelector('[data-remote-banner="reconnecting"],[data-remote-banner="connecting"]')`), 'disconnected banner')
+    await waitFor(() => remote.eval(`!!document.querySelector('[data-remote-banner="reconnecting"],[data-remote-banner="connecting"]')`), 'disconnected banner', relayMs)
     await checkHeap('host turned off')
     await remote.eval(`window.spi.getState(${JSON.stringify(sessionId)})`).then(() => assert.fail('calls must fail while disconnected'), error => assert.match(error.message, /Not connected/))
     await capture(remote, 'remote-window-disconnected')
     await host.eval('window.spi.setRemoteHostEnabled(true)')
-    await waitFor(() => remote.eval(`window.__remoteStates.at(-1)?.state==='connected'`), 'reconnected after host restart', 20000)
+    await waitFor(() => remote.eval(`window.__remoteStates.at(-1)?.state==='connected'`), 'reconnected after host restart', relayMs)
     await checkHeap('host turned on again')
     await waitFor(() => remote.eval(`!document.querySelector('[data-remote-banner]')`), 'banner cleared after host restart')
     await waitFor(() => remote.eval(`!document.querySelector('.terminal-panel')`), 'terminal closed by the host restart is dropped')
@@ -154,9 +181,25 @@ module.exports = async function ({ app: host, launch, stop, waitFor, pass, fill,
     await waitFor(() => remote.eval(`window.spi.getTerminal(${JSON.stringify(sessionId)}).then(t=>!!t&&t.terminalId!==${JSON.stringify(terminal.terminalId)})`), 'a new terminal opens after the restart')
     await step('turning remote access off shows a banner and fails calls fast; turning it on reconnects')
 
+    if (live) {
+      const hostStateFile = path.join(profile, 'spi-remote-host.json')
+      const tunnelId = () => JSON.parse(fs.readFileSync(hostStateFile, 'utf8')).tunnel?.tunnelId
+      const before = tunnelId()
+      await host.eval('window.spi.setRemoteHostEnabled(false)')
+      await waitFor(() => remote.eval(`!!document.querySelector('[data-remote-banner]')`), 'disconnected before the tunnel is deleted', relayMs)
+      assert.equal(await deleteLiveTunnel(hostStateFile), true)
+      await host.eval('window.spi.setRemoteHostEnabled(true)')
+      await waitFor(() => host.eval(`window.spi.getRemoteStatus().then(s=>s.host.state==='online')`), 'host online with a new tunnel', relayMs)
+      assert.notEqual(tunnelId(), before, 'the host created a new tunnel')
+      await waitFor(() => remote.eval(`window.__remoteStates.at(-1)?.state==='connected'`), 'client found the recreated tunnel', relayMs)
+      await waitFor(() => remote.eval(`!document.querySelector('[data-remote-banner]')`), 'banner cleared after the tunnel was recreated')
+      await prompt('SPI_AFTER_RECREATE_OUTPUT')
+      await step('a deleted host tunnel is recreated and the client finds it again by its label')
+    }
+
     const device = (await host.eval('window.spi.getRemoteStatus()')).host.devices[0]
     await host.eval(`window.spi.revokeRemoteDevice(${JSON.stringify(device.id)})`)
-    await waitFor(() => remote.eval(`!!document.querySelector('[data-remote-banner="rejected"]')`), 'rejected banner', 30000)
+    await waitFor(() => remote.eval(`!!document.querySelector('[data-remote-banner="rejected"]')`), 'rejected banner', live ? relayMs : 30000)
     assert.match(await remote.eval(`document.querySelector('[data-remote-banner]').textContent`), /不再接受此设备（已被撤销/)
     assert.equal((await remote.eval('window.spi.getRemoteWindow()')).reason, 'revoked')
     await waitFor(() => host.eval(`!document.querySelector('[data-remote-connected]')`), 'host badge cleared')
@@ -171,22 +214,33 @@ module.exports = async function ({ app: host, launch, stop, waitFor, pass, fill,
     assert.equal(host.errors.length, 0, JSON.stringify(host.errors))
     assert.equal(client.errors.length, 0, JSON.stringify(client.errors))
     await step('closing the remote window leaves both apps running without renderer errors')
+
+    if (live) {
+      await host.eval('window.spi.setRemoteHostEnabled(false)')
+      assert.equal(await deleteLiveTunnel(path.join(profile, 'spi-remote-host.json')), true)
+      pass('the live test tunnel was deleted from the Dev Tunnels account')
+    }
   } catch (error) {
     fs.writeFileSync(path.join(artifacts, 'remote-heaps.json'), JSON.stringify(heaps, null, 2))
+    for (const [name, page] of [['host', host], ['client', client], ['remote', remote]]) {
+      if (!page?.eval) continue
+      try { fs.writeFileSync(path.join(artifacts, `remote-failure-${name}.json`), JSON.stringify(await page.eval(`({body:document.body.innerText.slice(-8000),states:window.__remoteStates})`), null, 2)) } catch (dumpError) { fs.writeFileSync(path.join(artifacts, `remote-failure-${name}.json`), JSON.stringify({ dumpError: String(dumpError) })) }
+      try { await capture(page, `remote-failure-${name}`) } catch {}
+    }
     if (remote?.ws) {
       remote.ws.send(JSON.stringify({ id: 1e9, method: 'Debugger.pause' }))
       await new Promise(resolve => setTimeout(resolve, 3000))
       fs.writeFileSync(path.join(artifacts, 'remote-paused-stack.json'), JSON.stringify(remote.paused ?? 'not paused', null, 2))
-    }
-    for (const [name, page] of [['host', host], ['client', client], ['remote', remote]]) {
-      if (!page?.eval) continue
-      try { fs.writeFileSync(path.join(artifacts, `remote-failure-${name}.json`), JSON.stringify(await page.eval(`({body:document.body.innerText.slice(-8000),states:window.__remoteStates})`), null, 2)) } catch {}
-      try { await capture(page, `remote-failure-${name}`) } catch {}
     }
     throw error
   } finally {
     remote?.ws?.close()
     await stop(client)
     await proxy?.close()
+    if (live && results.at(-1)?.name !== 'the live test tunnel was deleted from the Dev Tunnels account') {
+      try { await host.eval('window.spi.setRemoteHostEnabled(false)') } catch {}
+      try { console.log('LIVE TUNNEL CLEANUP', await deleteLiveTunnel(path.join(profile, 'spi-remote-host.json')) ? 'deleted' : 'nothing to delete') }
+      catch (error) { console.error('LIVE TUNNEL CLEANUP FAILED: delete the tunnel labelled spi-remote manually', error.message) }
+    }
   }
 }

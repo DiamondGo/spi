@@ -309,6 +309,20 @@ const rewritePort = (code, port) => { const decoded = R.decodePairingCode(code);
     assert.match(R.hostLabel(R.generateKeyPair().publicKey), /^spi-host-[0-9a-f]{24}$/)
   })
 
+  await check('a saved host tunnel that the service reports as 404 is recreated; other lookup errors still fail', async () => {
+    const notFound = Object.assign(new Error('Tunnel service error: Not Found'), { response: { status: 404 } })
+    const created = []
+    const management = {
+      getTunnel: async () => { throw notFound },
+      createTunnel: async (tunnel) => { created.push(tunnel); return { ...tunnel, tunnelId: 'new', clusterId: 'usw2' } },
+    }
+    const { tunnel, port } = await R.ensureHostTunnel(management, { tunnelId: 'gone', clusterId: 'usw2', port: 1 }, R.generateKeyPair().publicKey)
+    assert.equal(created.length, 1); assert.equal(tunnel.tunnelId, 'new'); assert.equal(created[0].ports[0].portNumber, port)
+    assert.ok(created[0].labels.includes(R.REMOTE_LABEL))
+    const forbidden = Object.assign(new Error('Forbidden'), { response: { status: 403 } })
+    await assert.rejects(R.getTunnelOrNull({ getTunnel: async () => { throw forbidden } }, { tunnelId: 'x', clusterId: 'y' }), /Forbidden/)
+  })
+
   await check('pi event slimming drops the quadratic partial message and keeps the delta', () => {
     const event = { sessionId: 's', event: { type: 'message_update', message: { big: 'x'.repeat(1000) }, assistantMessageEvent: { type: 'text_delta', delta: 'hi', partial: { big: 1 } } } }
     assert.deepEqual(R.slimPiEvent(event), { sessionId: 's', event: { type: 'message_update', assistantMessageEvent: { type: 'text_delta', delta: 'hi' } } })

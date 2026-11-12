@@ -27,6 +27,12 @@ export function isAuthError(error: unknown): boolean {
   return /\b401\b|\b403\b|unauthori[sz]ed|forbidden|invalid_token/i.test(error instanceof Error ? error.message : String(error))
 }
 
+/** getTunnel without allowNotFound: the SDK throws on 404 instead of returning null. */
+export async function getTunnelOrNull(management: TunnelManagementHttpClient, id: Pick<Tunnel, 'tunnelId' | 'clusterId'>, options: Parameters<TunnelManagementHttpClient['getTunnel']>[1]): Promise<Tunnel | null> {
+  try { return await management.getTunnel(id as Tunnel, options) }
+  catch (error) { if ((error as { response?: { status?: number } })?.response?.status === 404) return null; throw error }
+}
+
 async function portIsFree(port: number): Promise<boolean> {
   try { const listener = await new LoopbackTransport(port).listen(() => {}); await listener.close(); return true } catch { return false }
 }
@@ -34,7 +40,7 @@ async function portIsFree(port: number): Promise<boolean> {
 /** Reuses the persisted host tunnel (recreating it if it expired) and makes sure its single port is bindable. */
 export async function ensureHostTunnel(management: TunnelManagementHttpClient, saved: HostTunnelRecord | undefined, hostKey: Uint8Array): Promise<{ tunnel: Tunnel; port: number }> {
   const options = { tokenScopes: [TunnelAccessScopes.Host], includePorts: true }
-  let tunnel = saved ? await management.getTunnel({ tunnelId: saved.tunnelId, clusterId: saved.clusterId }, options) : null
+  let tunnel = saved ? await getTunnelOrNull(management, { tunnelId: saved.tunnelId, clusterId: saved.clusterId }, options) : null
   if (!tunnel) {
     const port = await freeLoopbackPort()
     tunnel = await management.createTunnel({ labels: [REMOTE_LABEL, hostLabel(hostKey)], ports: [{ portNumber: port, protocol: 'auto' }] }, options)
@@ -123,7 +129,7 @@ export class DevTunnelsTransport implements Transport {
     if (existing) return existing.ready.then(c => c.connectionStatus === 'connected' ? c : this.drop(key).then(() => this.relayClient(a, key)))
     const entry: RelayEntry = { ready: null! }
     entry.ready = (async () => {
-      const tunnel = await this.management.getTunnel({ tunnelId: a.tunnelId, clusterId: a.clusterId }, { tokenScopes: [TunnelAccessScopes.Connect] })
+      const tunnel = await getTunnelOrNull(this.management, { tunnelId: a.tunnelId, clusterId: a.clusterId }, { tokenScopes: [TunnelAccessScopes.Connect] })
       if (!tunnel) throw new TunnelMissingError()
       if (this.clients.get(key) !== entry) throw new Error('connection cancelled')
       const client = entry.client = new TunnelRelayTunnelClient(this.management)

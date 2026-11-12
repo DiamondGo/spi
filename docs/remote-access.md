@@ -1,6 +1,6 @@
 # Remote access and the GitHub CLI dependency / 远程访问与 gh 依赖
 
-**Status: implemented in the source tree, not included in any release (0.1.5 and earlier do not contain it).** Pairing, the remote window, reconnects and revocation are covered by unit tests and a two-instance GUI test on a loopback relay (Linux). The integrated app has not yet been re-checked against the live Dev Tunnels service, and macOS/Windows are unverified.
+**Status: implemented in the source tree, not included in any release (0.1.5 and earlier do not contain it).** Pairing, the remote window, reconnects and revocation are covered by unit tests and a two-instance GUI test, run on Linux both on a loopback relay and against the live Dev Tunnels service. macOS/Windows are unverified.
 
 **Summary (English).** Remote access lets one sPi desktop open a window onto another sPi host behind NAT/firewalls, relayed through Microsoft Dev Tunnels and end-to-end encrypted by sPi itself. **It requires the GitHub CLI (`gh`) to be installed and signed in to the same GitHub account on both machines.** Dev Tunnels rejects GitHub tokens issued to third-party OAuth Apps (`invalid_token`), but accepted the token from `gh auth token` in our tests. sPi reads that token on demand, keeps it in memory only and sends it only to the Dev Tunnels management/relay service. Local use of sPi never needs `gh`, GitHub or Dev Tunnels.
 
@@ -10,9 +10,8 @@
 - **已在 Linux 上验证**：
   - 单元测试；
   - 两个 sPi 实例通过本机回环中继的 GUI 测试：配对、远程会话、远程终端、断线重连、host 重启、撤销。
-- **未验证**：
-  - 接入后的版本还没有在真实的 Dev Tunnels 服务上复测；原型阶段曾在真实服务上验证过。
-  - macOS 和 Windows 的代码已写好，但没有测试过。
+  - 同一套 GUI 测试在真实的 Dev Tunnels 服务上的实测（2026-11-11），另外验证了隧道被删除后自动重建、client 自动找回 host。
+- **未验证**：macOS 和 Windows 的代码已写好，但没有测试过。
 
 下文中 gh 的验证结果是实测。
 
@@ -137,6 +136,7 @@ sPi 不会借用 VS Code 或 `devtunnel` CLI 的应用身份（Client ID），�
 | gh 未登录 | 设置里提示运行 `gh auth login`，开关和配对输入同样不可用 |
 | 已开启托管后 token 失效或中继连不上 | host 在设置里显示原因，并在 15 秒到 5 分钟之间逐步拉长间隔自动重试；本地会话继续运行，不会被中断 |
 | host 离线或网络中断 | client 的远程窗口显示断线提示并自动重连，间隔从 1 秒逐步增加到 30 秒 |
+| host 的隧道被删除或过期 | host 下次开启时自动新建隧道；client 通过隧道标签重新找到 host，无需重新配对 |
 | 两端账号不一致 | client 连接不到 host（私有隧道只对创建它的账号开放） |
 | host 撤销了设备或重置了密钥 | 远程窗口提示"不再接受此设备"，停止重连，需要重新配对 |
 | Linux 没有系统密钥环 | 远程访问不可开启，设置里说明原因 |
@@ -150,7 +150,10 @@ sPi 不会借用 VS Code 或 `devtunnel` CLI 的应用身份（Client ID），�
   - gh 读取逻辑：使用假的命令执行器，不会运行真实的 `gh`；
   - host 的鉴权，以及断线重连和撤销。
 - `npm run test:remote-smoke`：启动两个互相隔离的 sPi 实例，通过本机回环中继完成配对、远程会话、远程终端、断线重连、host 重启和撤销。需要 Xvfb；没有安装时，可以用 `SPI_XVFB_BINARY` 指定 Xvfb 程序的路径。
-- **测试模式**：`SPI_TEST_REMOTE=loopback` 把中继换成本机 127.0.0.1，不联系 Dev Tunnels，也不读取 gh 的 token。这个模式只在未打包的开发版本中生效，发布版会忽略这个变量。测试模式下密钥以明文保存在测试用的临时 profile 里。
+- `npm run test:remote-live`：同一套 GUI 测试走真实的 Dev Tunnels 服务，使用本机已登录的 gh 账号，会在该账号下临时创建隧道。回环测试里的"中继断线"步骤在这里跳过，改为测试"隧道被删除后 host 自动新建、client 自动找回"。测试结束时删除隧道并确认已删除；中途失败也会尝试删除，删不掉时会提示去手动删除带 `spi-remote` 标签的隧道。token 只在内存中使用，不打印、不写入文件。
+- **测试模式**（两种模式都只在未打包的开发版本中生效，发布版会忽略这个变量；测试模式下密钥以明文保存在测试用的临时 profile 里，不使用系统密钥环）：
+  - `SPI_TEST_REMOTE=loopback`：把中继换成本机 127.0.0.1，不联系 Dev Tunnels，也不读取 gh 的 token。
+  - `SPI_TEST_REMOTE=devtunnels`：使用真实中继，供 `test:remote-live` 使用。
 
 ## 风险与后续替代
 

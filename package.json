@@ -37,6 +37,7 @@
     "test:terminal": "node scripts/terminal.test.cjs",
     "test:remote": "node scripts/remote.test.cjs",
     "test:remote-smoke": "electron-vite build && node scripts/with-display.cjs scripts/smoke.cjs --remote",
+    "test:remote-live": "electron-vite build && node scripts/with-display.cjs scripts/smoke.cjs --remote --live",
     "test:terminal-smoke": "electron-vite build && node scripts/with-display.cjs scripts/smoke.cjs --terminal",
     "test:settings": "node scripts/settings.test.cjs",
     "test:settings-smoke": "electron-vite build && node scripts/with-display.cjs scripts/smoke.cjs --settings",

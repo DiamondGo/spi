@@ -28,10 +28,17 @@ function descendants(pid){try{
   if(process.platform==='linux'&&process.env.SPI_TEST_VIRTUAL_DISPLAY!=='1')throw Error('Use scripts/with-display.cjs for isolated GUI tests')
   const headless=process.platform==='linux'?['--ozone-platform=x11','--disable-gpu']:[]
   const args=[...headless,'--user-data-dir='+profile,'--remote-debugging-port=0']
+  console.log('CHECK launching isolated packaged GUI')
   app=child(exe,args,env)
   const endpoint=await wait(()=>{if(app.done)throw Error(app.log);return app.log.match(/DevTools listening on (ws:\/\/\S+)/)?.[1]},'GUI endpoint')
+  console.log('CHECK packaged GUI debugger endpoint ready')
   const page=await wait(async()=>{try{const pages=await(await fetch('http://'+new URL(endpoint).host+'/json/list')).json();return pages.find(p=>p.type==='page'&&p.webSocketDebuggerUrl)}catch{return false}},'GUI debugger page')
-  ws=new WebSocket(page.webSocketDebuggerUrl);await new Promise((r,j)=>{ws.onopen=r;ws.onerror=j})
+  console.log('CHECK packaged GUI debugger page ready')
+  ws=new WebSocket(page.webSocketDebuggerUrl);await new Promise((resolve,reject)=>{
+    const timer=setTimeout(()=>reject(Error('Packaged GUI debugger WebSocket connection timed out')),15000)
+    ws.onopen=()=>{clearTimeout(timer);resolve()};ws.onerror=()=>{clearTimeout(timer);reject(Error('Packaged GUI debugger WebSocket connection failed'))}
+  })
+  console.log('CHECK packaged GUI debugger attached')
   let seq=0;const pending=new Map()
   ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.id){const p=pending.get(m.id);if(!p)return;pending.delete(m.id);m.error?p.reject(Error(m.error.message)):p.resolve(m.result)}}
   const send=(method,params)=>new Promise((resolve,reject)=>{const id=++seq,t=setTimeout(()=>{pending.delete(id);reject(Error('CDP timeout'))},15000);pending.set(id,{resolve:v=>{clearTimeout(t);resolve(v)},reject:e=>{clearTimeout(t);reject(e)}});ws.send(JSON.stringify({id,method,params}))})

@@ -2,7 +2,11 @@
 
 **Status: new in Linux desktop/npm 0.2.0 (0.1.5 and earlier do not contain it).** [Release notes](releases/0.2.0.md). Pairing, the remote window, reconnects and revocation are covered by unit tests and a two-instance GUI test, run on Linux both on a loopback relay and against the live Dev Tunnels service. macOS/Windows are unverified.
 
-**Summary (English).** Remote access lets one sPi desktop open a window onto another sPi host behind NAT/firewalls, relayed through Microsoft Dev Tunnels and end-to-end encrypted by sPi itself. **It requires the GitHub CLI (`gh`) to be installed and signed in to the same GitHub account on both machines.** Dev Tunnels rejects GitHub tokens issued to third-party OAuth Apps (`invalid_token`), but accepted the token from `gh auth token` in our tests. sPi reads that token on demand, keeps it in memory only and sends it only to the Dev Tunnels management/relay service. Local use of sPi never needs `gh`, GitHub or Dev Tunnels.
+**Summary (English).** Remote access lets one sPi desktop open a window onto another sPi host behind NAT/firewalls, relayed through Microsoft Dev Tunnels and end-to-end encrypted by sPi itself. **It requires the GitHub CLI (`gh`) to be installed and signed in to the same GitHub account on both machines.** Dev Tunnels rejects GitHub tokens issued to third-party OAuth Apps (`invalid_token`), but accepted the token from `gh auth token` in our tests. sPi reads that token on demand, keeps it in memory only and sends it only to the Dev Tunnels management/relay service. Local sessions do not need a GitHub account, `gh` or Dev Tunnels. From 0.3.2, desktop version checks contact the public GitHub release API without credentials.
+
+## 0.3.2：凭据检查按需触发
+
+打开通用设置或检查更新不会检查远程访问的系统凭据存储，也不会触发钥匙串授权。点击设置中的“管理远程访问”后才挂载远程设置并检查凭据；启用／恢复远程托管仍保留原来的强制凭据保护检查，没有增加明文回退。新版本更新功能不依赖 `gh` 登录或 Dev Tunnels。
 
 ## 0.3.0：单远程控制端（已发布）
 
@@ -29,7 +33,7 @@
 
 远程访问依赖 **GitHub CLI（`gh`）**：host 和 client 两台机器都要安装 `gh`，并用 `gh auth login` 登录**同一个 GitHub 账号**。sPi 不提供自己的 GitHub 登录，也不会替你安装或登录 `gh`。
 
-不使用远程访问时，sPi 的全部本地功能与现在完全相同，不需要 `gh`，也不会连接 GitHub 或 Dev Tunnels。
+不使用远程访问时，本地会话不需要 `gh` 或 GitHub 登录，也不会连接 Dev Tunnels；0.3.2 的版本检测会匿名查询 GitHub Releases，不读取远程访问凭据。
 
 ## 为什么依赖 gh
 

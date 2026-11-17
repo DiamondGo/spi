@@ -26,6 +26,8 @@ const english: Record<string, string> = {
   '需要 Node.js ≥22.19。只影响之后新建或重新打开的会话，不重启已有会话。': 'Requires Node.js ≥22.19. Applies to new/reopened sessions only; existing sessions are not restarted.',
   '自动查找会检查当前 PATH、Pi 自带运行环境和登录 shell；这里只保存 sPi 配置。': 'Automatic detection checks PATH, the Pi-managed runtime and your login shell. Only sPi configuration is saved.',
   'Node 路径已保存，将用于之后打开的会话。': 'Node path saved. It will be used for subsequently opened sessions.',
+  '管理远程访问': 'Manage remote access', '收起远程访问设置': 'Hide remote access settings',
+  '远程访问的凭据检查可能触发系统提示，点击后才检查。': 'Remote credential checks may request system approval. They run only after you open remote settings.',
   'sPi 更新': 'sPi updates', '检查更新': 'Check for updates', '下载并安装': 'Download and install', '重试安装': 'Retry installation',
   '重启生效': 'Restart to apply', '重启并更新 sPi': 'Restart and update sPi',
   '确定重启以使用新版本吗？': 'Restart to use the new version?',

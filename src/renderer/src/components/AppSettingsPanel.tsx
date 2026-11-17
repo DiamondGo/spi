@@ -12,6 +12,7 @@ export function AppSettingsPanel({ onClose }: { onClose: () => void }): React.JS
   const t = useT()
   const ref = useRef<HTMLDialogElement>(null)
   const [busy, setBusy] = useState(false)
+  const [remoteOpen, setRemoteOpen] = useState(false)
   useEffect(() => {
     const dialog = ref.current
     if (dialog && !dialog.open) dialog.showModal()
@@ -53,7 +54,11 @@ export function AppSettingsPanel({ onClose }: { onClose: () => void }): React.JS
         {error && <p role="alert" className="settings-error">{error}</p>}
         <AppUpdateDetails />
         <NodeSettings />
-        <RemoteSettings />
+        <div className="remote-settings-entry">
+          <button type="button" data-action="remote-settings" aria-expanded={remoteOpen} aria-controls="remote-settings-content" onClick={() => setRemoteOpen(value => !value)}>{t(remoteOpen ? '收起远程访问设置' : '管理远程访问')}</button>
+          <p className="settings-help">{t('远程访问的凭据检查可能触发系统提示，点击后才检查。')}</p>
+          {remoteOpen && <div id="remote-settings-content"><RemoteSettings /></div>}
+        </div>
       </div>
     </dialog>, document.body
   )

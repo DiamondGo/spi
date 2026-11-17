@@ -49,6 +49,8 @@ module.exports = async function ({ app: host, launch, stop, waitFor, pass, fill,
   const openSettings = async page => {
     await page.eval(`document.querySelector('.app-settings-button').click()`)
     await waitFor(() => page.eval(`!!document.querySelector('.app-settings-dialog')?.open`), 'settings dialog open')
+    await page.eval(`document.querySelector('[data-action="remote-settings"]').click()`)
+    await waitFor(() => page.eval(`!!document.querySelector('#remote-settings-content .remote-settings')`), 'explicit remote settings open')
   }
   const closeSettings = async page => {
     await page.eval(`document.querySelector('.settings-close').click()`)

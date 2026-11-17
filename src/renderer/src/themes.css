@@ -136,6 +136,8 @@ html, body, #root { background: var(--bg); color: var(--fg); }
 .app-update-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .app-update-actions button { padding: 6px 10px; color: var(--fg); background: var(--raised); border: 1px solid var(--border); border-radius: 5px; cursor: pointer; }
 .update-dialog-close { display: flex; justify-content: flex-end; }
+.remote-settings-entry { margin-top: 18px; }
+.remote-settings-entry > button { padding: 6px 10px; color: var(--fg); background: var(--raised); border: 1px solid var(--border); border-radius: 5px; cursor: pointer; }
 .node-settings { margin: 18px 0 0; padding: 12px; border: 1px solid var(--border); min-width: 0; }
 .node-settings legend { padding: 0 5px; }
 .node-settings label { display: block; margin-bottom: 7px; }

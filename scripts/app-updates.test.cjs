@@ -102,6 +102,30 @@ function installed() {
     assert.equal(updateBinDirectory(root, tmp), path.dirname(owned)); fs.writeFileSync(owned, 'user modified')
     assert.equal(updateBinDirectory(root, tmp), normal); assert.equal(fs.readFileSync(owned,'utf8'), 'user modified')
   })
+  await test('ordinary Settings and update checking never mount remote credential probes; remote settings are explicit', () => {
+    const Module=require('node:module'), React=require('react'), {renderToStaticMarkup}=require('react-dom/server')
+    const filename=path.join(tmp,'settings-panel.cjs'), mod=new Module(filename,module)
+    let remoteOpen=false, hooks=0, probes=0
+    mod.paths=module.paths
+    mod.require=name=>{
+      if(name==='react')return{useRef:()=>({current:null}),useEffect:()=>{},useState:initial=>{hooks++;return[hooks===2?remoteOpen:initial,()=>{}]}}
+      if(name==='react-dom')return{createPortal:children=>children}
+      if(name==='../preferences')return{usePreferences:()=>({settings:{theme:'dark',language:'en',confirmOnExit:true},error:''}),useT:()=>text=>text}
+      if(name==='./IconControl')return{Icon:()=>null,IconControl:({children})=>children}
+      if(name==='./NodeSettings')return{NodeSettings:()=>null}
+      if(name==='./AppUpdates')return{AppUpdateDetails:()=>null}
+      if(name==='./RemoteSettings')return{RemoteSettings:()=>{probes++;return null}}
+      return require(name)
+    }
+    mod._compile(ts.transpileModule(fs.readFileSync(path.join(__dirname,'../src/renderer/src/components/AppSettingsPanel.tsx'),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText,filename)
+    const before=global.document;global.document={body:{}}
+    try{
+      let markup=renderToStaticMarkup(React.createElement(mod.exports.AppSettingsPanel,{onClose(){}}))
+      assert.equal(probes,0);assert.ok(markup.includes('data-action="remote-settings"'));assert.ok(!markup.includes('id="remote-settings-content"'))
+      remoteOpen=true;hooks=0;markup=renderToStaticMarkup(React.createElement(mod.exports.AppSettingsPanel,{onClose(){}}))
+      assert.equal(probes,1);assert.ok(markup.includes('id="remote-settings-content"'))
+    }finally{if(before===undefined)delete global.document;else global.document=before}
+  })
   await test('private runtime runner has bounded JSON output, no shell/npm, and strips release overrides', async () => {
     const helper = path.join(tmp, 'helper.cjs')
     fs.writeFileSync(helper, `console.error('[sPi] Downloading runtime: 1/2 MiB (50%)'); console.log(JSON.stringify({argv:process.argv.slice(2), env:process.env.SPI_RELEASE_REPOSITORY || null, node:process.env.ELECTRON_RUN_AS_NODE}))`)

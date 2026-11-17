@@ -9,6 +9,7 @@ module.exports = async function({app, waitFor, pass, fill, artifacts, hashes, be
   await fill(app, 'SPI_UPDATE_DRAFT_MUST_SURVIVE')
   await click('.app-settings-button')
   await waitFor(() => evaluate(`document.querySelector('.app-settings-dialog')?.open && !!document.querySelector('[data-update-phase]')`), 'update controls in settings')
+  assert.equal(await evaluate(`!!document.querySelector('#remote-settings-content')`),false,'checking updates must not mount OS credential probes')
   const initial = await evaluate('window.spi.getAppUpdate()')
   assert.equal(initial.currentVersion, require('../package.json').version)
   assert.equal(initial.target, process.platform+'-'+process.arch)

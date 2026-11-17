@@ -6,6 +6,7 @@
 - Add stable update checks, a clickable exclamation mark beside Settings, GitHub-only architecture-specific download/verification/installation and explicitly confirmed restart. Preserve saved history/profile/pairings; never restart an active task without confirmation.
 - Bundle the standalone installer in every desktop runtime. Bind metadata/archive layouts to exact version/target; preserve old runtimes and unrelated commands, validate Mac signatures, restrict update IPC to owning local windows, and protect directly relaunched runtimes from uninstall.
 - Build and verify Linux x64/arm64 and macOS Apple Silicon/Intel natively and publish one complete canonical manifest. Mac remains ad-hoc signed and unnotarized; Windows stays deferred. No npm publication/authentication is needed for GitHub desktop releases or later GUI updates.
+- Keep remote credential/Keychain checks behind an explicit Manage remote access action, so merely opening Settings or checking updates never blocks on unrelated system approval. Required remote credential protection is unchanged.
 - Existing 0.3.1 launchers require the one-time 0.3.2 GitHub bootstrap; immutable historical npm/Release assets are not patched in place.
 
 ## 0.3.1

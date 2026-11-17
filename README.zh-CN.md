@@ -22,7 +22,7 @@
 
 **Linux 桌面/npm 0.2.0 已发布：** 可选的[端到端加密远程访问](docs/remote-access.md)。在一台电脑上打开窗口操作另一台电脑上的 sPi，两边都在 NAT 或防火墙后面也可以；流量经 Microsoft Dev Tunnels 中继，由 sPi 自己加密。**两台电脑都要安装 GitHub CLI（`gh`）并登录同一个 GitHub 账号**；本地使用不需要 `gh`，也不会连接 GitHub 或 Dev Tunnels。已配对的设备拥有 host 上 sPi 的全部权限，包括终端和 YOLO。已在 Linux 上验证（含真实 Dev Tunnels 服务）；macOS 和 Windows 未验证。另修复了推理模型上的 AI 命名，以及过期的会话健康提示。
 
-**桌面版 0.3.2 发布候选：** [GitHub 新版本检测、齿轮旁可点击的 `!`、按当前架构下载安装及确认后重启](docs/releases/0.3.2.md)。Linux x64／ARM64 和 macOS Apple Silicon／Intel 共用完整的默认更新清单，不依赖 npm 发布。旧 0.3.1 启动器查询最新版会遇到 HTTP 415，请先用[一次性的 0.3.2 GitHub 安装脚本](docs/releases/0.3.2.md)升级，再使用 GUI 或修复后的 `spi update`。Mac 仍为 ad-hoc 签名、未公证。[更新行为与限制](docs/app-updates.md)。四平台原生及公开下载证据将在发布门槛通过后另行记录。
+**[桌面版 0.3.2 已公开](https://github.com/DiamondGo/spi/releases/tag/v0.3.2)：** [GitHub 新版本检测、齿轮旁可点击的 `!`、按当前架构下载安装及确认后重启](docs/releases/0.3.2.md)。Linux x64／ARM64 和 macOS Apple Silicon／Intel 共用完整的默认更新清单，不依赖 npm 发布。旧 0.3.1 启动器查询最新版会遇到 HTTP 415，请先用[一次性的 0.3.2 GitHub 安装脚本](docs/releases/0.3.2.md)升级，再使用 GUI 或修复后的 `spi update`。Mac 仍为 ad-hoc 签名、未公证。[更新行为与限制](docs/app-updates.md)。[四平台原生构建、真实跨目录重启、全部附件的匿名校验及 GitHub 独立安装均已通过](docs/verification.md)。
 
 **历史桌面版 0.3.1 的发布记录：** [Thinking 右侧 context 圆环/百分比、悬停 used/max、左键压缩与右键输入 instruction](docs/releases/0.3.1.md)。查看用量不发模型请求，压缩可能产生费用；保留草稿/outbox，只读端不能压缩。Linux x64/arm64 和 Mac [Apple Silicon](https://github.com/DiamondGo/spi/releases/download/v0.3.1/spi-0.3.1-darwin-arm64.zip)/[Intel](https://github.com/DiamondGo/spi/releases/download/v0.3.1/spi-0.3.1-darwin-x64.zip) 手动 ZIP 均通过原生及安装后的 context/压缩验收；Mac 为 ad-hoc 签名、未公证。**npm `spi-agent-gui@0.3.1` 已公开，latest 为 0.3.1。** 公开七文件载荷与审核包逐字节一致；两个隔离本机 profile 分别通过公开固定版本/latest Pi 安装及下载后运行时的 PTY/GUI/Pi RPC 检查。 已有 Linux 安装可用 `spi update`，更新后需完全退出旧窗口再打开。
 
@@ -42,7 +42,7 @@
 
 0.3.2 请使用版本绑定的 [GitHub 安装脚本](docs/releases/0.3.2.md)，不需要 npm。从 0.3.2 起可在设置中检查更新、点击 `!` 下载，或使用 `spi update`。重新安装旧 npm 包仍会选择旧桌面版本，不会获得 0.3.2。安装不会热更新已有窗口，请先另存未发送文字，再确认“重启生效”；已保存的 Pi 历史、认证及 sPi 偏好设置保留。
 
-发布准备已升级到 Electron 45.2.3 和 electron-builder 26.18.0，high/critical 审计告警已清除；仍有六条 minimatch 构建工具链 moderate 审计条目。发布流水线继续拦截 high/critical 问题。
+发布准备已升级到 Electron 45.2.3 和 electron-builder 26.18.0，high/critical 审计告警已清除；仍有八条 moderate 审计条目，涉及 minimatch 构建工具链及 Dev Tunnels SDK 的 uuid 依赖。发布流水线继续拦截 high/critical 问题。
 
 **0.3.2 的 GitHub 安装／更新目标为 Linux x64／ARM64、macOS Apple Silicon／Intel**，由四个平台的原生构建和完整默认清单共同把关；Windows 暂不发布。旧 npm 包和历史 Linux-only 清单保持不可变，下面的历史 Mac 下载不改写旧版本资源。Linux 要求图形桌面、系统 Electron 依赖、归档记录的 glibc 基线及可用的 Chromium sandbox。Ubuntu 24+ 的 AppArmor 策略可能需要管理员允许应用创建 user namespace；安装器不会关闭 sandbox 或修改主机安全策略。Windows/macOS 默认没有发行商签名/公证（macOS 为 ad-hoc 签名），可能出现系统警告，不应关闭系统保护来绕过。
 
@@ -52,12 +52,24 @@
 
 ## 安装
 
-### Pi 插件，推荐
+### GitHub 安装脚本，0.3.2 推荐方式
+
+```bash
+curl -fL https://github.com/DiamondGo/spi/releases/download/v0.3.2/install.sh -o /tmp/spi-install-0.3.2.sh
+# 先检查下载的脚本，再执行：
+bash /tmp/spi-install-0.3.2.sh --version 0.3.2
+```
+
+保存草稿并退出旧窗口，再使用安装器打印的启动命令（通常是 `spi`）。这会绕开 npm，替换旧 0.3.1 的 HTTP-415 启动器；后续可使用 GUI 更新或 `spi update`。
+
+### 可选的历史 Pi 插件集成
 
 ```bash
 pi install npm:spi-agent-gui
 spi
 ```
+
+这会安装 npm 上已发布的对应版本，不一定是最新的 GitHub 桌面版。0.3.2 请使用上面的 GitHub 安装方式；本次不要求、也不声称已发布 npm 0.3.2。
 
 可验证的个人安装会下载与 npm 包版本匹配的桌面运行包，并尽量把 `spi` 放到 PATH 中 Pi 启动器旁边。扩展加载时不会启动 GUI。可手动运行 `/spi` 打开当前项目，或 `/spi-install` 安装；不会接管正在运行的 TUI 会话。
 
@@ -74,18 +86,17 @@ npx --package spi-agent-gui spi install
 从 **GitHub Release 附件**下载并检查 `install.sh` 后执行：
 
 ```bash
-bash install.sh --version 0.1.4
+bash install.sh --version 0.3.2
 # 可选覆盖目录：
-bash install.sh --version 0.1.4 --install-dir /path/to/user-install --bin-dir /path/to/user-bin
+bash install.sh --version 0.3.2 --install-dir /path/to/user-install --bin-dir /path/to/user-bin
 ```
 
-发行版脚本已绑定仓库/tag，先下载和核验独立安装器，再下载匹配的运行包。源码脚本默认使用同一仓库，fork 可通过 `SPI_RELEASE_REPOSITORY` 覆盖。Windows 通过 Pi 包/Node 安装器安装，不要求 Bash。
+发行版脚本已绑定仓库/tag，先下载和核验独立安装器，再下载匹配的运行包。源码脚本默认使用同一仓库，fork 可通过 `SPI_RELEASE_REPOSITORY` 覆盖。Windows 暂不发布。
 
-离线安装：
+离线安装：提前下载并核验同一 GitHub Release 的独立安装器、归档、清单和校验文件，再执行：
 
 ```bash
-npm run dist:prepare
-bash install.sh --version 0.1.4 --archive /path/to/spi-0.1.4-linux-x64.tar.gz --manifest /path/to/release-manifest.json
+node spi-installer.cjs install --version 0.3.2 --archive /path/to/spi-0.3.2-linux-x64.tar.gz --manifest /path/to/release-manifest.json
 ```
 
 SHA-256 用于检测错包和损坏，不等同于独立的发布者签名认证。

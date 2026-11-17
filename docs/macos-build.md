@@ -2,11 +2,11 @@
 
 ## 0.3.2 canonical updates / 四平台统一更新
 
-The 0.3.2 candidate promotes both native Mac architectures into the canonical GitHub installer/update manifest alongside Linux x64/arm64. `release.yml` builds both Mac targets natively, checks bundle signatures/ASAR/icon, GUI/PTY/Pi RPC, installed updater/helper behavior and actual cross-runtime Electron relaunch before publication. The separate workflows below document historical manual releases and remain available for those releases; they are not the normal 0.3.2 publication path.
+The published [0.3.2 Release](https://github.com/DiamondGo/spi/releases/tag/v0.3.2) promotes both native Mac architectures into the canonical GitHub installer/update manifest alongside Linux x64/arm64. `release.yml` builds both Mac targets natively, checks bundle signatures/ASAR/icon, GUI/PTY/Pi RPC, installed updater/helper behavior and actual cross-runtime Electron relaunch before publication. The separate workflows below document historical manual releases and remain available for those releases; they are not the normal 0.3.2 publication path.
 
 Packages remain **ad-hoc signed, NOT Developer ID signed or notarized**. The installer verifies the staged Mac bundle with `/usr/bin/codesign --verify --deep --strict` before selection; this is integrity verification, not a claim of Gatekeeper trust. Do not remove quarantine attributes or disable OS protections. Manual app copies are preserved: in-app updating installs a managed runtime under `~/Library/Application Support/sPi`, restarts into it, and shows its exact future launch command. [One-time old-version bootstrap and limitations](releases/0.3.2.md).
 
-Native/public 0.3.2 acceptance is pending the canonical release gates; it is not established merely by this documentation change.
+Both [native targets and extracted ZIPs](https://github.com/DiamondGo/spi/actions/runs/44041154503) passed source/installed update GUI, signature/ASAR/icon, PTY/Pi RPC, single-instance and actual cross-runtime relaunch tests. Source is immutable `fc9f24a1844fdc56223ec1f55e73ddd5acb08869`. [Publication](https://github.com/DiamondGo/spi/actions/runs/44042531233) verified all 11 assets anonymously, including both Mac archives, reports and the complete four-target manifest. [Apple Silicon ZIP](https://github.com/DiamondGo/spi/releases/download/v0.3.2/spi-0.3.2-darwin-arm64.zip) · [Intel ZIP](https://github.com/DiamondGo/spi/releases/download/v0.3.2/spi-0.3.2-darwin-x64.zip) · [SHA-256](https://github.com/DiamondGo/spi/releases/download/v0.3.2/SHA256SUMS).
 
 ## Public 0.3.1 downloads / 已公开的 0.3.1 包
 

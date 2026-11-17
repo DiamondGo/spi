@@ -1,8 +1,18 @@
 # macOS downloads / macOS 手动下载包
 
-## Public 0.3.0 downloads / 已公开的 0.3.0 包
+## Public 0.3.1 downloads / 已公开的 0.3.1 包
 
-**Latest manual Mac downloads: [Apple Silicon ZIP](https://github.com/DiamondGo/spi/releases/download/v0.3.0/spi-0.3.0-darwin-arm64.zip) · [Intel ZIP](https://github.com/DiamondGo/spi/releases/download/v0.3.0/spi-0.3.0-darwin-x64.zip) · [SHA-256](https://github.com/DiamondGo/spi/releases/download/v0.3.0/SHA256SUMS-macos.txt).** Ad-hoc signed, NOT Developer ID signed or notarized; do not disable OS protections.
+**Latest manual Mac downloads: [Apple Silicon ZIP](https://github.com/DiamondGo/spi/releases/download/v0.3.1/spi-0.3.1-darwin-arm64.zip) · [Intel ZIP](https://github.com/DiamondGo/spi/releases/download/v0.3.1/spi-0.3.1-darwin-x64.zip) · [SHA-256](https://github.com/DiamondGo/spi/releases/download/v0.3.1/SHA256SUMS-macos.txt).** Ad-hoc signed, NOT Developer ID signed or notarized; do not disable OS protections.
+
+- Source: immutable v0.3.1, `26215425c17f78243b7ee38c96501469a342bfc6`.
+- [Native build and extracted-runtime acceptance](https://github.com/DiamondGo/spi/actions/runs/44018901933): macos-26 arm64 and macos-15-intel x64 passed current context graph/tooltip, default/custom native compact RPC, draft preservation, unknown usage and theme/viewport GUI checks, including both extracted ZIPs.
+- Existing native architecture, privacy, signatures/ASAR/icon, PTY/GUI/Pi RPC/single-instance, question navigation and three-instance remote permissions suites passed too. Test compaction is deterministic and local, not a paid cloud model request; new live Dev Tunnels behavior is not claimed.
+- [Additive publication](https://github.com/DiamondGo/spi/actions/runs/44020495389) verified exact-tag provenance, archive hashes and anonymous downloads without replacing Linux assets or the canonical installer manifest. These are manual ZIPs only. npm 0.3.1 awaits maintainer authentication; latest remains 0.3.0.
+- Protocol remains v2. Update both host and client to use the complete new context UI/API; saved pairings are retained. [Release notes](releases/0.3.1.md).
+
+## Historical public 0.3.0 downloads / 历史 0.3.0 包
+
+**0.3.0 manual Mac downloads: [Apple Silicon ZIP](https://github.com/DiamondGo/spi/releases/download/v0.3.0/spi-0.3.0-darwin-arm64.zip) · [Intel ZIP](https://github.com/DiamondGo/spi/releases/download/v0.3.0/spi-0.3.0-darwin-x64.zip) · [SHA-256](https://github.com/DiamondGo/spi/releases/download/v0.3.0/SHA256SUMS-macos.txt).** Ad-hoc signed, NOT Developer ID signed or notarized; do not disable OS protections.
 
 - Source: immutable v0.3.0, `26121e2ea67dca7f78ed4250dc1fff6b88d75d04`.
 - [Native build and installed-ZIP acceptance](https://github.com/DiamondGo/spi/actions/runs/43305763506): both macos-26 arm64 and macos-15-intel x64 passed. Includes pending invitation recovery, three-instance single-controller/read-only viewing and automatic takeover, and Previous/Next user-question GUI tests. Question navigation also passed against the extracted installed ZIP on both architectures.

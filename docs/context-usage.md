@@ -1,6 +1,6 @@
 # Context usage and manual compaction / Context 用量与手动压缩
 
-**0.3.1 发布准备中；已发布的 0.3.0 不包含此功能。** [0.3.1 发布与验收状态](releases/0.3.1.md)。
+**桌面版 0.3.1 已发布；0.3.0 不包含此功能。npm 0.3.1 等待维护者认证。** [0.3.1 发布与验收状态](releases/0.3.1.md)。
 
 Thinking（思考）选择器右侧显示圆环和 context 已用百分比。鼠标悬停显示完整的 `context used / context max` token 数；这些值来自 Pi RPC `get_session_stats.contextUsage`，不是会话累计 token 或费用统计。图环最多填满 100%，文字仍可显示超过 100% 的实际比例。
 
@@ -16,4 +16,4 @@ Thinking（思考）选择器右侧显示圆环和 context 已用百分比。鼠
 
 - `npm run test:context-usage`: context/total-token distinction, unknown/invalid values, bounded instruction data, single-flight requests, busy/queue guards, compaction locking, failure recovery, refreshed history and draft preservation.
 - `npm run test:context-usage-smoke`: real Electron + Pi RPC with a deterministic local provider and a compaction fixture extension. Verifies graph/tooltip, empty-session errors, default/custom compaction, passive Cancel, draft preservation, unknown post-compaction usage, all themes and a narrower viewport. No cloud models or personal credentials are used.
-- The native Linux/Mac release workflows include the new unit/source GUI suites and an optional extracted-runtime compaction GUI check. Wiring is not a claim that the unreleased change has passed those native CI jobs.
+- The native Linux x64/arm64 and Mac arm64/x64 workflows passed the new unit/source GUI suites and extracted-runtime compaction GUI checks for 0.3.1. See the release notes for build/publication evidence. Public npm install acceptance remains pending until npm publication.

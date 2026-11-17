@@ -1,5 +1,13 @@
 # macOS downloads / macOS 下载包
 
+## Current GitHub desktop 0.3.3 / 当前公开桌面版
+
+[Apple Silicon ZIP](https://github.com/DiamondGo/spi/releases/download/v0.3.3/spi-0.3.3-darwin-arm64.zip) · [Intel ZIP](https://github.com/DiamondGo/spi/releases/download/v0.3.3/spi-0.3.3-darwin-x64.zip) · [Checksums](https://github.com/DiamondGo/spi/releases/download/v0.3.3/SHA256SUMS).
+
+Both native Mac builds and extracted ZIPs passed pending-panel minimization/navigation/draft-retention, updater, PTY/GUI/Pi RPC, signature/ASAR/icon and real relaunch tests in [native run 44191328666, attempt 2](https://github.com/DiamondGo/spi/actions/runs/44191328666/attempts/2). Source is immutable `3ae9d415cdb5ee37bf41df159859c4a7fe4063c1`; [publication and all 11 anonymous asset checks](https://github.com/DiamondGo/spi/actions/runs/44195855140) passed. All four target inventories reject the build-only matching modules under the explicit 0.3.3 audit exception. npm publication remains pending maintainer verification; GitHub downloads/updates are available independently. [Channel status](verification.md).
+
+Mac signing remains **ad-hoc, not Developer ID signed or notarized**. No OS protections are disabled or quarantine attributes removed.
+
 ## 0.3.2 canonical updates / 四平台统一更新
 
 The published [0.3.2 Release](https://github.com/DiamondGo/spi/releases/tag/v0.3.2) promotes both native Mac architectures into the canonical GitHub installer/update manifest alongside Linux x64/arm64. `release.yml` builds both Mac targets natively, checks bundle signatures/ASAR/icon, GUI/PTY/Pi RPC, installed updater/helper behavior and actual cross-runtime Electron relaunch before publication. The separate workflows below document historical manual releases and remain available for those releases; they are not the normal 0.3.2 publication path.

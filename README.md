@@ -21,7 +21,9 @@
 
 **Linux desktop/npm 0.2.0 published:** optional [end-to-end encrypted remote access](docs/remote-access.md). A window on one computer drives sPi on another, even behind NAT/firewalls, relayed through Microsoft Dev Tunnels and encrypted by sPi itself. **It requires the GitHub CLI (`gh`) signed in to the same GitHub account on both computers**; local use never needs `gh`, GitHub or Dev Tunnels. A paired device has full control of the host's sPi, including terminals and YOLO. Verified on Linux (including the live Dev Tunnels service); macOS/Windows unverified. Also fixes AI naming on reasoning models and stale session-health alerts.
 
-**[Desktop 0.3.2 is public](https://github.com/DiamondGo/spi/releases/tag/v0.3.2):** [GitHub-only update checks, a clickable `!` beside Settings, matching-architecture download/install and confirmed restart](docs/releases/0.3.2.md). Four native targets share one canonical manifest: Linux x64/ARM64 and macOS Apple Silicon/Intel. No npm publication is required. The old 0.3.1 launcher has a latest-API HTTP 415 bug: use the [one-time 0.3.2 GitHub bootstrap](docs/releases/0.3.2.md#upgrade-from-031--从旧版升级), then use GUI updates or the corrected `spi update`. Mac remains ad-hoc signed and unnotarized. [Update behavior and limits](docs/app-updates.md). [All four native targets, real cross-runtime restart, anonymous asset verification and a fresh public GitHub-only install passed](docs/verification.md).
+**[Desktop 0.3.3 is public](https://github.com/DiamondGo/spi/releases/tag/v0.3.3):** pending messages can minimize into a lower-left counter and restore editing without losing unsaved text/images or covering Up/Down and Return to latest. All four native runtime inventories and GUI/relaunch gates passed. **npm 0.3.3 is pending maintainer publish verification; GitHub downloads are ready.** The one user-approved build-only audit exception is disclosed in the [release notes](docs/releases/0.3.3.md); other high/critical findings remain blocked. [Acceptance evidence](docs/verification.md).
+
+**[Historical desktop 0.3.2 publication](https://github.com/DiamondGo/spi/releases/tag/v0.3.2):** [GitHub-only update checks, a clickable `!` beside Settings, matching-architecture download/install and confirmed restart](docs/releases/0.3.2.md). Four native targets share one canonical manifest: Linux x64/ARM64 and macOS Apple Silicon/Intel. No npm publication is required. The old 0.3.1 launcher has a latest-API HTTP 415 bug: use the [one-time 0.3.2 GitHub bootstrap](docs/releases/0.3.2.md#upgrade-from-031--从旧版升级), then use GUI updates or the corrected `spi update`. Mac remains ad-hoc signed and unnotarized. [Update behavior and limits](docs/app-updates.md). [All four native targets, real cross-runtime restart, anonymous asset verification and a fresh public GitHub-only install passed](docs/verification.md).
 
 **Historical desktop 0.3.1 publication:** [context usage ring/percentage beside Thinking, used/max on hover, click to compact and right-click for custom instructions](docs/releases/0.3.1.md). Reading usage is passive; compaction may make a model request. Drafts/outbox are preserved and read-only viewers cannot compact. Linux x64/arm64 and manual Mac [Apple Silicon](https://github.com/DiamondGo/spi/releases/download/v0.3.1/spi-0.3.1-darwin-arm64.zip)/[Intel](https://github.com/DiamondGo/spi/releases/download/v0.3.1/spi-0.3.1-darwin-x64.zip) downloads passed native and extracted-runtime context/compaction acceptance. Mac is ad-hoc signed, not notarized. **npm `spi-agent-gui@0.3.1` is public; latest is 0.3.1.** The public seven-file payload is byte-identical to the reviewed package. Pinned/latest public Pi installs passed in two isolated local profiles, including downloaded-runtime PTY/GUI/Pi RPC checks. Existing Linux installations can use `spi update`; fully quit old windows before reopening.
 
@@ -39,7 +41,7 @@ Source: [DiamondGo/spi](https://github.com/DiamondGo/spi). The npm package is **
 
 **Previous desktop/npm 0.1.4 clean-install acceptance:** Both native Linux architectures passed installed-runtime acceptance. Two fresh non-root x64 containers independently installed the public pinned/latest package through Pi in about 7 minutes, then passed all 9 sparse-desktop-PATH/manual-Node session checks and all 8 workspace/outbox checks, plus GUI/PTY/Pi RPC, icon/desktop ownership, single-instance and enabled renderer sandbox verification. The [percentage/slow-download/resume improvements](docs/downloads.md) are retained. No host credentials/configuration/binaries were mounted. Older immutable releases remain unchanged.
 
-For 0.3.2, install using the version-bound [GitHub bootstrap](docs/releases/0.3.2.md), without npm. From 0.3.2 onward, use Settings → Check for updates, the `!` notification, or `spi update`. Reinstalling an older immutable npm package selects that older desktop version, not 0.3.2. Installation does not hot-update a running window: save unfinished text and confirm Restart to apply. Saved Pi history, authentication and sPi preferences are preserved.
+For current 0.3.3, use the version-bound [GitHub bootstrap](docs/releases/0.3.3.md) or update an existing 0.3.2 desktop directly through GitHub; npm 0.3.3 remains pending verification. From 0.3.2 onward, use Settings → Check for updates, the `!` notification, or `spi update`. Reinstalling an older immutable npm package selects that older desktop version, not 0.3.2. Installation does not hot-update a running window: save unfinished text and confirm Restart to apply. Saved Pi history, authentication and sPi preferences are preserved.
 
 Release preparation upgraded Electron to 45.2.3 and electron-builder to 26.18.0. No high/critical npm audit findings remain; eight moderate audit entries remain around the minimatch build chain and the Dev Tunnels SDK's uuid dependency (its observed calls use v4; the advisory concerns v3/v5/v6 with a supplied buffer). The release workflow continues to block high/critical advisories.
 
@@ -51,12 +53,12 @@ Install **Pi** first and configure authentication/models using Pi itself. The bo
 
 ## Install
 
-### GitHub installer — recommended for 0.3.2
+### GitHub installer — current desktop 0.3.3
 
 ```bash
-curl -fL https://github.com/DiamondGo/spi/releases/download/v0.3.2/install.sh -o /tmp/spi-install-0.3.2.sh
+curl -fL https://github.com/DiamondGo/spi/releases/download/v0.3.3/install.sh -o /tmp/spi-install-0.3.3.sh
 # Review the downloaded script first.
-bash /tmp/spi-install-0.3.2.sh --version 0.3.2
+bash /tmp/spi-install-0.3.3.sh --version 0.3.3
 ```
 
 Save drafts and quit the old window, then use the launch command printed by the installer (normally `spi`). This also replaces the old 0.3.1 HTTP-415 launcher without npm. Later use GUI updates or `spi update`.
@@ -68,7 +70,7 @@ pi install npm:spi-agent-gui
 spi
 ```
 
-npm remains a supported first-install entry. Future stable releases should publish a matching lightweight npm package after GitHub verification; subsequent GUI/CLI updates primarily use GitHub and do not depend on npm. The initial 0.3.2 delivery was GitHub-only, so use the installer above for that version until its npm availability is actually verified. [Release-channel policy](docs/releasing.md).
+npm remains a supported first-install entry. Future stable releases should publish a matching lightweight npm package after GitHub verification; subsequent GUI/CLI updates primarily use GitHub and do not depend on npm. GitHub 0.3.3 is public; its matching npm upload currently needs maintainer verification. Until public npm latest is verified as 0.3.3, use the GitHub installer above for this version. [Release-channel policy](docs/releasing.md).
 
 A verified personal install downloads the desktop release matching the npm package version and creates `spi` next to the Pi launcher when writable. Loading the extension never starts a GUI. Use `/spi` to open the current project, or `/spi-install` for explicit installation. No active TUI session is transferred to the GUI.
 
@@ -85,9 +87,9 @@ If another `spi` exists, or Pi's directory is read-only, explicitly choose `--bi
 Download `install.sh` from the **Release assets**, review it, then run:
 
 ```bash
-bash install.sh --version 0.3.2
+bash install.sh --version 0.3.3
 # Optional:
-bash install.sh --version 0.3.2 --install-dir /path/to/user-install --bin-dir /path/to/user-bin
+bash install.sh --version 0.3.3 --install-dir /path/to/user-install --bin-dir /path/to/user-bin
 ```
 
 The published bootstrap contains the repository/tag; it downloads and checks the standalone installer, then the matching runtime. The source checkout uses the same repository by default; forks can override it with `SPI_RELEASE_REPOSITORY`. Windows distribution remains deferred.
@@ -95,7 +97,7 @@ The published bootstrap contains the repository/tag; it downloads and checks the
 For an offline install, first download and verify the matching Release's standalone installer, archive, manifest and checksums, then run:
 
 ```bash
-node spi-installer.cjs install --version 0.3.2 --archive /path/to/spi-0.3.2-linux-x64.tar.gz --manifest /path/to/release-manifest.json
+node spi-installer.cjs install --version 0.3.3 --archive /path/to/spi-0.3.3-linux-x64.tar.gz --manifest /path/to/release-manifest.json
 ```
 
 SHA-256 detects mismatched/corrupt downloads; it is not an independent publisher-signature guarantee.

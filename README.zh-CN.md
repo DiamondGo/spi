@@ -22,7 +22,9 @@
 
 **Linux 桌面/npm 0.2.0 已发布：** 可选的[端到端加密远程访问](docs/remote-access.md)。在一台电脑上打开窗口操作另一台电脑上的 sPi，两边都在 NAT 或防火墙后面也可以；流量经 Microsoft Dev Tunnels 中继，由 sPi 自己加密。**两台电脑都要安装 GitHub CLI（`gh`）并登录同一个 GitHub 账号**；本地使用不需要 `gh`，也不会连接 GitHub 或 Dev Tunnels。已配对的设备拥有 host 上 sPi 的全部权限，包括终端和 YOLO。已在 Linux 上验证（含真实 Dev Tunnels 服务）；macOS 和 Windows 未验证。另修复了推理模型上的 AI 命名，以及过期的会话健康提示。
 
-**[桌面版 0.3.2 已公开](https://github.com/DiamondGo/spi/releases/tag/v0.3.2)：** [GitHub 新版本检测、齿轮旁可点击的 `!`、按当前架构下载安装及确认后重启](docs/releases/0.3.2.md)。Linux x64／ARM64 和 macOS Apple Silicon／Intel 共用完整的默认更新清单，不依赖 npm 发布。旧 0.3.1 启动器查询最新版会遇到 HTTP 415，请先用[一次性的 0.3.2 GitHub 安装脚本](docs/releases/0.3.2.md)升级，再使用 GUI 或修复后的 `spi update`。Mac 仍为 ad-hoc 签名、未公证。[更新行为与限制](docs/app-updates.md)。[四平台原生构建、真实跨目录重启、全部附件的匿名校验及 GitHub 独立安装均已通过](docs/verification.md)。
+**[桌面版 0.3.3 已公开](https://github.com/DiamondGo/spi/releases/tag/v0.3.3)：** 待发送浮层可缩到聊天区左下角，重新展开保留未保存的文字／图片修改，不遮挡上下箭头和“回到最新”。四平台原生运行包、GUI／重启及依赖 inventory 门槛全部通过。**npm 0.3.3 尚待维护者完成发布验证，GitHub 下载已可用。** 本版仅接受一条用户批准的构建期审计例外，其他高危门槛保持，详见[发布说明](docs/releases/0.3.3.md)和[验收记录](docs/verification.md)。
+
+**[历史桌面版 0.3.2 的发布记录](https://github.com/DiamondGo/spi/releases/tag/v0.3.2)：** [GitHub 新版本检测、齿轮旁可点击的 `!`、按当前架构下载安装及确认后重启](docs/releases/0.3.2.md)。Linux x64／ARM64 和 macOS Apple Silicon／Intel 共用完整的默认更新清单，不依赖 npm 发布。旧 0.3.1 启动器查询最新版会遇到 HTTP 415，请先用[一次性的 0.3.2 GitHub 安装脚本](docs/releases/0.3.2.md)升级，再使用 GUI 或修复后的 `spi update`。Mac 仍为 ad-hoc 签名、未公证。[更新行为与限制](docs/app-updates.md)。[四平台原生构建、真实跨目录重启、全部附件的匿名校验及 GitHub 独立安装均已通过](docs/verification.md)。
 
 **历史桌面版 0.3.1 的发布记录：** [Thinking 右侧 context 圆环/百分比、悬停 used/max、左键压缩与右键输入 instruction](docs/releases/0.3.1.md)。查看用量不发模型请求，压缩可能产生费用；保留草稿/outbox，只读端不能压缩。Linux x64/arm64 和 Mac [Apple Silicon](https://github.com/DiamondGo/spi/releases/download/v0.3.1/spi-0.3.1-darwin-arm64.zip)/[Intel](https://github.com/DiamondGo/spi/releases/download/v0.3.1/spi-0.3.1-darwin-x64.zip) 手动 ZIP 均通过原生及安装后的 context/压缩验收；Mac 为 ad-hoc 签名、未公证。**npm `spi-agent-gui@0.3.1` 已公开，latest 为 0.3.1。** 公开七文件载荷与审核包逐字节一致；两个隔离本机 profile 分别通过公开固定版本/latest Pi 安装及下载后运行时的 PTY/GUI/Pi RPC 检查。 已有 Linux 安装可用 `spi update`，更新后需完全退出旧窗口再打开。
 
@@ -40,7 +42,7 @@
 
 **前一版桌面/npm 0.1.4 的干净安装验收：** 两个 Linux 原生架构均通过安装后验收；两个全新非 root x64 容器分别从公开 registry 安装固定版本和 latest，约 7 分钟完成，并通过新增的 9 项缺失桌面 Node/手动设置会话检查、8 项工作区/消息缓冲区检查，以及 GUI/PTY/Pi RPC、图标/桌面入口归属、单实例和启用中的 renderer sandbox 验证。[百分比、慢速下载和续传修复](docs/downloads.md) 仍保留。没有挂载主机凭据、配置或应用二进制；旧版本资源未覆盖。
 
-0.3.2 请使用版本绑定的 [GitHub 安装脚本](docs/releases/0.3.2.md)，不需要 npm。从 0.3.2 起可在设置中检查更新、点击 `!` 下载，或使用 `spi update`。重新安装旧 npm 包仍会选择旧桌面版本，不会获得 0.3.2。安装不会热更新已有窗口，请先另存未发送文字，再确认“重启生效”；已保存的 Pi 历史、认证及 sPi 偏好设置保留。
+当前 0.3.3 可使用版本绑定的 [GitHub 安装脚本](docs/releases/0.3.3.md)，已有 0.3.2 用户可直接通过 GUI 或 `spi update` 更新；npm 0.3.3 尚待验证。从 0.3.2 起可在设置中检查更新、点击 `!` 下载，或使用 `spi update`。重新安装旧 npm 包仍会选择旧桌面版本，不会获得 0.3.2。安装不会热更新已有窗口，请先另存未发送文字，再确认“重启生效”；已保存的 Pi 历史、认证及 sPi 偏好设置保留。
 
 发布准备已升级到 Electron 45.2.3 和 electron-builder 26.18.0，high/critical 审计告警已清除；仍有八条 moderate 审计条目，涉及 minimatch 构建工具链及 Dev Tunnels SDK 的 uuid 依赖。发布流水线继续拦截 high/critical 问题。
 
@@ -52,12 +54,12 @@
 
 ## 安装
 
-### GitHub 安装脚本，0.3.2 推荐方式
+### GitHub 安装脚本，当前桌面版 0.3.3
 
 ```bash
-curl -fL https://github.com/DiamondGo/spi/releases/download/v0.3.2/install.sh -o /tmp/spi-install-0.3.2.sh
+curl -fL https://github.com/DiamondGo/spi/releases/download/v0.3.3/install.sh -o /tmp/spi-install-0.3.3.sh
 # 先检查下载的脚本，再执行：
-bash /tmp/spi-install-0.3.2.sh --version 0.3.2
+bash /tmp/spi-install-0.3.3.sh --version 0.3.3
 ```
 
 保存草稿并退出旧窗口，再使用安装器打印的启动命令（通常是 `spi`）。这会绕开 npm，替换旧 0.3.1 的 HTTP-415 启动器；后续可使用 GUI 更新或 `spi update`。
@@ -69,7 +71,7 @@ pi install npm:spi-agent-gui
 spi
 ```
 
-npm 继续作为受支持的首次安装入口。后续正式版本会在 GitHub 验收通过后提供同版本的轻量 npm 包；后继 GUI／命令行更新主要走 GitHub，不依赖 npm。0.3.2 初次发行时只发布了 GitHub，尚未实际验收其 npm 可用性前，请使用上面的 GitHub 安装方式。[发布渠道规则](docs/releasing.md)。
+npm 继续作为受支持的首次安装入口。后续正式版本会在 GitHub 验收通过后提供同版本的轻量 npm 包；后继 GUI／命令行更新主要走 GitHub，不依赖 npm。GitHub 0.3.3 已公开，其同版本 npm 上传仍需维护者完成验证；在公开 npm latest 确认为 0.3.3 前，请使用上面的 GitHub 安装方式。[发布渠道规则](docs/releasing.md)。
 
 可验证的个人安装会下载与 npm 包版本匹配的桌面运行包，并尽量把 `spi` 放到 PATH 中 Pi 启动器旁边。扩展加载时不会启动 GUI。可手动运行 `/spi` 打开当前项目，或 `/spi-install` 安装；不会接管正在运行的 TUI 会话。
 
@@ -86,9 +88,9 @@ npx --package spi-agent-gui spi install
 从 **GitHub Release 附件**下载并检查 `install.sh` 后执行：
 
 ```bash
-bash install.sh --version 0.3.2
+bash install.sh --version 0.3.3
 # 可选覆盖目录：
-bash install.sh --version 0.3.2 --install-dir /path/to/user-install --bin-dir /path/to/user-bin
+bash install.sh --version 0.3.3 --install-dir /path/to/user-install --bin-dir /path/to/user-bin
 ```
 
 发行版脚本已绑定仓库/tag，先下载和核验独立安装器，再下载匹配的运行包。源码脚本默认使用同一仓库，fork 可通过 `SPI_RELEASE_REPOSITORY` 覆盖。Windows 暂不发布。
@@ -96,7 +98,7 @@ bash install.sh --version 0.3.2 --install-dir /path/to/user-install --bin-dir /p
 离线安装：提前下载并核验同一 GitHub Release 的独立安装器、归档、清单和校验文件，再执行：
 
 ```bash
-node spi-installer.cjs install --version 0.3.2 --archive /path/to/spi-0.3.2-linux-x64.tar.gz --manifest /path/to/release-manifest.json
+node spi-installer.cjs install --version 0.3.3 --archive /path/to/spi-0.3.3-linux-x64.tar.gz --manifest /path/to/release-manifest.json
 ```
 
 SHA-256 用于检测错包和损坏，不等同于独立的发布者签名认证。

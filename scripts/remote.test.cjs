@@ -104,6 +104,7 @@ function hostHarness(dir, identity, extra = {}) {
   api.handle('local:only', () => 'never', { remote: false })
   api.handle('session:open', () => ({ sessionId: 'opened-session' }))
   api.handle('session:get-state', (_caller, id) => ({ id }))
+  api.handle('session:context-usage', () => ({ tokens: 250, contextWindow: 1000, percent: 25 }))
   api.handle('sessions:live', () => [{ sessionId: 'opened-session', cwd: '/workspace' }])
   api.handle('hang', () => new Promise(() => {}))
   api.on('terminal:ack', (caller, ...args) => sends.push({ caller, args }))
@@ -553,7 +554,7 @@ const rewritePort = (code, port) => { const decoded = R.decodePairingCode(code);
       const duplicate = await duplicateClient.connect(entries[0].id)
       assert.equal(duplicate.access, 'read-only', 'a second connection with the controller device key is still read-only')
       for (const viewer of [b, c, duplicate]) {
-        for (const channel of ['session:open', 'session:prompt', 'session:abort', 'session:answer-ui', 'session:set-model', 'yolo:set', 'terminal:open', 'terminal:attach', 'terminal:close', 'messages:submit', 'messages:cancel', 'sessions:delete', 'node:set-path', 'future:unknown']) {
+        for (const channel of ['session:open', 'session:compact', 'session:prompt', 'session:abort', 'session:answer-ui', 'session:set-model', 'yolo:set', 'terminal:open', 'terminal:attach', 'terminal:close', 'messages:submit', 'messages:cancel', 'sessions:delete', 'node:set-path', 'future:unknown']) {
           await assert.rejects(viewer.invoke(channel, []), /read-only/)
         }
         await assert.rejects(viewer.invoke('terminal:ack', []), /read-only/)
@@ -566,6 +567,7 @@ const rewritePort = (code, port) => { const decoded = R.decodePairingCode(code);
       b.onEvent((channel, payload) => events.push({ channel, payload }))
       assert.deepEqual(await b.invoke('sessions:live', []), [{ sessionId: 'opened-session', cwd: '/workspace' }])
       assert.deepEqual(await b.invoke('session:get-state', ['opened-session']), { id: 'opened-session' })
+      assert.deepEqual(await b.invoke('session:context-usage', ['opened-session']), { tokens: 250, contextWindow: 1000, percent: 25 })
       host.broadcast('pi:event', { sessionId: 'opened-session', event: { type: 'agent_start' } })
       await waitFor('viewer sees live events', () => events.some(e => e.channel === 'pi:event'))
       await clients[0].disconnect(entries[0].id)

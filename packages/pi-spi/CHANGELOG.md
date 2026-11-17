@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1
+
+- Context ring/percentage next to Thinking, with current used/max tokens on hover. Click performs native Pi compaction; right-click opens optional instructions. Empty/busy/error/unknown-usage states are explicit, history refresh preserves drafts/outbox, and read-only remote viewers cannot compact. Uses Pi contextUsage, not cumulative token statistics.
+
 ## 0.3.0
 
 - Local startup/passive remote badges no longer probe the OS keyring when hosting is disabled, preventing unattended Mac Keychain approval from blocking startup. Remote settings and enabled-host recovery still check credential protection; no plaintext identity fallback is added.

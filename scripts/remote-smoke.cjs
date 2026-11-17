@@ -194,6 +194,8 @@ module.exports = async function ({ app: host, launch, stop, waitFor, pass, fill,
     await waitFor(() => observerRemote.eval(`document.querySelector('.chat-messages')?.textContent.includes('SPI_REMOTE_OUTPUT')`), 'viewer loads existing history without opening a session')
     assert.equal(await observerRemote.eval(`document.querySelector('.input-bar')`), null)
     assert.equal(await observerRemote.eval(`document.querySelector('[data-control="yolo"]').disabled`), true)
+    assert.equal(await observerRemote.eval(`document.querySelector('[data-control="context"]').disabled`), true)
+    await observerRemote.eval(`window.spi.compactSession(${JSON.stringify(sessionId)})`).then(() => assert.fail('viewers cannot compact the host context'), error => assert.match(error.message, /read-only/))
     for (const call of [`window.spi.sendPrompt(${JSON.stringify(sessionId)},'must-not-run','normal')`, `window.spi.openTerminal(${JSON.stringify(sessionId)},80,24)`]) {
       await observerRemote.eval(call).then(() => assert.fail('read-only API must be denied by the host'), error => assert.match(error.message, /read-only/))
     }

@@ -7,6 +7,7 @@ import { YoloPolicy } from './yolo'
 import { ExtensionUi } from './extensionUi'
 import { MessageQueue } from './messageQueue'
 import { isSessionProgressEvent } from '../../shared/sessionHealth'
+import { contextUsageFromStats, compactionInstructions, compactionFailure, type ContextUsage } from '../../shared/contextUsage'
 
 const namingErrors: Record<SessionNameErrorCode, string> = {
   not_ready: 'The session UI is not ready. Reopen or recover the session.',
@@ -45,6 +46,9 @@ export class PiManager {
   private checking = new Map<string, Promise<SessionHealth>>()
   private recovering = new Map<string, Promise<{ state: PiState; messages: unknown[] }>>()
   private shuttingDown = false
+  private compactions = new Map<string, Promise<void>>()
+  private compactOptions = new Map<string, string | undefined>()
+  private contextRequests = new Map<string, Promise<ContextUsage | null>>()
   private running = new Set<string>()
   private deleting = new Set<string>()
   private naming = new Map<string, Promise<string>>()
@@ -114,6 +118,7 @@ export class PiManager {
     if (!existsSync(cwd)) throw new Error(`目录不存在: ${cwd}`)
     if (!existsSync(this.extensionPath)) throw new Error('sPi 会话扩展缺失，拒绝启动: ' + this.extensionPath)
     const id = reuseId || randomUUID()
+    this.contextRequests.delete(id)
     const token = randomUUID()
     this.yolo.open(id)
     if (!reuseId) this.messages.open(id)
@@ -169,9 +174,10 @@ export class PiManager {
         }
       }
       if (e.type === 'agent_start') { this.running.add(id); this.yolo.begin(id); this.messages.activity(id, true) }
-      if (e.type === 'agent_settled') { this.running.delete(id); this.extensionUi.cancel(id); this.messages.activity(id, false) }
+      if (e.type === 'agent_settled') { this.running.delete(id); this.extensionUi.cancel(id); if (!this.compactions.has(id)) this.messages.activity(id, false) }
+      if (['model_changed', 'compaction_start', 'compaction_end'].includes(e.type)) this.contextRequests.delete(id)
       if (e.type === 'compaction_start') this.messages.block(id)
-      if (e.type === 'compaction_end') this.messages.wake(id)
+      if (e.type === 'compaction_end' && !this.compactions.has(id)) this.messages.wake(id)
       // Internal approval results must never be forgeable through regular pi records.
       if (String(e.type).startsWith('spi_')) return
       if (this.extensionUi.receive(id, e)) return
@@ -257,7 +263,7 @@ export class PiManager {
     if (pending) return pending
     const session = this.sessions.get(id)
     if (!session || this.closing.has(id) || this.shuttingDown) return Promise.reject(new Error('session unavailable'))
-    if (this.recovering.has(id)) return Promise.resolve(this.health.get(id)!)
+    if (this.recovering.has(id) || this.compactions.has(id)) return Promise.resolve(this.health.get(id)!)
     if (session.hasExited) return Promise.resolve(this.publishHealth(id, { status: 'exited', checkedAt: Date.now() }))
     const revision = this.activity.get(id)?.revision
     const progress = this.activity.get(id)?.progress ?? 0
@@ -278,7 +284,7 @@ export class PiManager {
         // Publish before a queue wake can produce new events, never after it.
         const health = this.publishHealth(id, { status: 'healthy', checkedAt: Date.now(), stalled }, state, messages)
         if (!state.isStreaming && !state.isCompacting) this.running.delete(id)
-        this.messages.reconcile(id, state)
+        if (!this.compactions.has(id)) this.messages.reconcile(id, state)
         return health
       } catch {
         if (this.sessions.get(id) !== session || this.recovering.has(id) || this.closing.has(id) || this.shuttingDown) return this.health.get(id) || { status: 'exited' as const, checkedAt: Date.now() }
@@ -362,7 +368,7 @@ export class PiManager {
   async sendPrompt(sessionId: string, text: string, mode: 'normal' | 'steer' | 'followUp', images?: Array<{ data: string; mimeType: string }>): Promise<void> {
     const s = this.sessions.get(sessionId)
     if (!s) throw new Error('session not found')
-    if (this.recovering.has(sessionId) || this.deleting.has(sessionId) || this.health.get(sessionId)?.status !== 'healthy') throw new Error('Session unavailable; check or recover it first')
+    if (this.compactions.has(sessionId) || this.recovering.has(sessionId) || this.deleting.has(sessionId) || this.health.get(sessionId)?.status !== 'healthy') throw new Error('Session unavailable; check or recover it first')
     // RPC 要求每个图片对象带 type:"image"
     const imgField = images?.length
       ? { images: images.map((im) => ({ type: 'image', data: im.data, mimeType: im.mimeType })) }
@@ -405,7 +411,7 @@ export class PiManager {
     const receipt = this.messages.submit(id, message)
     // An actual user send must not disappear into a queue whose settled event was lost.
     // Idle sends already query state in drain(); probe separately only if they are blocked.
-    if (calibrate) void this.checkSession(id).catch(() => {})
+    if (calibrate && !this.compactions.has(id)) void this.checkSession(id).catch(() => {})
     return receipt
   }
   getPendingMessages(id: string) { return this.messages.snapshot(id) }
@@ -419,7 +425,7 @@ export class PiManager {
     if (this.messages.needsCalibration(id)) void this.checkSession(id).catch(() => {})
   }
 
-  sessionInTransition(id: string): boolean { return this.recovering.has(id) || this.deleting.has(id) || this.closing.has(id) }
+  sessionInTransition(id: string): boolean { return this.recovering.has(id) || this.deleting.has(id) || this.closing.has(id) || this.compactions.has(id) }
   sessionAlive(id: string): boolean { const session = this.sessions.get(id); return !!session && !session.hasExited }
   sessionFile(id: string): string | undefined { return this.sessionFiles.get(id) || this.sessions.get(id)?.sessionPath }
   sessionForFile(file: string): string | undefined {
@@ -454,7 +460,7 @@ export class PiManager {
     const pending = this.naming.get(id)
     if (pending) return pending
     const session = this.sessions.get(id)
-    if (!session || this.recovering.has(id) || this.deleting.has(id) || this.closing.has(id) || this.shuttingDown) return Promise.reject(new Error('Session unavailable'))
+    if (!session || this.compactions.has(id) || this.recovering.has(id) || this.deleting.has(id) || this.closing.has(id) || this.shuttingDown) return Promise.reject(new Error('Session unavailable'))
     const request = (async () => {
       const state = await this.getState(id)
       if (state.isStreaming || state.isCompacting) throw new Error('Wait for the session to finish before AI naming')
@@ -498,6 +504,52 @@ export class PiManager {
     return state
   }
 
+  getContextUsage(id: string): Promise<ContextUsage | null> {
+    const session = this.sessions.get(id)
+    if (!session || session.hasExited || this.closing.has(id) || this.recovering.has(id)) return Promise.reject(new Error('Session is unavailable'))
+    const pending = this.contextRequests.get(id)
+    if (pending) return pending
+    const request = session.sendCommand('get_session_stats').then(stats => {
+      if (this.sessions.get(id) !== session || session.hasExited) throw new Error('Session changed')
+      return contextUsageFromStats(stats)
+    }).finally(() => { if (this.contextRequests.get(id) === request) this.contextRequests.delete(id) })
+    this.contextRequests.set(id, request)
+    return request
+  }
+
+  compactSession(id: string, value?: unknown): Promise<void> {
+    let instructions: string | undefined
+    try { instructions = compactionInstructions(value) } catch (error) { return Promise.reject(error) }
+    const pending = this.compactions.get(id)
+    if (pending) return this.compactOptions.get(id) === instructions ? pending : Promise.reject(new Error('Another compaction with different instructions is in progress'))
+    const session = this.sessions.get(id)
+    if (!session || session.hasExited || this.sessionInTransition(id) || this.shuttingDown || !this.yolo.isReady(id) || !this.uiAvailable() || this.health.get(id)?.status !== 'healthy') return Promise.reject(new Error('Session is unavailable; check or recover it first'))
+    if (this.running.has(id) || this.suspending.has(id) || this.naming.has(id) || this.extensionUi.pendingRequests(id).length || this.messages.snapshot(id).items.length) return Promise.reject(new Error('Wait for the session and pending messages to finish before compacting'))
+    // Reserve the queue before the async state check; explicit new sends can queue,
+    // but must not race the compact RPC. Existing paused work is never resumed here.
+    this.messages.block(id)
+    const request = (async () => {
+      const state = await this.getState(id)
+      if (this.sessions.get(id) !== session || session.hasExited || this.closing.has(id) || this.recovering.has(id) || this.deleting.has(id)) throw new Error('Session changed')
+      if (state.isStreaming || state.isCompacting) throw new Error('Wait for the session to finish before compacting')
+      if (!state.model) throw new Error('Select a model before compacting')
+      try {
+        // Canonical Pi RPC equivalent of /compact [instructions], never a model prompt.
+        await session.sendCommand('compact', instructions ? { customInstructions: instructions } : {}, 10 * 60_000)
+      } catch (error) { throw compactionFailure(error) }
+      if (this.sessions.get(id) !== session || session.hasExited || this.closing.has(id)) throw new Error('Session changed')
+      const [nextState, messages] = await Promise.all([this.getState(id), this.getMessages(id)])
+      if (this.sessions.get(id) !== session || this.closing.has(id)) throw new Error('Session changed')
+      this.emitEvent({ sessionId: id, event: { type: 'spi_session_compacted', state: nextState, messages } })
+    })().finally(() => {
+      if (this.compactions.get(id) === request) { this.compactions.delete(id); this.compactOptions.delete(id) }
+      if (this.sessions.get(id) === session && !session.hasExited && !this.closing.has(id)) this.messages.wake(id)
+    })
+    this.compactions.set(id, request)
+    this.compactOptions.set(id, instructions)
+    return request
+  }
+
   async getMessages(sessionId: string): Promise<unknown[]> {
     const s = this.sessions.get(sessionId)
     if (!s) throw new Error('session not found')
@@ -536,14 +588,14 @@ export class PiManager {
   }
 
   async setModel(sessionId: string, provider: string, modelId: string): Promise<void> {
-    if (this.recovering.has(sessionId)) throw new Error('Session is recovering; please wait')
+    if (this.compactions.has(sessionId) || this.recovering.has(sessionId)) throw new Error('Session is compacting or recovering; please wait')
     const s = this.sessions.get(sessionId)
     if (!s) throw new Error('session not found')
     await s.sendCommand('set_model', { provider, modelId })
   }
 
   async setThinkingLevel(sessionId: string, level: string): Promise<void> {
-    if (this.recovering.has(sessionId)) throw new Error('Session is recovering; please wait')
+    if (this.compactions.has(sessionId) || this.recovering.has(sessionId)) throw new Error('Session is compacting or recovering; please wait')
     const s = this.sessions.get(sessionId)
     if (!s) throw new Error('session not found')
     await s.sendCommand('set_thinking_level', { level })

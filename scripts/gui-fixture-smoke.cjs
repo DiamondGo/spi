@@ -28,6 +28,7 @@ module.exports=async function(context){
       const text=typeof last.content==='string'?last.content:last.content.filter(c=>c.type==='text').map(c=>c.text).join('\n'),match=text.match(/\{"tool":[\s\S]*\}/),action=JSON.parse(match[0])
       chunks.push({choices:[{index:0,delta:{role:'assistant',tool_calls:[{index:0,id:'call_'+Date.now(),type:'function',function:{name:action.tool,arguments:JSON.stringify(action.input)}}]},finish_reason:null}]},{choices:[{index:0,delta:{},finish_reason:'tool_calls'}]})
     }else chunks.push({choices:[{index:0,delta:{role:'assistant',content:'SPI_FIXTURE_DONE'},finish_reason:null}]},{choices:[{index:0,delta:{},finish_reason:'stop'}]})
+    if(process.argv.includes('--context-usage'))chunks.push({choices:[],usage:{prompt_tokens:1000,completion_tokens:100,total_tokens:1100}})
     res.writeHead(200,{'Content-Type':'text/event-stream'});for(const c of chunks)res.write('data: '+JSON.stringify({id:'chatcmpl-fixture',object:'chat.completion.chunk',created:1,model:'fixture',...c})+'\n\n');res.end('data: [DONE]\n\n')
   }catch(error){errors.push(error.message);res.writeHead(500);res.end('{}')}})
   await new Promise(r=>server.listen(0,'127.0.0.1',r))
@@ -47,7 +48,14 @@ module.exports=async function(context){
   })}`)
   const pi=process.env.SPI_TEST_PI_PATH||execFileSync('which',['pi'],{encoding:'utf8'}).trim(),wrapper=path.join(artifacts,'test-pi'),agent=path.join(artifacts,'agent')
   fs.mkdirSync(agent,{recursive:true})
-  fs.writeFileSync(wrapper,`#!/bin/sh\nexec env PI_CODING_AGENT_DIR=${sh(agent)} ${sh(pi)} --no-extensions --extension ${sh(provider)} --extension ${sh(approvals)} "$@"\n`,{mode:0o700})
+  let compactionArgs=''
+  if(process.argv.includes('--context-usage')){
+    fs.writeFileSync(path.join(agent,'settings.json'),JSON.stringify({compaction:{enabled:false,reserveTokens:512,keepRecentTokens:256}}))
+    const fixture=path.join(artifacts,'compaction-fixture.mjs'),record=path.join(artifacts,'compactions.jsonl')
+    fs.writeFileSync(fixture,`import fs from 'node:fs';export default function(pi){pi.on('session_before_compact',async event=>{fs.appendFileSync(${JSON.stringify(record)},JSON.stringify({instructions:event.customInstructions})+'\\n');if(event.customInstructions==='SPI_CONTEXT_CANCEL')return{cancel:true};await new Promise(r=>setTimeout(r,250));return{compaction:{summary:'SPI_COMPACTION_SUMMARY '+(event.customInstructions||'default'),firstKeptEntryId:event.preparation.firstKeptEntryId,tokensBefore:event.preparation.tokensBefore}}})}`)
+    compactionArgs=' --extension '+sh(fixture)
+  }
+  fs.writeFileSync(wrapper,`#!/bin/sh\nexec env PI_CODING_AGENT_DIR=${sh(agent)} ${sh(pi)} --no-extensions --extension ${sh(provider)} --extension ${sh(approvals)}${compactionArgs} "$@"\n`,{mode:0o700})
   const configFile=path.join(profile,'spi-config.json'),config=JSON.parse(fs.readFileSync(configFile));config.piPath=wrapper;fs.writeFileSync(configFile,JSON.stringify(config))
   let launchOptions
   if(process.argv.includes('--runtime-env')){
@@ -62,7 +70,7 @@ module.exports=async function(context){
   let app
   try{
     app=await launch(launchOptions)
-    const suite=process.argv.includes('--question-navigation')?'user-message-navigation-smoke.cjs':process.argv.includes('--remote')?'remote-smoke.cjs':process.argv.includes('--session-actions')?'session-actions-smoke.cjs':process.argv.includes('--session-health')?'session-health-smoke.cjs':process.argv.includes('--runtime-env')?'runtime-env-smoke.cjs':process.argv.includes('--terminal')?'terminal-smoke.cjs':process.argv.includes('--settings')?'settings-smoke.cjs':process.argv.includes('--extension-ui')?'extension-ui-smoke.cjs':process.argv.includes('--workspace-ui')?'workspace-ui-smoke.cjs':'yolo-smoke.cjs'
+    const suite=process.argv.includes('--context-usage')?'context-usage-smoke.cjs':process.argv.includes('--question-navigation')?'user-message-navigation-smoke.cjs':process.argv.includes('--remote')?'remote-smoke.cjs':process.argv.includes('--session-actions')?'session-actions-smoke.cjs':process.argv.includes('--session-health')?'session-health-smoke.cjs':process.argv.includes('--runtime-env')?'runtime-env-smoke.cjs':process.argv.includes('--terminal')?'terminal-smoke.cjs':process.argv.includes('--settings')?'settings-smoke.cjs':process.argv.includes('--extension-ui')?'extension-ui-smoke.cjs':process.argv.includes('--workspace-ui')?'workspace-ui-smoke.cjs':'yolo-smoke.cjs'
     await require('./'+suite)({...context,app,hashes,before,launchOptions,namingRequests})
     assert.deepEqual(hashes(),before);assert.deepEqual(errors,[])
   }catch(error){if(app&&!app.exited){try{fs.writeFileSync(path.join(artifacts,'gui-failure.json'),JSON.stringify(await app.eval('(async()=>({yolo:await window.spi.getYoloState(),events:window.__smokeEvents,body:document.body.innerText}))()')))}catch{}}throw error}

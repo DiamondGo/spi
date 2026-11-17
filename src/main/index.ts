@@ -430,6 +430,12 @@ api.handle('session:recover', async (_caller, id: string) => (await getManager()
 api.handle('session:abort', (_caller, id: string) => manager?.abort(id))
 api.handle('session:get-state', (_caller, id: string) => manager?.getState(id))
 api.handle('session:get-messages', (_caller, id: string) => manager?.getMessages(id))
+api.handle('session:context-usage', (_caller, id: string) => manager?.getContextUsage(id) ?? null)
+api.handle('session:compact', async (_caller, id: string, instructions?: unknown) => {
+  if (typeof id !== 'string') throw new Error('Invalid session')
+  if (!manager) throw new Error('Session is unavailable')
+  await manager.compactSession(id, instructions)
+})
 api.handle('session:pending-ui', (_caller, id: string) => manager?.getPendingExtensionUi(id) ?? [])
 api.handle('session:answer-ui', (_caller, id: string, reqId: string, payload: { value?: string; confirmed?: boolean; cancelled?: boolean }) =>
   manager?.answerExtensionUi(id, reqId, payload)

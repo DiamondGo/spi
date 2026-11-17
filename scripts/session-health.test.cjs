@@ -3,7 +3,7 @@ const fs = require('node:fs'), os = require('node:os'), path = require('node:pat
 const root = path.resolve(__dirname, '..'), tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'spi-health-'))
 function load(relative, mocks = {}) {
   const file = path.join(tmp, path.basename(relative, '.ts') + '.cjs'), mod = new Module(file, module)
-  mod.paths = module.paths; mod.require = name => name in mocks ? mocks[name] : name === '../../shared/sessionHealth' ? load('src/shared/sessionHealth.ts') : require(name)
+  mod.paths = module.paths; mod.require = name => name in mocks ? mocks[name] : name === '../../shared/sessionHealth' ? load('src/shared/sessionHealth.ts') : name === '../../shared/contextUsage' ? load('src/shared/contextUsage.ts') : require(name)
   mod._compile(ts.transpileModule(fs.readFileSync(path.join(root, relative), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } }).outputText, file)
   return mod.exports
 }

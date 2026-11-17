@@ -8,7 +8,7 @@ export const PROTOCOL_VERSION = 2
 export const READ_ONLY_REMOTE_CALLS = new Set([
   'app:home', 'pi:find', 'node:get-path', 'fs:list-dirs', 'fs:list-files',
   'sessions:scan', 'sessions:scan-recent', 'sessions:live', 'pins:get', 'yolo:get',
-  'session:get-state', 'session:get-messages', 'session:pending-ui', 'session:models',
+  'session:get-state', 'session:get-messages', 'session:context-usage', 'session:pending-ui', 'session:models',
   'session:thinking-levels', 'session:commands', 'messages:get'
 ])
 
@@ -20,7 +20,7 @@ export const CLIENT_LOCAL_CHANNELS = new Set(['settings:get', 'settings:update',
 
 /** Session-scoped calls whose first argument is a session ID the caller is now watching. */
 export const SESSION_SCOPED_CHANNELS = new Set([
-  'session:close', 'session:prompt', 'session:check', 'session:recover', 'session:abort', 'session:get-state', 'session:get-messages',
+  'session:close', 'session:prompt', 'session:check', 'session:recover', 'session:abort', 'session:get-state', 'session:get-messages', 'session:context-usage', 'session:compact',
   'session:answer-ui', 'session:models', 'session:thinking-levels', 'session:set-model', 'session:set-thinking', 'session:commands', 'session:pending-ui',
   'messages:submit', 'messages:get', 'messages:edit', 'messages:update', 'messages:finish-edit', 'messages:cancel', 'messages:resume',
   'sessions:generate-name', 'yolo:set', 'terminal:open', 'terminal:attach', 'terminal:get', 'terminal:close'

@@ -166,6 +166,8 @@ function ItemView({ item, sessionId }: { item: Item; sessionId: string }) {
           <DiffView args={item.args} toolName={item.name} />
         </div>
       )
+    case 'compaction':
+      return <details className="tool-output compaction-summary"><summary>{t('上下文压缩摘要')}</summary><pre className="tool-output-text">{item.summary}</pre></details>
     case 'status':
       return <div className="status-line">{t(item.text, item.params)}</div>
     case 'dialog':

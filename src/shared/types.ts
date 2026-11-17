@@ -1,4 +1,6 @@
 // 主进程 / preload / 渲染进程共用的类型
+import type { ContextUsage } from './contextUsage'
+export type { ContextUsage } from './contextUsage'
 
 export interface PiModel {
   id: string
@@ -191,6 +193,8 @@ export interface IpcApi {
   abortSession(sessionId: string): Promise<PiQueue>
   getState(sessionId: string): Promise<PiState>
   getMessages(sessionId: string): Promise<unknown[]>
+  getContextUsage(sessionId: string): Promise<ContextUsage | null>
+  compactSession(sessionId: string, instructions?: string): Promise<void>
   answerExtensionUi(sessionId: string, id: string, payload: { value?: string; confirmed?: boolean; cancelled?: boolean }): Promise<void>
   getAvailableModels(sessionId: string): Promise<PiModel[]>
   getAvailableThinkingLevels(sessionId: string): Promise<string[]>

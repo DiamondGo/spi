@@ -114,9 +114,9 @@ async function launch(options = {}) {
   // Source-only navigation tests must not claim a real macOS Keychain item under
   // Electron's signature before the differently signed installed app accesses it.
   // Packaged builds ignore this override and retain their real credential-store checks.
-  if (process.argv.includes('--remote') || process.argv.includes('--question-navigation')) env.SPI_TEST_REMOTE = process.argv.includes('--live') ? 'devtunnels' : 'loopback'
+  if (process.argv.includes('--remote') || process.argv.includes('--question-navigation') || process.argv.includes('--context-usage')) env.SPI_TEST_REMOTE = process.argv.includes('--live') ? 'devtunnels' : 'loopback'
   if (process.argv.includes('--live')) env.GH_CONFIG_DIR = process.env.GH_CONFIG_DIR || path.join(process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config'), 'gh')
-  if (['--yolo','--settings','--terminal','--extension-ui','--workspace-ui','--runtime-env','--session-health','--session-actions','--remote','--question-navigation'].some(flag => process.argv.includes(flag))) {
+  if (['--yolo','--settings','--terminal','--extension-ui','--workspace-ui','--runtime-env','--session-health','--session-actions','--remote','--question-navigation','--context-usage'].some(flag => process.argv.includes(flag))) {
     env.PI_CODING_AGENT_DIR = path.join(artifacts, 'agent')
     env.HOME = path.join(artifacts, 'home')
     env.XDG_CONFIG_HOME = path.join(artifacts, 'xdg-config')
@@ -178,7 +178,7 @@ const text = (app, selector) => app.eval(`document.querySelector(${JSON.stringif
 
 async function main() {
   console.log('ARTIFACTS', artifacts)
-  if (process.argv.includes('--question-navigation') || process.argv.includes('--yolo') || process.argv.includes('--settings') || process.argv.includes('--terminal') || process.argv.includes('--extension-ui') || process.argv.includes('--workspace-ui') || process.argv.includes('--runtime-env') || process.argv.includes('--session-health') || process.argv.includes('--session-actions') || process.argv.includes('--remote')) {
+  if (process.argv.includes('--context-usage') || process.argv.includes('--question-navigation') || process.argv.includes('--yolo') || process.argv.includes('--settings') || process.argv.includes('--terminal') || process.argv.includes('--extension-ui') || process.argv.includes('--workspace-ui') || process.argv.includes('--runtime-env') || process.argv.includes('--session-health') || process.argv.includes('--session-actions') || process.argv.includes('--remote')) {
     await require('./gui-fixture-smoke.cjs')({ launch, stop, waitFor, pass, fill, text, results, workspace, profile, repo, artifacts, descendants, connectPage })
     return
   }

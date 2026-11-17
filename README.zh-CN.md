@@ -22,6 +22,8 @@
 
 **Linux 桌面/npm 0.2.0 已发布：** 可选的[端到端加密远程访问](docs/remote-access.md)。在一台电脑上打开窗口操作另一台电脑上的 sPi，两边都在 NAT 或防火墙后面也可以；流量经 Microsoft Dev Tunnels 中继，由 sPi 自己加密。**两台电脑都要安装 GitHub CLI（`gh`）并登录同一个 GitHub 账号**；本地使用不需要 `gh`，也不会连接 GitHub 或 Dev Tunnels。已配对的设备拥有 host 上 sPi 的全部权限，包括终端和 YOLO。已在 Linux 上验证（含真实 Dev Tunnels 服务）；macOS 和 Windows 未验证。另修复了推理模型上的 AI 命名，以及过期的会话健康提示。
 
+**0.3.1 发布准备中：** [Thinking 右侧 context 圆环/百分比、悬停 used/max、左键压缩与右键输入 instruction](docs/releases/0.3.1.md)。查看用量不发模型请求，压缩可能产生费用；保留草稿/outbox，只读端不能压缩。正在验证 Linux/Mac 候选包，尚未公开 0.3.1。
+
 **桌面版 0.3.0 已公开：** [待配对/在线设备列表、单远程控制端与其余只读、浮动用户提问跳转按钮](docs/releases/0.3.0.md)。远程协议 v2 要求 **host 和 client 一起升级**，已保存配对保留。Linux x64/arm64 和 Mac [Apple Silicon](https://github.com/DiamondGo/spi/releases/download/v0.3.0/spi-0.3.0-darwin-arm64.zip)/[Intel](https://github.com/DiamondGo/spi/releases/download/v0.3.0/spi-0.3.0-darwin-x64.zip) 手动下载包均通过原生与安装后的验收，包含新增 GUI 测试。Mac 为 ad-hoc 签名，未公证。关闭远程访问时，本地启动不再探测钥匙串。**npm `spi-agent-gui@0.3.0` 已公开，latest 为 0.3.0。** 公开七文件 tarball 与审核包逐字节一致；两个隔离的本机 profile 分别通过公开固定版本/latest Pi 安装及安装包 PTY/GUI/Pi RPC 验证。 已有 Linux 桌面安装可用 `spi update` 更新；请完全退出旧窗口后再打开。
 
 **桌面版 0.2.1 已公开：** [配对码有效期可配置](docs/releases/0.2.1.md)，默认 **1 小时**，最长 **60 天**；仍然只能使用一次，取消、关闭远程访问或重启 sPi 后失效。新增已验证的手动 **[Apple Silicon](https://github.com/DiamondGo/spi/releases/download/v0.2.1/spi-0.2.1-darwin-arm64.zip)** 和 **[Intel](https://github.com/DiamondGo/spi/releases/download/v0.2.1/spi-0.2.1-darwin-x64.zip)** Mac 下载包（ad-hoc 签名，**未公证**）。两个 Mac 原生目标均通过回环远程 GUI 和 ZIP 安装验收，Mac 真实中继服务尚未验证。**此前 npm `spi-agent-gui@0.2.1` 的发布已验收；公开的七文件 tarball 与审查载荷逐字节一致。** [Mac 验收与限制](docs/macos-build.md)。

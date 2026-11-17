@@ -6,6 +6,7 @@ import { usePreferences, useT } from '../preferences'
 import { TitleSelect } from './TitleSelect'
 import { Icon, IconControl } from './IconControl'
 import { AppSettingsPanel } from './AppSettingsPanel'
+import { ContextUsageControl } from './ContextUsageControl'
 import { usePathFormatter } from '../homePath'
 import { useRemoteReadOnly, useRemoteStatus, useRemoteWindow } from '../remote'
 
@@ -84,6 +85,7 @@ export function TitleBar({ sidebarOpen, onToggleSidebar }: { sidebarOpen: boolea
           {!settings.levels.length && <option value={settings.level}>{settings.level}</option>}
           {settings.levels.map(level => <option key={level} value={level}>{level === 'off' ? t('关闭（off）') : level}</option>)}
         </TitleSelect>
+        <ContextUsageControl key={active.id} session={active} />
         <span className={`tb-field tb-status${waiting ? ' waiting' : active.streaming ? ' running' : ''}`} title={error || undefined}>{t(error ? '设置失败' : waiting ? '等待审批' : active.streaming ? '运行中' : '空闲')}</span>
       </div>}
       {active && <button className="tb-btn tb-close-session" title={t('关闭当前会话')} disabled={readOnly} onClick={() => { if (!active.pendingQueue.items.length || window.confirm(t('关闭会话将丢弃 {count} 条待执行消息，确定关闭？', { count: active.pendingQueue.items.length }))) void window.spi.closeSession(active.id) }}>{t('关闭')}</button>}

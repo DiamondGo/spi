@@ -39,6 +39,7 @@ export type Item =
       approvalAdapter?: string
       resolution?: 'auto-allow' | 'manual' | 'cancelled' | 'expired' | 'failed'
     }
+  | { kind: 'compaction'; summary: string }
   | { kind: 'raw'; json: string }
 
 export type SendMode = 'normal' | 'steer' | 'followUp'
@@ -320,6 +321,7 @@ interface AgentMsg {
   toolCallId?: string
   isError?: boolean
   usage?: unknown
+  summary?: string
 }
 
 export function messagesToItems(messages: unknown[]): Item[] {
@@ -327,6 +329,10 @@ export function messagesToItems(messages: unknown[]): Item[] {
   for (const m of messages) {
     const msg = m as AgentMsg
     switch (msg.role) {
+      case 'compactionSummary': {
+        if (typeof msg.summary === 'string') items.push({ kind: 'compaction', summary: msg.summary })
+        break
+      }
       case 'user': {
         const text = extractText(msg.content)
         if (text) items.push({ kind: 'user', text })
@@ -426,6 +432,12 @@ export function applyEvent(id: string, event: Record<string, unknown>): void {
           ? items.map(it => it.kind === 'assistant' ? { ...it, done: true, blocks: it.blocks.map(b => ({ ...b, done: true })) } : it) : items
       }
     })
+    return
+  }
+  if (t === 'spi_session_compacted') {
+    const state = event.state as PiState
+    const messages = event.messages
+    if (state && Array.isArray(messages)) patchSession(id, s => ({ ...s, state, streaming: state.isStreaming, items: messagesToItems(messages) }))
     return
   }
   if (t === 'spi_pending_messages') {
@@ -573,10 +585,12 @@ export function applyEvent(id: string, event: Record<string, unknown>): void {
     return
   }
   if (t === 'compaction_start') {
+    patchSession(id, s => ({ ...s, state: s.state ? { ...s.state, isCompacting: true } : s.state }))
     pushStatus(id, '上下文压缩开始（{reason}）', { reason: String(event.reason) })
     return
   }
   if (t === 'compaction_end') {
+    patchSession(id, s => ({ ...s, state: s.state ? { ...s.state, isCompacting: false } : s.state }))
     pushStatus(id, '上下文压缩结束')
     return
   }

@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict')
 const fs = require('node:fs'), os = require('node:os'), path = require('node:path'), Module = require('node:module'), ts = require('typescript')
-const root = path.resolve(__dirname, '..'), tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'spi-health-'))
+// Production session paths are canonical; macOS /var is an alias of /private/var.
+const root = path.resolve(__dirname, '..'), tmp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'spi-health-')))
 function load(relative, mocks = {}) {
   const file = path.join(tmp, path.basename(relative, '.ts') + '.cjs'), mod = new Module(file, module)
   mod.paths = module.paths; mod.require = name => name in mocks ? mocks[name] : name === '../../shared/sessionHealth' ? load('src/shared/sessionHealth.ts') : name === '../../shared/contextUsage' ? load('src/shared/contextUsage.ts') : require(name)

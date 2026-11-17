@@ -1,5 +1,6 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path'),Module=require('node:module'),ts=require('typescript'),{EventEmitter}=require('node:events')
-const root=path.resolve(__dirname,'..'),tmp=fs.mkdtempSync(path.join(os.tmpdir(),'spi-actions-')),previous=process.env.PI_CODING_AGENT_DIR
+// Keep exact path assertions in the same canonical namespace as production (Mac /var alias).
+const root=path.resolve(__dirname,'..'),tmp=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'spi-actions-'))),previous=process.env.PI_CODING_AGENT_DIR
 process.env.PI_CODING_AGENT_DIR=path.join(tmp,'agent')
 function load(relative,mocks={}){const file=path.join(tmp,path.basename(relative,'.ts')+'.cjs'),m=new Module(file,module);m.paths=module.paths;m.require=n=>n in mocks?mocks[n]:n==='../../shared/sessionHealth'?load('src/shared/sessionHealth.ts'):n==='../../shared/contextUsage'?load('src/shared/contextUsage.ts'):require(n);m._compile(ts.transpileModule(fs.readFileSync(path.join(root,relative),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,file);return m.exports}
 const files=load('src/main/pi/sessionFiles.ts'),scanner=load('src/main/pi/sessionScanner.ts'),workspace=path.join(tmp,'workspace'),dir=path.join(files.sessionRoot(),scanner.cwdSlug(workspace)),file=path.join(dir,'history.jsonl'),extension=path.join(tmp,'bridge.mjs')

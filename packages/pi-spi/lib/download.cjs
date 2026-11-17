@@ -5,6 +5,15 @@ const fsp = require('node:fs/promises')
 const crypto = require('node:crypto')
 const { performance } = require('node:perf_hooks')
 const DEFAULTS = Object.freeze({ totalMs: 3600000, metadataMs: 180000, idleMs: 60000, attempts: 3, delayMs: 1000, progressMs: 10000 })
+// GitHub's REST API answers 415 to Accept: application/octet-stream, while release assets
+// must keep requesting the binary representation. Callers choose explicitly; nothing else is accepted.
+const ACCEPT = Object.freeze({ binary: 'application/octet-stream', githubJSON: 'application/vnd.github+json' })
+function requestHeaders(accept = ACCEPT.binary) {
+  if (!Object.values(ACCEPT).includes(accept)) throw error('Invalid download Accept type', true)
+  const headers = { 'User-Agent': 'sPi-installer', Accept: accept, 'Accept-Encoding': 'identity' }
+  if (accept === ACCEPT.githubJSON) headers['X-GitHub-Api-Version'] = '2022-11-28'
+  return headers
+}
 function error(message, fatal = false) { return Object.assign(new Error(message), { fatal }) }
 function trustedURL(value) {
   const u = new URL(value)
@@ -43,6 +52,7 @@ async function download(url, file, max, options = {}) {
   for (const key of ['totalMs', 'idleMs', 'attempts', 'progressMs']) if (!Number.isSafeInteger(policy[key]) || policy[key] <= 0) throw error('Invalid download policy', true)
   if (options.sha256 && !/^[a-f0-9]{64}$/i.test(options.sha256)) throw error('Invalid download checksum', true)
   const firstURL = trustedURL(url)
+  requestHeaders(options.accept)
   const reporter = options.progress ? progressReporter() : null
   const emit = options.report || (message => reporter?.write(message))
   const controller = new AbortController()
@@ -69,7 +79,7 @@ async function download(url, file, max, options = {}) {
         if (!(resume && bytes === max)) {
           let current = firstURL, redirects = 0
           const offset = bytes
-          const headers = { 'User-Agent': 'sPi-installer', Accept: 'application/octet-stream', 'Accept-Encoding': 'identity' }
+          const headers = requestHeaders(options.accept)
           if (resume && offset) { headers.Range = 'bytes=' + offset + '-'; if (etag) headers['If-Range'] = etag }
           while (true) {
             touch()
@@ -136,4 +146,4 @@ async function download(url, file, max, options = {}) {
     reporter?.close()
   }
 }
-module.exports = { download, trustedURL, archiveTimeout, progressReporter, status, DEFAULTS }
+module.exports = { download, ACCEPT, requestHeaders, trustedURL, archiveTimeout, progressReporter, status, DEFAULTS }

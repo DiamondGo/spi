@@ -10,6 +10,7 @@ import { YoloPolicy } from './pi/yolo'
 import type { AppSettings, ImageRef, MessageSubmission, RemoteStatusSnapshot, RemoteWindowInfo, SessionTarget, SessionCatalogChange } from '../shared/types'
 import { SettingsStore, themeChrome } from './settings'
 import { QuitController } from './quitController'
+import { AppUpdates, installerRunner, trackManagedRuntime, updateRoot } from './updates'
 import { translate } from '../shared/i18n'
 import { TerminalManager } from './terminalManager'
 import { launchDirectory } from './launchRequests'
@@ -93,16 +94,31 @@ function applyWindowTheme(settings: AppSettings): void {
 function traceLifecycle(event: string): void {
   if (process.env.SPI_TEST_LIFECYCLE === '1') console.log('[sPi lifecycle] ' + event)
 }
+let updates: AppUpdates | null = null
+let restartTarget: string | null = null
+let restartPending = false
+function getUpdates(): AppUpdates {
+  updates ??= new AppUpdates({
+    version: app.getVersion(), target: process.platform + '-' + process.arch,
+    root: updateRoot(process.execPath),
+    run: installerRunner(process.execPath, !app.isPackaged && process.env.SPI_TEST_UPDATE_HELPER
+      ? resolve(process.env.SPI_TEST_UPDATE_HELPER)
+      : app.isPackaged ? join(process.resourcesPath, 'spi-installer.cjs') : join(__dirname, '../../dist/release/spi-installer.cjs')),
+    changed: state => sendLocal('updates:changed', state)
+  })
+  return updates
+}
 const quitting = new QuitController(
-  () => getSettings().get().confirmOnExit,
+  () => !!restartTarget || getSettings().get().confirmOnExit,
   async () => {
     const language = getSettings().get().language
     const t = (text: string, params = {}) => translate(text, language, params)
     const options: Electron.MessageBoxOptions = {
-      type: 'warning', title: t('退出 sPi'), message: t('确定退出 sPi 吗？'),
+      type: 'warning', title: t(restartTarget ? '重启并更新 sPi' : '退出 sPi'), message: t(restartTarget ? '确定重启以使用新版本吗？' : '确定退出 sPi 吗？'),
       detail: manager?.size ? t('还有 {count} 个已打开的会话。退出将中止这些会话，已产生的内容会保存在会话文件中。', { count: manager.size }) : t('应用程序将关闭。'),
-      buttons: [t('退出'), t('取消')], defaultId: 1, cancelId: 1, noLink: true
+      buttons: [t(restartTarget ? '重启生效' : '退出'), t('取消')], defaultId: 1, cancelId: 1, noLink: true
     }
+    if (restartTarget) options.detail += '\n' + t('请先保存草稿并结束任务；重启会关闭所有本机窗口、Pi 会话和终端，未发送的草稿会丢失。已保存的历史、设置及配对保留。')
     if (manager?.pendingMessageCount) options.detail += '\n' + t('另有 {count} 条未交付消息仅缓存在内存中，退出将丢失。', { count: manager.pendingMessageCount })
     if (remoteHost?.connectedDevices) options.detail += '\n' + t('{count} 台远程设备已连接，退出后将断开。', { count: remoteHost.connectedDevices })
     const owner = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0]
@@ -110,6 +126,7 @@ const quitting = new QuitController(
     return result.response === 0
   },
   () => {
+    if (restartTarget) app.relaunch({ execPath: restartTarget, args: ['--user-data-dir=' + app.getPath('userData')] })
     terminalManager?.closeAll(); manager?.closeAll()
     void remoteHost?.stop().catch(() => {}); void remoteClient?.closeAll().catch(() => {})
     // Let a prevented native close/before-quit event unwind before re-entering
@@ -118,7 +135,14 @@ const quitting = new QuitController(
     setImmediate(() => { traceLifecycle('quit-dispatched'); app.quit() })
   }
 )
-function requestQuit(): void { void quitting.request().catch(error => console.error('[sPi quit]', error)) }
+async function requestApplicationQuit(): Promise<boolean> {
+  if (updates?.busy) {
+    await dialog.showMessageBox({ type: 'info', message: translate('正在安装更新，请完成后再退出。', getSettings().get().language), buttons: ['OK'] })
+    return false
+  }
+  return quitting.request()
+}
+function requestQuit(): void { void requestApplicationQuit().catch(error => console.error('[sPi quit]', error)) }
 let yoloPolicy: YoloPolicy | null = null
 
 function getYoloPolicy(): YoloPolicy {
@@ -303,7 +327,26 @@ function requireAppWindow(caller: Caller): void {
   if (!caller.sender || caller.sender.isDestroyed() || !localWindows().some(win => win.webContents === caller.sender) || !caller.mainFrame) throw new Error('Session operation requires the application window')
 }
 
-api.handle('app:quit', caller => { localSender(caller); return quitting.request() }, localOnly)
+api.handle('app:quit', caller => { localSender(caller); return requestApplicationQuit() }, localOnly)
+for (const operation of ['get', 'check', 'install', 'restart'] as const) {
+  api.handle('updates:' + operation, async caller => {
+    localSender(caller)
+    if (caller.kind !== 'local' || !caller.mainFrame) throw new Error('Updates require the local application window')
+    if (operation === 'get') return getUpdates().snapshot()
+    if (operation === 'check') return getUpdates().check()
+    if (operation === 'install') return getUpdates().install()
+    // Never change the intent of an existing plain Quit confirmation in another window.
+    if (restartPending || quitting.inProgress) return false
+    restartPending = true
+    try {
+      restartTarget = getUpdates().restartExecutable()
+      const accepted = await requestApplicationQuit()
+      if (!accepted) restartTarget = null
+      return accepted
+    } catch (error) { restartTarget = null; throw error }
+    finally { restartPending = false }
+  }, localOnly)
+}
 api.handle('app:launch-request', () => launchRequest, localOnly)
 api.handle('app:ack-launch', (_caller, id: string) => { if (launchRequest?.id === id) launchRequest = null }, localOnly)
 api.handle('terminal:open', (caller, id: string, cols: number, rows: number) => {
@@ -483,6 +526,7 @@ async function remoteWindowInvoke(remote: RemoteWindow, event: Electron.IpcMainI
   if (event.senderFrame !== event.sender.mainFrame) throw new Error('Remote operation requires the application window')
   if (channel === 'remote:window-info') return remoteWindowInfo(remote)
   if (channel.startsWith('remote:')) throw new Error('Manage remote access from a local sPi window')
+  if (channel.startsWith('updates:')) throw new Error('Manage updates from a local sPi window')
   if (!CLIENT_LOCAL_CHANNELS.has(channel)) return remote.connection.invoke(channel, args)
   switch (channel) {
     case 'settings:get': case 'settings:update': return api.invoke(channel, localCaller(event), args)
@@ -516,6 +560,14 @@ app.whenReady().then(() => {
   if (!ownsInstance) return
   if (process.platform === 'darwin') app.dock?.setIcon(appIcon)
   createWindow()
+  // Silent failures stay in Settings; never interrupt a session with an update prompt.
+  if (app.isPackaged) {
+    const untrack = trackManagedRuntime()
+    process.once('exit', untrack)
+    void getUpdates().check()
+    const timer = setInterval(() => { void getUpdates().check() }, 6 * 60 * 60 * 1000)
+    timer.unref()
+  }
   try {
     const host = getRemoteHost()
     if (host.snapshot().enabled && !checkRemoteStorage()) host.resume()

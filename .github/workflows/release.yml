@@ -23,21 +23,34 @@ env:
   SPI_NPM_PACKAGE: ${{ vars.SPI_NPM_PACKAGE }}
 jobs:
   native:
+    name: Native ${{ matrix.target }}
     if: ${{ !inputs.publish_only }}
     strategy:
       fail-fast: false
+      # Every supported platform is built and tested on its own native runner. Windows has never
+      # been supported or published and stays deferred.
       matrix:
         include:
           - runner: ubuntu-22.04
             target: linux-x64
-            executable: dist/linux-unpacked/spi
+            install: npm ci
           - runner: ubuntu-24.04-arm
             target: linux-arm64
-            executable: dist/linux-arm64-unpacked/spi
+            install: npm ci
+          - runner: macos-26
+            target: darwin-arm64
+            install: npm ci --ignore-scripts
+            executable: dist/mac-arm64/sPi.app/Contents/MacOS/sPi
+          - runner: macos-15-intel
+            target: darwin-x64
+            install: npm ci --ignore-scripts
+            executable: dist/mac/sPi.app/Contents/MacOS/sPi
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -58,8 +71,12 @@ jobs:
             sudo install -m 644 .github/spi-ci.apparmor /etc/apparmor.d/spi-native-ci
             sudo apparmor_parser -r /etc/apparmor.d/spi-native-ci
           fi
-      - run: npm ci
+      # macOS addons are rebuilt from source with path-mapped flags by the build, so the
+      # unrelocated postinstall rebuild is skipped there.
+      - name: Install locked dependencies
+        run: ${{ matrix.install }}
       - run: node scripts/distribution.cjs prepare --production
+      - run: npm audit --audit-level=high
       - name: Install Pi for isolated native integration
         shell: bash
         run: |
@@ -68,16 +85,35 @@ jobs:
             if [ "$attempt" -lt 3 ]; then sleep 20; fi
           done
           exit 1
-      - run: npm run typecheck && npm run test:launch && npm run test:icons && npm run test:yolo && npm run test:extension-ui && npm run test:workspace-ui && npm run test:sessions && npm run test:settings && npm run test:terminal && npm run test:session-health && npm run test:workspace-actions && npm run test:remote && npm run test:question-navigation && npm run test:context-usage
+      - run: npm run typecheck && npm run test:launch && npm run test:icons && npm run test:native-build && npm run check:privacy && npm run test:yolo && npm run test:extension-ui && npm run test:workspace-ui && npm run test:sessions && npm run test:settings && npm run test:app-updates && npm run test:terminal && npm run test:session-health && npm run test:workspace-actions && npm run test:remote && npm run test:question-navigation && npm run test:context-usage && node scripts/release-plumbing.test.cjs
       - name: Three-instance remote access and single-controller GUI smoke (loopback relay, no Dev Tunnels account)
+        if: runner.os == 'Linux'
         run: npm run test:remote-smoke
       - name: User-question navigation GUI regression
+        if: runner.os == 'Linux'
         run: npm run test:question-navigation-smoke
       - name: Context usage and compaction GUI regression
+        if: runner.os == 'Linux'
         run: npm run test:context-usage-smoke
       - name: Build complete native runtime (no AppImage)
         run: npm run dist -- --production
-      - name: Native PTY, GUI, Pi RPC and single-instance smoke
+      # On macOS these GUI regressions run against the rebuilt native addons, after the build.
+      - name: Three-instance remote access and single-controller GUI smoke (rebuilt macOS addons)
+        if: runner.os == 'macOS'
+        run: npm run test:remote-smoke
+      - name: User-question navigation GUI regression (macOS)
+        if: runner.os == 'macOS'
+        run: npm run test:question-navigation-smoke
+      - name: Context usage and compaction GUI regression (macOS)
+        if: runner.os == 'macOS'
+        run: npm run test:context-usage-smoke
+      - name: GitHub update notification, install/retry and bilingual GUI regression
+        run: npm run test:app-updates-smoke
+      - name: Verify native binaries, bundle icon and ad-hoc signatures (macOS; not notarized)
+        if: runner.os == 'macOS'
+        run: node scripts/macos-verify.cjs '${{ matrix.executable }}' 'dist/release/macos-build-${{ matrix.target }}.txt'
+      - name: Native PTY, GUI, Pi RPC, updater and single-instance smoke (Linux)
+        if: runner.os == 'Linux'
         env:
           SPI_ASSERT_APP_ICON: '1'
           SPI_ASSERT_RENDERER_SANDBOX: '1'
@@ -88,7 +124,16 @@ jobs:
           SPI_ASSERT_REMOTE_ACCESS: '1'
           SPI_ASSERT_QUESTION_NAVIGATION: '1'
           SPI_ASSERT_CONTEXT_USAGE: '1'
+          SPI_ASSERT_APP_UPDATES: '1'
         run: node scripts/with-display.cjs scripts/install-native-smoke.cjs
+      - name: Install ZIP and test native PTY, GUI, Pi RPC, updater and single instance (macOS)
+        if: runner.os == 'macOS'
+        env:
+          SPI_ASSERT_APP_ICON: '1'
+          SPI_ASSERT_QUESTION_NAVIGATION: '1'
+          SPI_ASSERT_CONTEXT_USAGE: '1'
+          SPI_ASSERT_APP_UPDATES: '1'
+        run: node scripts/install-native-smoke.cjs
       - name: Full isolated Pi installation checks (Linux x64)
         if: matrix.target == 'linux-x64'
         run: npm run test:distribution
@@ -101,50 +146,63 @@ jobs:
             dist/release/spi-*.tar.gz
             dist/release/spi-*.zip
             dist/release/linux-*.json
-            dist/release/win32-*.json
             dist/release/darwin-*.json
+            dist/release/macos-build-*.txt
           if-no-files-found: error
   publish:
+    # All four native targets must pass before anything is published.
     needs: native
     if: always() && ((github.ref_type == 'tag' && needs.native.result == 'success') || (github.event_name == 'workflow_dispatch' && inputs.publish_only))
     runs-on: ubuntu-22.04
+    timeout-minutes: 30
     permissions:
       contents: write
       actions: read
-      id-token: write
     environment: release
     env:
       RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
       SOURCE_RUN: ${{ inputs.source_run || github.run_id }}
+      RELEASE_TITLE_SUFFIX: Linux + macOS
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Verify artifact provenance against the immutable tag
+        id: provenance
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           node -e "if(process.env.RELEASE_TAG!=='v'+require('./package.json').version)process.exit(1)"
           [[ "$SOURCE_RUN" =~ ^[0-9]+$ ]]
-          source_sha="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN" --jq .head_sha)"
-          test "$source_sha" = "$(git rev-parse "$RELEASE_TAG^{commit}")"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN" > "$RUNNER_TEMP/source-run.json"
+          gh api "repos/$GITHUB_REPOSITORY/actions/workflows/release.yml" > "$RUNNER_TEMP/source-workflow.json"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN/jobs?per_page=100" > "$RUNNER_TEMP/source-jobs.json"
+          tag_sha="$(git rev-parse "$RELEASE_TAG^{commit}")"
+          echo "sha=$tag_sha" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          registry-url: https://registry.npmjs.org
       - run: npm ci --ignore-scripts
+      - name: Require this workflow and all four successful native jobs for the immutable tag
+        run: node scripts/release-provenance.cjs "$RUNNER_TEMP/source-run.json" "$RUNNER_TEMP/source-workflow.json" "$RUNNER_TEMP/source-jobs.json" '${{ steps.provenance.outputs.sha }}'
       - name: Block publication on high/critical dependency advisories
         run: npm audit --audit-level=high
       - uses: actions/download-artifact@v4
         with:
-          pattern: native-linux-*
+          pattern: native-*
           merge-multiple: true
           path: dist/release
           run-id: ${{ env.SOURCE_RUN }}
           github-token: ${{ github.token }}
-      - run: node scripts/distribution.cjs prepare --production && node scripts/distribution.cjs manifest
+      - name: Merge the four exact-target descriptors into one manifest
+        run: |
+          node scripts/distribution.cjs prepare --production
+          node scripts/distribution.cjs manifest --release --source-sha '${{ steps.provenance.outputs.sha }}'
+          node scripts/privacy.cjs dist/release
       - name: Create draft, upload assets, then make Release visible
+        id: visible
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -154,18 +212,22 @@ jobs:
           else
             notes_file="docs/releases/${RELEASE_TAG#v}.md"
             if [ -f "$notes_file" ]; then notes=(--notes-file "$notes_file"); else notes=(--generate-notes); fi
-            gh release create "$RELEASE_TAG" --draft --title "sPi $RELEASE_TAG (Linux)" "${notes[@]}"
+            gh release create "$RELEASE_TAG" --draft --title "sPi $RELEASE_TAG ($RELEASE_TITLE_SUFFIX)" "${notes[@]}"
           fi
           shopt -s nullglob
-          runtime_assets=(dist/release/spi-*.tar.gz)
-          test "${#runtime_assets[@]}" -eq 2
-          gh release upload "$RELEASE_TAG" --clobber "${runtime_assets[@]}" dist/release/release-manifest.json dist/release/SHA256SUMS dist/release/spi-installer.cjs dist/release/install.sh dist/release/INSTALLER-NOTICES.txt
-          gh release edit "$RELEASE_TAG" --title "sPi $RELEASE_TAG (Linux)" --draft=false
-      - name: Verify public assets before publishing npm
+          runtime_assets=(dist/release/spi-*.tar.gz dist/release/spi-*-darwin-*.zip)
+          test "${#runtime_assets[@]}" -eq 4
+          native_reports=(dist/release/macos-build-darwin-arm64.txt dist/release/macos-build-darwin-x64.txt)
+          gh release upload "$RELEASE_TAG" --clobber "${runtime_assets[@]}" "${native_reports[@]}" dist/release/release-manifest.json dist/release/SHA256SUMS dist/release/spi-installer.cjs dist/release/install.sh dist/release/INSTALLER-NOTICES.txt
+          gh release edit "$RELEASE_TAG" --title "sPi $RELEASE_TAG ($RELEASE_TITLE_SUFFIX)" --draft=false
+      - name: Verify anonymous downloads and hashes for all four targets and the complete manifest
         run: node scripts/verify-release.cjs
-      - name: Publish light npm package with Trusted Publishing
-        if: vars.SPI_NPM_TRUSTED_PUBLISHING == 'true'
-        working-directory: dist/npm-package
+      - name: Return the Release to draft if public verification failed
+        if: failure() && steps.visible.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "$RELEASE_TAG" --draft=true
+      - name: State the platform and signing boundary
         run: |
-          npm install --global npm@^11.5.1
-          npm publish --provenance --access public
+          echo 'Linux x64/arm64 and macOS Apple Silicon/Intel were each built and tested natively, then verified anonymously.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'macOS runtimes are ad-hoc signed, NOT Developer ID signed or notarized. Windows is not published. Updates use GitHub Releases only; npm is not published by this workflow.' >> "$GITHUB_STEP_SUMMARY"

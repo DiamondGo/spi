@@ -2,6 +2,9 @@ const fs=require('node:fs'), path=require('node:path'), os=require('node:os'), c
 const {execFileSync}=require('node:child_process')
 const {build}=require('esbuild'), tar=require('tar'), asar=require('@electron/asar')
 const root=path.resolve(__dirname,'..'), pkg=require('../package.json')
+// Platforms covered by the canonical GitHub Release. Windows has never been supported/published.
+const RELEASE_TARGETS=['linux-x64','linux-arm64','darwin-arm64','darwin-x64']
+const KNOWN_TARGETS=[...RELEASE_TARGETS,'win32-x64']
 function config(){
   const defaults=require('../release.config.json')
   const file=path.join(root,'release.config.local.json'), local=fs.existsSync(file)?JSON.parse(fs.readFileSync(file,'utf8')):{}
@@ -129,7 +132,7 @@ async function sanitizeRuntime(resources){
 function copyRuntime(from,to){fs.cpSync(from,to,{recursive:true,dereference:false,verbatimSymlinks:true})}
 async function archive(){
   const cfg=config(), args=process.argv, from=path.resolve(args[args.indexOf('--from')+1]||''), t=args[args.indexOf('--target')+1]
-  if(!args.includes('--from')||!args.includes('--target')||!['linux-x64','linux-arm64','win32-x64','darwin-arm64','darwin-x64'].includes(t))throw Error('archive --from DIR --target PLATFORM-ARCH')
+  if(!args.includes('--from')||!args.includes('--target')||!KNOWN_TARGETS.includes(t))throw Error('archive --from DIR --target PLATFORM-ARCH')
   if(t!==process.platform+'-'+process.arch)throw Error('Build/archive on the native target runner; architecture mismatch')
   const release=path.join(root,'dist/release');fs.mkdirSync(release,{recursive:true})
   const stage=fs.mkdtempSync(path.join(os.tmpdir(),'spi-runtime-archive-')), appDir=path.join(stage,'app')
@@ -138,6 +141,11 @@ async function archive(){
     const entry=t.startsWith('darwin')?'app/sPi.app/Contents/MacOS/sPi':t.startsWith('win32')?'app/sPi.exe':'app/spi'
     const resources=t.startsWith('darwin')?path.join(appDir,'sPi.app/Contents/Resources'):path.join(appDir,'resources')
     if(!fs.existsSync(path.join(stage,entry))||!fs.existsSync(path.join(resources,'spi-permission-extension.mjs')))throw Error('Incomplete runtime')
+    // The in-app updater runs this standalone installer (resources/spi-installer.cjs); it must be
+    // the exact build produced by `prepare`, never a stale or missing copy.
+    const bundledInstaller=path.join(resources,'spi-installer.cjs'), preparedInstaller=path.join(release,'spi-installer.cjs')
+    if(!fs.existsSync(bundledInstaller)||!fs.existsSync(preparedInstaller)||!fs.readFileSync(bundledInstaller).equals(fs.readFileSync(preparedInstaller)))throw Error('Runtime is missing the prepared standalone installer')
+    if(!fs.existsSync(path.join(resources,'spi-installer-NOTICES.txt')))throw Error('Runtime is missing standalone installer notices')
     // Abort instead of publishing local build paths or user data hidden inside the ASAR.
     require('./privacy.cjs').scanTree(stage,{binary:true})
     const file='spi-'+cfg.version+'-'+t+(t.startsWith('linux')?'.tar.gz':'.zip'), dest=path.join(release,file)
@@ -146,6 +154,7 @@ async function archive(){
     else if(t.startsWith('darwin'))execFileSync('ditto',['-c','-k','--norsrc','--keepParent',appDir,dest])
     else execFileSync('powershell',['-NoProfile','-NonInteractive','-Command','$ErrorActionPreference="Stop"; Compress-Archive -LiteralPath $env:SPI_ZIP_SOURCE -DestinationPath $env:SPI_ZIP_DEST'],{env:{...process.env,SPI_ZIP_SOURCE:appDir,SPI_ZIP_DEST:dest}})
     const item={file,size:fs.statSync(dest).size,sha256:crypto.createHash('sha256').update(fs.readFileSync(dest)).digest('hex'),entry,permissionExtension:path.posix.join(path.posix.dirname(entry),t.startsWith('darwin')?'../Resources/spi-permission-extension.mjs':'resources/spi-permission-extension.mjs')}
+    item.installerSha256=crypto.createHash('sha256').update(fs.readFileSync(path.join(resources,'spi-installer.cjs'))).digest('hex')
     if(t.startsWith('linux'))item.minGlibc=process.report.getReport().header.glibcVersionRuntime
     // Manifest paths must be normalized and contained in app/.
     item.permissionExtension=path.posix.normalize(item.permissionExtension)
@@ -153,13 +162,37 @@ async function archive(){
     console.log('Archived '+file)
   }finally{fs.rmSync(stage,{recursive:true,force:true})}
 }
-function manifest(){
-  const cfg=config(), release=path.join(root,'dist/release'), targets={}
-  for(const name of fs.readdirSync(release).filter(n=>/^(linux|win32|darwin)-.+\.json$/.test(n))){const item=JSON.parse(fs.readFileSync(path.join(release,name)));if(item.version!==cfg.version)throw Error('Mixed versions');const {target,version,...rest}=item;targets[target]=rest}
+const sha256=file=>crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')
+const safeRelative=value=>typeof value==='string'&&value.length>0&&!path.posix.isAbsolute(value)&&!path.win32.isAbsolute(value)&&!value.split(/[\\/]/).includes('..')
+// Merge exact-target descriptors into the canonical manifest. Each descriptor is re-checked
+// against its archive so artifacts that crossed job boundaries cannot be substituted silently.
+// options.release additionally requires every canonical target, the native Mac signing/source
+// reports and an exact source commit.
+function manifest(options={}){
+  const cfg=config(), release=options.dir||path.join(root,'dist/release'), targets={}
+  if(options.release&&!/^[a-f0-9]{40}$/.test(options.sourceSha||''))throw Error('Release manifest requires the exact 40-character source commit')
+  for(const name of fs.readdirSync(release).filter(n=>/^(linux|win32|darwin)-.+\.json$/.test(n))){
+    const item=JSON.parse(fs.readFileSync(path.join(release,name)));if(item.version!==cfg.version)throw Error('Mixed versions')
+    const {target,version,...rest}=item
+    if(!KNOWN_TARGETS.includes(target)||name!==target+'.json')throw Error('Descriptor does not match its target: '+name)
+    if(rest.file!=='spi-'+cfg.version+'-'+target+(target.startsWith('linux')?'.tar.gz':'.zip'))throw Error('Unexpected archive name for '+target)
+    if(!safeRelative(rest.entry)||!safeRelative(rest.permissionExtension))throw Error('Unsafe descriptor path for '+target)
+    const archive=path.join(release,rest.file)
+    if(!fs.existsSync(archive)||!fs.lstatSync(archive).isFile()||fs.statSync(archive).size!==rest.size||sha256(archive)!==rest.sha256)throw Error('Archive does not match its descriptor: '+target)
+    if(options.release&&rest.installerSha256!==sha256(path.join(release,'spi-installer.cjs')))throw Error('Bundled installer differs from the published installer: '+target)
+    if(options.release&&target.startsWith('darwin')){
+      const report=JSON.parse(fs.readFileSync(path.join(release,'macos-build-'+target+'.txt'),'utf8'))
+      if(report.target!==target||report.version!==cfg.version||report.sourceCommit!==options.sourceSha)throw Error('Native Mac report does not match this release/source: '+target)
+      if(report.signature!=='ad-hoc'||report.notarized!==false)throw Error('Unexpected Mac signing claim: '+target)
+    }
+    targets[target]=rest
+  }
   if(!Object.keys(targets).length)throw Error('No verified target descriptors')
+  if(options.release&&JSON.stringify(Object.keys(targets).sort())!==JSON.stringify([...RELEASE_TARGETS].sort()))throw Error('Release requires exactly: '+RELEASE_TARGETS.join(', ')+' (found '+Object.keys(targets).sort().join(', ')+')')
   fs.writeFileSync(path.join(release,'release-manifest.json'),JSON.stringify({schemaVersion:1,version:cfg.version,targets},null,2)+'\n')
   const files=fs.readdirSync(release).filter(n=>!n.endsWith('.json')||n==='release-manifest.json').filter(n=>n!=='SHA256SUMS').sort()
-  fs.writeFileSync(path.join(release,'SHA256SUMS'),files.map(n=>crypto.createHash('sha256').update(fs.readFileSync(path.join(release,n))).digest('hex')+'  '+n).join('\n')+'\n')
+  fs.writeFileSync(path.join(release,'SHA256SUMS'),files.map(n=>sha256(path.join(release,n))+'  '+n).join('\n')+'\n')
 }
-if(require.main===module)(async()=>{const cmd=process.argv[2];if(cmd==='prepare')await prepare();else if(cmd==='archive')await archive();else if(cmd==='manifest')manifest();else throw Error('prepare | archive | manifest')})().catch(e=>{console.error(e.message);process.exitCode=1})
-module.exports={config,prepare,archive,manifest,sanitizeRuntime,keepPty,stripMacDebug,copyRuntime,restoreUnpackedModes,NATIVE_ADDONS}
+function manifestOptions(args){const at=args.indexOf('--source-sha');return {release:args.includes('--release'),sourceSha:at>=0?args[at+1]:undefined}}
+if(require.main===module)(async()=>{const cmd=process.argv[2];if(cmd==='prepare')await prepare();else if(cmd==='archive')await archive();else if(cmd==='manifest')manifest(manifestOptions(process.argv));else throw Error('prepare | archive | manifest [--release --source-sha SHA]')})().catch(e=>{console.error(e.message);process.exitCode=1})
+module.exports={RELEASE_TARGETS,config,prepare,archive,manifest,sanitizeRuntime,keepPty,stripMacDebug,copyRuntime,restoreUnpackedModes,NATIVE_ADDONS}

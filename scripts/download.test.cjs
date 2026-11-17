@@ -1,7 +1,7 @@
 'use strict'
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),os=require('node:os'),http=require('node:http'),crypto=require('node:crypto')
 const {spawn}=require('node:child_process')
-const {download,archiveTimeout,DEFAULTS}=require('../packages/pi-spi/lib/download.cjs')
+const {download,archiveTimeout,DEFAULTS,ACCEPT,requestHeaders}=require('../packages/pi-spi/lib/download.cjs')
 const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'spi-download-test-')),routes=new Map(),payload=Buffer.from('0123456789'),sha=crypto.createHash('sha256').update(payload).digest('hex')
 const policy={totalMs:3000,idleMs:500,attempts:3,delayMs:1,progressMs:20}
 let count=0,seq=0
@@ -75,6 +75,31 @@ function drip(res,data,period){let n=0;const timer=setInterval(()=>{if(n===data.
   await check('exclusive files are not overwritten; metadata keeps its smaller size/deadline policy',async()=>{
     const dest=file();fs.writeFileSync(dest,'KEEP');await assert.rejects(download(base+'/slow',dest,10,{policy}),/EEXIST/);assert.equal(fs.readFileSync(dest,'utf8'),'KEEP')
     assert.equal(DEFAULTS.metadataMs,180000)
+  })
+  await check('archives and release assets request exactly the binary representation by default',async()=>{
+    let seen
+    routes.set('/asset',(req,res)=>{seen=req.headers;res.end(payload)})
+    await download(base+'/asset',file(),10,{resume:true,sha256:sha,policy})
+    assert.equal(seen.accept,'application/octet-stream');assert.equal(seen['accept-encoding'],'identity');assert.equal(seen['user-agent'],'sPi-installer')
+    assert.equal(seen['x-github-api-version'],undefined);assert.equal(seen.authorization,undefined)
+  })
+  await check('GitHub JSON metadata requests application/vnd.github+json and never application/octet-stream (the API answers 415 to the latter)',async()=>{
+    const seen=[]
+    routes.set('/api',(req,res)=>{seen.push(req.headers);if(req.headers.accept!=='application/vnd.github+json'){res.writeHead(415);res.end();return}res.end('{"ok":true}')})
+    const dest=file();await download(base+'/api',dest,1024,{accept:ACCEPT.githubJSON,policy})
+    assert.equal(fs.readFileSync(dest,'utf8'),'{"ok":true}');assert.equal(seen.length,1)
+    assert.deepEqual({accept:seen[0].accept,enc:seen[0]['accept-encoding'],ua:seen[0]['user-agent'],version:seen[0]['x-github-api-version']},{accept:'application/vnd.github+json',enc:'identity',ua:'sPi-installer',version:'2022-11-28'})
+    // The previous implementation's headers reproduce the failure and are not retried.
+    seen.length=0;await assert.rejects(download(base+'/api',file(),1024,{policy}),/HTTP 415/);assert.equal(seen.length,1)
+  })
+  await check('the selected Accept type survives redirects and an unknown type is rejected before any request',async()=>{
+    const seen=[]
+    routes.set('/api-redirect',(req,res)=>{res.writeHead(302,{Location:'/api-final'});res.end()})
+    routes.set('/api-final',(req,res)=>{seen.push(req.headers.accept);res.end('{}')})
+    await download(base+'/api-redirect',file(),16,{accept:ACCEPT.githubJSON,policy});assert.deepEqual(seen,['application/vnd.github+json'])
+    let hits=0;routes.set('/never',(req,res)=>{hits++;res.end('x')})
+    for(const accept of ['*/*','application/json','application/octet-stream, */*',''])await assert.rejects(download(base+'/never',file(),10,{accept,policy}),/Accept/)
+    assert.equal(hits,0);assert.deepEqual(requestHeaders(),{'User-Agent':'sPi-installer',Accept:'application/octet-stream','Accept-Encoding':'identity'})
   })
   await check('npm-buffered postinstall progress is visible on its own private PTY without exposing buffered stderr',async()=>{
     if(process.platform!=='linux')return

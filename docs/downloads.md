@@ -1,4 +1,10 @@
-# Runtime downloads (published in 0.1.3)
+# Runtime downloads
+
+## 0.3.2 GitHub-only updates
+
+The desktop updater checks stable GitHub Releases and offers the exact OS/architecture archive, with progress, checksum/signature verification and a separately confirmed restart. It never invokes npm. The canonical manifest covers Linux x64/arm64 and macOS arm64/x64; historical manifests remain immutable. The old `spi update` HTTP 415 was caused by a binary Accept header on the JSON latest-release API. [One-time 0.3.2 bootstrap, safety and behavior](releases/0.3.2.md).
+
+The remaining sections describe the download/resume guarantees introduced in 0.1.3, which are retained.
 
 ## Why 0.1.2 can appear frozen
 

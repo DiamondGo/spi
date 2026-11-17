@@ -1,0 +1,23 @@
+# GitHub desktop updates (0.3.2)
+
+## Implementation plan
+
+1. Separate GitHub JSON metadata requests from binary archive Accept headers, fixing HTTP 415. Add a machine-readable exact-version installer/check interface and strict SemVer/target validation.
+2. Bundle the standalone installer in each desktop runtime. A main-process-only update service queries stable GitHub Releases, selects the running OS/architecture, and installs checksummed archives atomically into the managed runtime root. Never invoke npm, accept renderer URLs, replace a running runtime, or discard the previous release.
+3. Check on packaged startup and periodically; provide explicit checking in Settings. A clickable exclamation mark next to the gear announces a newer stable version. Show version/platform, progress, failures/retry, installation location, and restart readiness in English/Chinese.
+4. Protect update IPC from remote callers/windows and subframes. Installation does not interrupt sessions. Restart requires explicit confirmation including draft/outbox/session/terminal loss; it launches the validated new executable after ordinary application shutdown. Preferences, saved histories and pairings retain the same profile.
+5. Release 0.3.2 through four native CI targets: Linux x64/arm64 and macOS arm64/x64. Verify packaged helper, GUI, PTY/RPC, safety/privacy/signatures and anonymous public asset hashes; publish one canonical four-target manifest. Keep Windows deferred and historical releases immutable. GitHub publication must not depend on npm publication.
+
+## Distribution boundary
+
+Updates use HTTPS GitHub Releases directly. macOS bundles remain ad-hoc signed, not Developer ID signed or notarized; signature integrity is checked but Gatekeeper trust is not claimed. Never disable OS protections or remove quarantine attributes. Unmanaged/manual application copies are not overwritten: the updater installs a managed runtime and restarts into it; its location and the managed `spi` launch command are shown explicitly. Keep the original copy until the new one is verified; opening that original copy still opens its original version.
+
+## Verification
+
+- Implemented steps 1–5. Native/public 0.3.2 release acceptance is still pending; the four-platform gate must pass before publication.
+- Local typecheck, existing unit suites and privacy passed. New suites: 16 downloader checks, 45 installer checks (including SIGTERM/SIGKILL recovery, concurrent reapers, helper version/hash and Mac signature stubs), 11 updater-service checks, 17 settings/main lifecycle checks and release-plumbing/provenance tests.
+- Dev GUI smoke verifies current/offline/new/unsupported/failing-install/retry/ready states, exact placement of the clickable `!`, draft preservation and six theme/language combinations at 900px. Screenshots were reviewed.
+- A real locally packaged Linux x64 archive passed installed PTY/GUI/Pi RPC, icon, active renderer sandbox, actual GitHub JSON metadata lookup and cross-runtime Electron relaunch into a second verified installation, with the same profile and a protected running-runtime record. Mac/ARM64 acceptance is not inferred from this x64 result.
+- A second read-only review closed the lock/quit/liveness/provenance blockers and identified the new relaunch test's Ubuntu ARM64 AppArmor path mismatch. A narrow CI-only allowlist and a wiring regression address that mismatch; the real native CI result remains the authority.
+- Existing immutable <=0.3.1 launchers cannot acquire their own HTTP 415 fix through unversioned update: the release notes provide an explicit, version-bound GitHub bootstrap. Subsequent runtime installations refresh the CLI from the newly checksum-verified bundled helper rather than leaving it one version behind.
+- Unrecognized legacy/ownerless locks still fail closed and require human liveness checks. New dead-owner locks recover automatically; tiny nonempty token tombstones are retained to prevent delayed reapers from stealing a newer live lock. A power loss during the tiny owner/marker creation window can still require manual cleanup; cross-host/PID-namespace uncertainty never authorizes automatic deletion.

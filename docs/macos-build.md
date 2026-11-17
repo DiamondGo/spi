@@ -1,8 +1,16 @@
-# macOS downloads / macOS 手动下载包
+# macOS downloads / macOS 下载包
+
+## 0.3.2 canonical updates / 四平台统一更新
+
+The 0.3.2 candidate promotes both native Mac architectures into the canonical GitHub installer/update manifest alongside Linux x64/arm64. `release.yml` builds both Mac targets natively, checks bundle signatures/ASAR/icon, GUI/PTY/Pi RPC, installed updater/helper behavior and actual cross-runtime Electron relaunch before publication. The separate workflows below document historical manual releases and remain available for those releases; they are not the normal 0.3.2 publication path.
+
+Packages remain **ad-hoc signed, NOT Developer ID signed or notarized**. The installer verifies the staged Mac bundle with `/usr/bin/codesign --verify --deep --strict` before selection; this is integrity verification, not a claim of Gatekeeper trust. Do not remove quarantine attributes or disable OS protections. Manual app copies are preserved: in-app updating installs a managed runtime under `~/Library/Application Support/sPi`, restarts into it, and shows its exact future launch command. [One-time old-version bootstrap and limitations](releases/0.3.2.md).
+
+Native/public 0.3.2 acceptance is pending the canonical release gates; it is not established merely by this documentation change.
 
 ## Public 0.3.1 downloads / 已公开的 0.3.1 包
 
-**Latest manual Mac downloads: [Apple Silicon ZIP](https://github.com/DiamondGo/spi/releases/download/v0.3.1/spi-0.3.1-darwin-arm64.zip) · [Intel ZIP](https://github.com/DiamondGo/spi/releases/download/v0.3.1/spi-0.3.1-darwin-x64.zip) · [SHA-256](https://github.com/DiamondGo/spi/releases/download/v0.3.1/SHA256SUMS-macos.txt).** Ad-hoc signed, NOT Developer ID signed or notarized; do not disable OS protections.
+**Historical 0.3.1 manual Mac downloads: [Apple Silicon ZIP](https://github.com/DiamondGo/spi/releases/download/v0.3.1/spi-0.3.1-darwin-arm64.zip) · [Intel ZIP](https://github.com/DiamondGo/spi/releases/download/v0.3.1/spi-0.3.1-darwin-x64.zip) · [SHA-256](https://github.com/DiamondGo/spi/releases/download/v0.3.1/SHA256SUMS-macos.txt).** Ad-hoc signed, NOT Developer ID signed or notarized; do not disable OS protections.
 
 - Source: immutable v0.3.1, `26215425c17f78243b7ee38c96501469a342bfc6`.
 - [Native build and extracted-runtime acceptance](https://github.com/DiamondGo/spi/actions/runs/44018901933): macos-26 arm64 and macos-15-intel x64 passed current context graph/tooltip, default/custom native compact RPC, draft preservation, unknown usage and theme/viewport GUI checks, including both extracted ZIPs.
@@ -51,11 +59,11 @@ Each ZIP contains `app/sPi.app`, including Electron, the permission extension, a
 
 Both bundles declare macOS 13.0 minimum. Native execution was verified on the listed macOS 26 arm64 and macOS 15 Intel runners, not every intermediate OS version. The native Mac checks cover architecture, helper permissions, ICNS/ASAR/signature integrity before/after extraction, real PTY/GUI/Pi RPC, single-instance and application quit. The full new interaction/fault suites also ran on Linux; they are not presented as additional Mac-specific GUI evidence.
 
-## Installer boundary / 自动安装边界
+## Historical installer boundary (through 0.3.1) / 历史自动安装边界
 
 **These are supplemental manual Mac downloads, not new automatic Pi/npm targets.** The immutable 0.1.5 `release-manifest.json` still lists Linux x64/arm64 only. Normal `pi install npm:spi-agent-gui@0.1.5` or `spi update` does not automatically install the Mac ZIPs. The independent `release-manifest-macos.json` documents the two Mac archives without rewriting that canonical manifest. These historical 0.1.5 assets remain unchanged; see the latest-release section above for current npm status.
 
-目前 Mac 提供手动下载包；已有 npm/自动安装清单没有被偷偷改写。若要把 Mac 纳入正常自动安装，应在新的匹配桌面/npm 版本中发布完整清单，并完成相应签名、公证及分发门槛。
+截至 0.3.1，Mac 只有独立手动下载包，旧 npm/自动安装清单保持不可变。0.3.2 使用新的四平台完整清单和签名完整性／原生安装测试，不改写历史版本，不依赖 npm 发布，也不声称已有 Apple Developer ID 签名或公证。
 
 ## Reproducible build and additive publication / 构建与追加发布
 

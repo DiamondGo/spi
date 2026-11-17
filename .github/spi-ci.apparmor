@@ -7,6 +7,11 @@ profile spi-native-ci /tmp/spi-native-install-*/runtime/releases/*/*/app/spi fla
   userns,
 }
 
+# Two privately installed copies used only by the real updater relaunch regression.
+profile spi-update-restart-ci /tmp/spi-update-restart-*/{old-root,new-root}/releases/*/*/app/spi flags=(unconfined) {
+  userns,
+}
+
 # The development Electron binary used by source-tree GUI smokes on the same runner.
 profile spi-dev-electron-ci /home/*/work/*/*/node_modules/electron/dist/electron flags=(unconfined) {
   userns,

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.2
+
+- Fix GitHub latest-release HTTP 415 by distinguishing JSON and binary Accept headers.
+- Add stable update checks, a clickable exclamation mark beside Settings, GitHub-only architecture-specific download/verification/installation and explicitly confirmed restart. Preserve saved history/profile/pairings; never restart an active task without confirmation.
+- Bundle the standalone installer in every desktop runtime. Bind metadata/archive layouts to exact version/target; preserve old runtimes and unrelated commands, validate Mac signatures, restrict update IPC to owning local windows, and protect directly relaunched runtimes from uninstall.
+- Build and verify Linux x64/arm64 and macOS Apple Silicon/Intel natively and publish one complete canonical manifest. Mac remains ad-hoc signed and unnotarized; Windows stays deferred. No npm publication/authentication is needed for GitHub desktop releases or later GUI updates.
+- Existing 0.3.1 launchers require the one-time 0.3.2 GitHub bootstrap; immutable historical npm/Release assets are not patched in place.
+
 ## 0.3.1
 
 - Context ring/percentage next to Thinking, with current used/max tokens on hover. Click performs native Pi compaction; right-click opens optional instructions. Empty/busy/error/unknown-usage states are explicit, history refresh preserves drafts/outbox, and read-only remote viewers cannot compact. Uses Pi contextUsage, not cumulative token statistics.

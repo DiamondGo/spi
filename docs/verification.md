@@ -1,5 +1,14 @@
 # Distribution verification / 分发验收
 
+## 0.3.2 GitHub-only update candidate
+
+- This section records local candidate evidence, **not public/native-four-platform acceptance**. The canonical workflow must still pass Linux x64/arm64 and macOS arm64/x64 before the Release is published.
+- Typecheck and existing launch/icon/YOLO/extension/workspace/session/terminal/health/remote/navigation/context units passed. New download/installer suites passed 16/45 checks; updater service 11; settings/main lifecycle 17; release plumbing/provenance/CI wiring 15. Full audit has no high/critical issues; the same 8 moderate upstream/build-chain entries remain.
+- Real source GUI tests covered current/offline/new/unsupported/failed-install/retry/ready states, clickable exclamation placement next to the gear, draft preservation and all six language/theme combinations. Screenshots were reviewed; no renderer errors. No user profile/session/installation was modified.
+- A local extracted Linux x64 production archive passed native PTY/GUI/Pi RPC/icon, active renderer sandbox, GitHub metadata retrieval without HTTP 415, and real Electron relaunch between two verified native installations with the same private profile and runtime liveness records. This composes with the production main-handler tests for mandatory restart confirmation/cancel and pending plain-quit exclusion; the native relaunch test itself invokes the underlying Electron API through an inspector bound to that test's own process, not through a paid model or a personal session.
+- The isolated 9-case registry/distribution suite passed, including the standalone GitHub-style bootstrap and unchanged legacy Pi-package compatibility. No npm 0.3.2 publication is required or claimed. The release notes document how old 0.3.1 launchers acquire the fix once from the new version-bound GitHub bootstrap.
+- Read-only independent review found and prompted fixes for dead installer locks, cross-window quit/restart intent and command collisions. Follow-up closed code blockers except a CI-only ARM64 sandbox path mismatch; its exact new runtime paths are now allowlisted without disabling Chromium sandboxing. Four-platform native results and public checksums will be appended only after they actually pass.
+
 ## Linux v0.2.0 public release and clean-install acceptance
 
 - Public desktop Release: https://github.com/DiamondGo/spi/releases/tag/v0.2.0. Immutable source tag: `4bd2cdd54068c3db9f1ee559ae979bd7998f0fd1`.

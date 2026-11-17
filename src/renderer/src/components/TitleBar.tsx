@@ -6,6 +6,7 @@ import { usePreferences, useT } from '../preferences'
 import { TitleSelect } from './TitleSelect'
 import { Icon, IconControl } from './IconControl'
 import { AppSettingsPanel } from './AppSettingsPanel'
+import { AppUpdateNotice } from './AppUpdates'
 import { ContextUsageControl } from './ContextUsageControl'
 import { usePathFormatter } from '../homePath'
 import { useRemoteReadOnly, useRemoteStatus, useRemoteWindow } from '../remote'
@@ -89,6 +90,7 @@ export function TitleBar({ sidebarOpen, onToggleSidebar }: { sidebarOpen: boolea
         <span className={`tb-field tb-status${waiting ? ' waiting' : active.streaming ? ' running' : ''}`} title={error || undefined}>{t(error ? '设置失败' : waiting ? '等待审批' : active.streaming ? '运行中' : '空闲')}</span>
       </div>}
       {active && <button className="tb-btn tb-close-session" title={t('关闭当前会话')} disabled={readOnly} onClick={() => { if (!active.pendingQueue.items.length || window.confirm(t('关闭会话将丢弃 {count} 条待执行消息，确定关闭？', { count: active.pendingQueue.items.length }))) void window.spi.closeSession(active.id) }}>{t('关闭')}</button>}
+      <AppUpdateNotice />
       <IconControl tooltip={t('设置')}>
         <button type="button" className="tb-btn tb-icon-button app-settings-button" aria-label={t('设置')} aria-haspopup="dialog" aria-expanded={settingsOpen} onClick={() => setSettingsOpen(true)}><Icon name="settings" /></button>
       </IconControl>

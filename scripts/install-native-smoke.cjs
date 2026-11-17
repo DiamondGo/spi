@@ -17,10 +17,13 @@ const api=require('../dist/npm-package/dist/spi.cjs')
       console.log('PASS extracted-runtime sparse desktop PATH, new/history sessions and manual Node settings',target)
     }
   }
-  for (const [flag, suite] of [['SPI_ASSERT_SESSION_ACTIONS','session-actions'],['SPI_ASSERT_SESSION_HEALTH','session-health'],['SPI_ASSERT_TERMINAL_UI','terminal'],['SPI_ASSERT_QUESTION_NAVIGATION','question-navigation'],['SPI_ASSERT_CONTEXT_USAGE','context-usage']]) {
+  for (const [flag, suite] of [['SPI_ASSERT_APP_UPDATES','app-updates'],['SPI_ASSERT_SESSION_ACTIONS','session-actions'],['SPI_ASSERT_SESSION_HEALTH','session-health'],['SPI_ASSERT_TERMINAL_UI','terminal'],['SPI_ASSERT_QUESTION_NAVIGATION','question-navigation'],['SPI_ASSERT_CONTEXT_USAGE','context-usage']]) {
     if (process.env[flag] !== '1') continue
     execFileSync(process.execPath,[path.join(__dirname,'with-display.cjs'),path.join(__dirname,'smoke.cjs'),'--'+suite],{stdio:'inherit',timeout:240000,env:{...process.env,SPI_SMOKE_EXECUTABLE:installed.entryPath}})
     console.log('PASS extracted-runtime '+suite,target)
+  }
+  if(process.env.SPI_ASSERT_APP_UPDATES==='1'){
+    execFileSync(process.execPath,[path.join(__dirname,'update-restart-native.cjs')],{stdio:'inherit',timeout:180000})
   }
   console.log('PASS extracted native archive',target)
 })().catch(error=>{console.error(error.message);process.exitCode=1})

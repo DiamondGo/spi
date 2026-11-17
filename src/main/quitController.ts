@@ -4,6 +4,7 @@ export class QuitController {
   private pending: Promise<boolean> | null = null
   constructor(private shouldConfirm: () => boolean, private confirm: () => Promise<boolean>, private quit: () => void) {}
   get allowed(): boolean { return this.approved }
+  get inProgress(): boolean { return this.pending !== null || this.approved }
   request(): Promise<boolean> {
     if (this.approved) return Promise.resolve(true)
     if (this.pending) return this.pending

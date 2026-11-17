@@ -67,10 +67,20 @@ module.exports=async function(context){
     assert.throws(()=>execFileSync(path.join(sparse,'env'),['node','--version'],{env:{PATH:sparse},stdio:'ignore'}))
     launchOptions={env:{PATH:sparse,SHELL:loginShell},waitForSession:false}
   }
+  if(process.argv.includes('--app-updates')&&!process.env.SPI_SMOKE_EXECUTABLE){
+    const mode=path.join(artifacts,'update-mode.txt'),helper=path.join(artifacts,'update-helper.cjs')
+    fs.writeFileSync(mode,'current')
+    fs.writeFileSync(helper,`const fs=require('node:fs'),path=require('node:path');const args=process.argv.slice(2),get=k=>args[args.indexOf(k)+1],mode=fs.readFileSync(${JSON.stringify(mode)},'utf8'),target=process.platform+'-'+process.arch;
+      if(mode==='offline'){console.error('SPI_UPDATE_OFFLINE');process.exit(1)}
+      if(args[0]==='check-update'){const currentVersion=get('--current-version'),version=mode==='current'?currentVersion:'0.3.3';console.log(JSON.stringify({currentVersion,version,available:mode!=='current',supported:mode!=='unsupported',target,file:'spi-'+version+'-'+target+(process.platform==='linux'?'.tar.gz':'.zip'),size:1024,releaseUrl:'https://github.com/DiamondGo/spi/releases/tag/v'+version}))}
+      else {console.error('[sPi] Downloading runtime: 1/2 MiB (50%)');setTimeout(()=>{if(mode==='install-failure'){console.error('SPI_UPDATE_CHECKSUM_MISMATCH');process.exitCode=1;return}const version=get('--version'),entry='app/spi',entryPath=path.join(get('--install-dir'),'releases',version,target,entry);fs.mkdirSync(path.dirname(entryPath),{recursive:true});fs.writeFileSync(entryPath,'#!/bin/sh\\n',{mode:0o755});console.log(JSON.stringify({version,target,entry,entryPath}))},250)}
+    `)
+    launchOptions={env:{SPI_TEST_UPDATE_HELPER:helper}}
+  }
   let app
   try{
     app=await launch(launchOptions)
-    const suite=process.argv.includes('--context-usage')?'context-usage-smoke.cjs':process.argv.includes('--question-navigation')?'user-message-navigation-smoke.cjs':process.argv.includes('--remote')?'remote-smoke.cjs':process.argv.includes('--session-actions')?'session-actions-smoke.cjs':process.argv.includes('--session-health')?'session-health-smoke.cjs':process.argv.includes('--runtime-env')?'runtime-env-smoke.cjs':process.argv.includes('--terminal')?'terminal-smoke.cjs':process.argv.includes('--settings')?'settings-smoke.cjs':process.argv.includes('--extension-ui')?'extension-ui-smoke.cjs':process.argv.includes('--workspace-ui')?'workspace-ui-smoke.cjs':'yolo-smoke.cjs'
+    const suite=process.argv.includes('--app-updates')?'app-updates-smoke.cjs':process.argv.includes('--context-usage')?'context-usage-smoke.cjs':process.argv.includes('--question-navigation')?'user-message-navigation-smoke.cjs':process.argv.includes('--remote')?'remote-smoke.cjs':process.argv.includes('--session-actions')?'session-actions-smoke.cjs':process.argv.includes('--session-health')?'session-health-smoke.cjs':process.argv.includes('--runtime-env')?'runtime-env-smoke.cjs':process.argv.includes('--terminal')?'terminal-smoke.cjs':process.argv.includes('--settings')?'settings-smoke.cjs':process.argv.includes('--extension-ui')?'extension-ui-smoke.cjs':process.argv.includes('--workspace-ui')?'workspace-ui-smoke.cjs':'yolo-smoke.cjs'
     await require('./'+suite)({...context,app,hashes,before,launchOptions,namingRequests})
     assert.deepEqual(hashes(),before);assert.deepEqual(errors,[])
   }catch(error){if(app&&!app.exited){try{fs.writeFileSync(path.join(artifacts,'gui-failure.json'),JSON.stringify(await app.eval('(async()=>({yolo:await window.spi.getYoloState(),events:window.__smokeEvents,body:document.body.innerText}))()')))}catch{}}throw error}

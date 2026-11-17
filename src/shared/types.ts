@@ -99,6 +99,22 @@ export interface AppSettings {
   confirmOnExit: boolean
 }
 
+export interface AppUpdateState {
+  phase: 'idle' | 'checking' | 'current' | 'available' | 'installing' | 'ready' | 'error'
+  currentVersion: string
+  target: string
+  installRoot: string
+  commandPath?: string
+  version?: string
+  available?: boolean
+  supported?: boolean
+  size?: number
+  checkedAt?: number
+  progress?: string
+  percent?: number
+  error?: string
+}
+
 export interface TerminalInfo {
   sessionId: string
   terminalId: string
@@ -155,6 +171,11 @@ export interface IpcApi {
   getAppSettings(): Promise<AppSettings>
   updateAppSettings(patch: Partial<AppSettings>): Promise<AppSettings>
   quitApp(): Promise<boolean>
+  getAppUpdate(): Promise<AppUpdateState>
+  checkAppUpdate(): Promise<AppUpdateState>
+  installAppUpdate(): Promise<AppUpdateState>
+  restartForUpdate(): Promise<boolean>
+  onAppUpdateChanged(cb: (state: AppUpdateState) => void): () => void
   onAppSettingsChanged(cb: (settings: AppSettings) => void): () => void
   getYoloState(): Promise<YoloSnapshot>
   setYolo(id: string, enabled: boolean): Promise<void>

@@ -22,7 +22,7 @@ let count = 0
 const check = async (name, fn) => { await fn(); console.log('PASS', name); count++ }
 const tick = () => new Promise(resolve => setImmediate(resolve))
 
-async function testMainClose(language, confirmOnExit, answer, ownsInstance = true, viaIPC = false, placement) {
+async function testMainClose(language, confirmOnExit, answer, ownsInstance = true, viaIPC = false, placement, updateRestart = false) {
   const home = fs.mkdtempSync(path.join(tmp, 'main-'))
   if (placement) fs.writeFileSync(path.join(home, 'spi-window.json'), JSON.stringify(placement))
   const app = new EventEmitter()
@@ -31,6 +31,7 @@ async function testMainClose(language, confirmOnExit, answer, ownsInstance = tru
   app.isPackaged = false
   app.setName = () => {}
   app.setDesktopName = name => { app.desktopName = name }
+  app.relaunch = options => { app.relaunchOptions = options }
   const exitCodes = []
   app.exit = code => { exitCodes.push(code) }
   app.requestSingleInstanceLock = () => ownsInstance
@@ -38,7 +39,7 @@ async function testMainClose(language, confirmOnExit, answer, ownsInstance = tru
   app.quit = () => { const e = { preventDefault() { this.prevented = true } }; app.emit('before-quit', e); if (!e.prevented) app.didQuit = true }
   const windows = []
   class Window extends EventEmitter {
-    constructor(options) { super(); this.options = options; this.webContents = { id: 1, send() {}, on() {}, isDestroyed: () => false }; windows.push(this) }
+    constructor(options) { super(); this.options = options; this.webContents = { id: 1, mainFrame: {}, send() {}, on() {}, isDestroyed: () => false }; windows.push(this) }
     isDestroyed() { return false }
     static getAllWindows() { return windows }
     static getFocusedWindow() { return windows[0] }
@@ -71,6 +72,10 @@ async function testMainClose(language, confirmOnExit, answer, ownsInstance = tru
     if (name === './windowState') return { loadWindowState: load('src/main/windowState.ts').loadWindowState, trackWindowState() {} }
     if (name === './pi/sessionFiles') return load('src/main/pi/sessionFiles.ts')
     if (name === './quitController') return { QuitController }
+    if (name === './updates') return updateRestart ? {
+      updateRoot: () => path.join(home, 'managed'), installerRunner: () => async () => { throw Error('must not install on restart') },
+      AppUpdates: class { busy = false; restartExecutable() { return path.join(home, 'verified-new-app') } }
+    } : load('src/main/updates.ts')
     if (name === './launchRequests') return load('src/main/launchRequests.ts')
     if (name === './terminalManager') return { TerminalManager: class {} }
     if (name === '../shared/i18n') return { translate }
@@ -115,6 +120,28 @@ async function testMainClose(language, confirmOnExit, answer, ownsInstance = tru
   assert.equal(win.background, themeChrome.light.background)
   assert.throws(() => handlers.get('app:quit')({ sender: { isDestroyed: () => true } }), /closed/)
   assert.throws(() => handlers.get('app:quit')({ sender: { isDestroyed: () => false } }), /closed/)
+  if (updateRestart) {
+    for (const operation of ['get', 'check', 'install', 'restart']) {
+      await assert.rejects(handlers.get('updates:' + operation)({ sender: win.webContents, senderFrame: {} }), /local application window/)
+      await assert.rejects(handlers.get('updates:' + operation)({ sender: { isDestroyed: () => false }, senderFrame: {} }), /closed/)
+    }
+    const event = { sender: win.webContents, senderFrame: win.webContents.mainFrame }
+    await handlers.get('settings:update')({}, { confirmOnExit: true })
+    const plainQuit = handlers.get('app:quit')(event)
+    assert.equal(dialogOptions.message, 'Quit sPi?')
+    assert.equal(await handlers.get('updates:restart')(event), false, 'restart must not change a pending plain Quit into a relaunch')
+    resolveDialog({ response: 1 }); assert.equal(await plainQuit, false); assert.equal(app.relaunchOptions, undefined)
+    await handlers.get('settings:update')({}, { confirmOnExit: false })
+    const cancel = handlers.get('updates:restart')(event)
+    assert.equal(dialogCalls, 2); assert.equal(dialogOptions.defaultId, 1)
+    assert.ok(dialogOptions.detail.includes('drafts')); assert.equal(app.relaunchOptions, undefined)
+    resolveDialog({ response: 1 }); assert.equal(await cancel, false); assert.equal(stopped, 0)
+    const accepted = handlers.get('updates:restart')(event)
+    assert.equal(await handlers.get('updates:restart')(event), false, 'concurrent restarts must not bypass confirmation')
+    resolveDialog({ response: 0 }); assert.equal(await accepted, true); await tick()
+    assert.deepEqual(app.relaunchOptions, { execPath: path.join(home, 'verified-new-app'), args: ['--user-data-dir=' + home] })
+    assert.equal(stopped, 1); assert.equal(app.didQuit, true); return
+  }
   if (viaIPC) {
     assert.equal(await handlers.get('app:quit')({ sender: win.webContents }), true)
     await tick(); assert.equal(app.didQuit, true); assert.equal(stopped, 1); assert.equal(dialogCalls, 0); return
@@ -226,5 +253,6 @@ async function testMainClose(language, confirmOnExit, answer, ownsInstance = tru
   await check('real main close handler: disabling confirmation exits immediately', () => testMainClose('en',false,true))
   await check('real main startup restores normal bounds and maximizes before showing the window',()=>testMainClose('en',false,true,true,true,{bounds:{x:150,y:90,width:1000,height:700},maximized:true}))
   await check('renderer app quit validates its owning window and uses normal cleanup', () => testMainClose('en',false,true,true,true))
+  await check('update IPC rejects foreign windows/subframes; restart cancel preserves sessions and confirmation is mandatory even with exit prompts off', () => testMainClose('en',false,true,true,false,undefined,true))
   console.log(`RESULT PASS ${count} checks ${tmp}`)
 })().catch(error => { console.error(error); process.exitCode=1 })

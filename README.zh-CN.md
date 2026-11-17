@@ -22,7 +22,9 @@
 
 **Linux 桌面/npm 0.2.0 已发布：** 可选的[端到端加密远程访问](docs/remote-access.md)。在一台电脑上打开窗口操作另一台电脑上的 sPi，两边都在 NAT 或防火墙后面也可以；流量经 Microsoft Dev Tunnels 中继，由 sPi 自己加密。**两台电脑都要安装 GitHub CLI（`gh`）并登录同一个 GitHub 账号**；本地使用不需要 `gh`，也不会连接 GitHub 或 Dev Tunnels。已配对的设备拥有 host 上 sPi 的全部权限，包括终端和 YOLO。已在 Linux 上验证（含真实 Dev Tunnels 服务）；macOS 和 Windows 未验证。另修复了推理模型上的 AI 命名，以及过期的会话健康提示。
 
-**桌面版 0.3.1 已公开：** [Thinking 右侧 context 圆环/百分比、悬停 used/max、左键压缩与右键输入 instruction](docs/releases/0.3.1.md)。查看用量不发模型请求，压缩可能产生费用；保留草稿/outbox，只读端不能压缩。Linux x64/arm64 和 Mac [Apple Silicon](https://github.com/DiamondGo/spi/releases/download/v0.3.1/spi-0.3.1-darwin-arm64.zip)/[Intel](https://github.com/DiamondGo/spi/releases/download/v0.3.1/spi-0.3.1-darwin-x64.zip) 手动 ZIP 均通过原生及安装后的 context/压缩验收；Mac 为 ad-hoc 签名、未公证。**npm `spi-agent-gui@0.3.1` 已公开，latest 为 0.3.1。** 公开七文件载荷与审核包逐字节一致；两个隔离本机 profile 分别通过公开固定版本/latest Pi 安装及下载后运行时的 PTY/GUI/Pi RPC 检查。 已有 Linux 安装可用 `spi update`，更新后需完全退出旧窗口再打开。
+**桌面版 0.3.2 发布候选：** [GitHub 新版本检测、齿轮旁可点击的 `!`、按当前架构下载安装及确认后重启](docs/releases/0.3.2.md)。Linux x64／ARM64 和 macOS Apple Silicon／Intel 共用完整的默认更新清单，不依赖 npm 发布。旧 0.3.1 启动器查询最新版会遇到 HTTP 415，请先用[一次性的 0.3.2 GitHub 安装脚本](docs/releases/0.3.2.md)升级，再使用 GUI 或修复后的 `spi update`。Mac 仍为 ad-hoc 签名、未公证。[更新行为与限制](docs/app-updates.md)。四平台原生及公开下载证据将在发布门槛通过后另行记录。
+
+**历史桌面版 0.3.1 的发布记录：** [Thinking 右侧 context 圆环/百分比、悬停 used/max、左键压缩与右键输入 instruction](docs/releases/0.3.1.md)。查看用量不发模型请求，压缩可能产生费用；保留草稿/outbox，只读端不能压缩。Linux x64/arm64 和 Mac [Apple Silicon](https://github.com/DiamondGo/spi/releases/download/v0.3.1/spi-0.3.1-darwin-arm64.zip)/[Intel](https://github.com/DiamondGo/spi/releases/download/v0.3.1/spi-0.3.1-darwin-x64.zip) 手动 ZIP 均通过原生及安装后的 context/压缩验收；Mac 为 ad-hoc 签名、未公证。**npm `spi-agent-gui@0.3.1` 已公开，latest 为 0.3.1。** 公开七文件载荷与审核包逐字节一致；两个隔离本机 profile 分别通过公开固定版本/latest Pi 安装及下载后运行时的 PTY/GUI/Pi RPC 检查。 已有 Linux 安装可用 `spi update`，更新后需完全退出旧窗口再打开。
 
 **桌面版 0.3.0 已公开：** [待配对/在线设备列表、单远程控制端与其余只读、浮动用户提问跳转按钮](docs/releases/0.3.0.md)。远程协议 v2 要求 **host 和 client 一起升级**，已保存配对保留。Linux x64/arm64 和 Mac [Apple Silicon](https://github.com/DiamondGo/spi/releases/download/v0.3.0/spi-0.3.0-darwin-arm64.zip)/[Intel](https://github.com/DiamondGo/spi/releases/download/v0.3.0/spi-0.3.0-darwin-x64.zip) 手动下载包均通过原生与安装后的验收，包含新增 GUI 测试。Mac 为 ad-hoc 签名，未公证。关闭远程访问时，本地启动不再探测钥匙串。**此前 npm `spi-agent-gui@0.3.0` 的发布已验收。** 公开七文件 tarball 与审核包逐字节一致；两个隔离的本机 profile 分别通过公开固定版本/latest Pi 安装及安装包 PTY/GUI/Pi RPC 验证。 已有 Linux 桌面安装可用 `spi update` 更新；请完全退出旧窗口后再打开。
 
@@ -38,11 +40,11 @@
 
 **前一版桌面/npm 0.1.4 的干净安装验收：** 两个 Linux 原生架构均通过安装后验收；两个全新非 root x64 容器分别从公开 registry 安装固定版本和 latest，约 7 分钟完成，并通过新增的 9 项缺失桌面 Node/手动设置会话检查、8 项工作区/消息缓冲区检查，以及 GUI/PTY/Pi RPC、图标/桌面入口归属、单实例和启用中的 renderer sandbox 验证。[百分比、慢速下载和续传修复](docs/downloads.md) 仍保留。没有挂载主机凭据、配置或应用二进制；旧版本资源未覆盖。
 
-可通过 `pi install npm:spi-agent-gui@0.3.1` 更新，或使用 `spi update` 获取最新稳定桌面版本。重新安装更早的不可变 npm 版本会选择对应的旧桌面版本，不会获得这些新功能。请先另存未完成/原生队列中的文字，并完全退出旧窗口后再打开：安装新版二进制不会热更新正在运行的窗口。Pi 认证、历史会话和 sPi 偏好设置会保留。
+0.3.2 请使用版本绑定的 [GitHub 安装脚本](docs/releases/0.3.2.md)，不需要 npm。从 0.3.2 起可在设置中检查更新、点击 `!` 下载，或使用 `spi update`。重新安装旧 npm 包仍会选择旧桌面版本，不会获得 0.3.2。安装不会热更新已有窗口，请先另存未发送文字，再确认“重启生效”；已保存的 Pi 历史、认证及 sPi 偏好设置保留。
 
 发布准备已升级到 Electron 45.2.3 和 electron-builder 26.18.0，high/critical 审计告警已清除；仍有六条 minimatch 构建工具链 moderate 审计条目。发布流水线继续拦截 high/critical 问题。
 
-正常 Pi/npm 自动安装目前只支持 **Linux x64 和 Linux arm64**，均已通过 GitHub 原生 runner 验证。Windows/macOS 尚未加入默认安装清单；只有清单中的目标才可自动安装。下面提供独立的 Mac 手动下载包，不覆盖已有安装清单。Linux 要求图形桌面、系统 Electron 依赖、归档记录的 glibc 基线及可用的 Chromium sandbox。Ubuntu 24+ 的 AppArmor 策略可能需要管理员允许应用创建 user namespace；安装器不会关闭 sandbox 或修改主机安全策略。Windows/macOS 默认没有发行商签名/公证（macOS 为 ad-hoc 签名），可能出现系统警告，不应关闭系统保护来绕过。
+**0.3.2 的 GitHub 安装／更新目标为 Linux x64／ARM64、macOS Apple Silicon／Intel**，由四个平台的原生构建和完整默认清单共同把关；Windows 暂不发布。旧 npm 包和历史 Linux-only 清单保持不可变，下面的历史 Mac 下载不改写旧版本资源。Linux 要求图形桌面、系统 Electron 依赖、归档记录的 glibc 基线及可用的 Chromium sandbox。Ubuntu 24+ 的 AppArmor 策略可能需要管理员允许应用创建 user namespace；安装器不会关闭 sandbox 或修改主机安全策略。Windows/macOS 默认没有发行商签名/公证（macOS 为 ad-hoc 签名），可能出现系统警告，不应关闭系统保护来绕过。
 
 **macOS 0.1.5 手动下载包已公开：** [Apple Silicon ZIP](https://github.com/DiamondGo/spi/releases/download/v0.1.5/spi-0.1.5-darwin-arm64.zip) · [Intel ZIP](https://github.com/DiamondGo/spi/releases/download/v0.1.5/spi-0.1.5-darwin-x64.zip) · [校验文件、原生验收与限制](docs/macos-build.md)。两个架构均通过原生 PTY、GUI、Pi RPC 和签名完整性检查。当前为 **ad-hoc 签名，未完成 Apple Developer ID 签名和公证**，不保证 Gatekeeper 信任。已有 Linux 清单与 npm 包没有被改写，正常 `pi install` 暂不自动安装这两个 Mac ZIP。
 

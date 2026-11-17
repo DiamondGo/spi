@@ -5,6 +5,7 @@ import { updatePreferences, usePreferences, useT } from '../preferences'
 import { Icon, IconControl } from './IconControl'
 import { NodeSettings } from './NodeSettings'
 import { RemoteSettings } from './RemoteSettings'
+import { AppUpdateDetails } from './AppUpdates'
 
 export function AppSettingsPanel({ onClose }: { onClose: () => void }): React.JSX.Element {
   const { settings, error } = usePreferences()
@@ -50,6 +51,7 @@ export function AppSettingsPanel({ onClose }: { onClose: () => void }): React.JS
         <p className="settings-help">{t('退出时询问是否确认；退出会中止当前打开的会话。')}</p>
         <p className="settings-help">{busy ? t('保存中…') : t('设置会自动保存，只影响 sPi，不修改 pi 配置。')}</p>
         {error && <p role="alert" className="settings-error">{error}</p>}
+        <AppUpdateDetails />
         <NodeSettings />
         <RemoteSettings />
       </div>

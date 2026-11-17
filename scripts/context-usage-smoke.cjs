@@ -22,8 +22,11 @@ module.exports=async function({app,waitFor,pass,fill,artifacts}){
   await waitFor(()=>evaluate(`window.__contextSettled>${before}`),'fixture reply settled',60000)
  }
  await send(1);await send(2)
- await waitFor(()=>evaluate(`document.querySelector('${button}').dataset.contextPercent!==''`),'current context percent')
  const usage=await evaluate(`window.spi.getContextUsage(${JSON.stringify(id)})`)
+ assert.ok(usage&&typeof usage.percent==='number')
+ // The indicator intentionally coalesces reply/settled events for 150ms. A nonempty
+ // value can still be the previous reply's estimate on faster native runners.
+ await waitFor(()=>evaluate(`(()=>{const p=document.querySelector('${button}').dataset.contextPercent;return p!==''&&Math.abs(Number(p)-${usage.percent})<0.01})()`),'current context percent matches completed reply')
  const displayed=Number(await evaluate(`document.querySelector('${button}').dataset.contextPercent`))
  assert.ok(Math.abs(displayed-usage.percent)<0.01)
  const tooltip=await evaluate(`document.querySelector('.tb-context-wrap').title`)

@@ -62,14 +62,14 @@ bash /tmp/spi-install-0.3.2.sh --version 0.3.2
 
 保存草稿并退出旧窗口，再使用安装器打印的启动命令（通常是 `spi`）。这会绕开 npm，替换旧 0.3.1 的 HTTP-415 启动器；后续可使用 GUI 更新或 `spi update`。
 
-### 可选的历史 Pi 插件集成
+### 通过 Pi 首次安装（npm）
 
 ```bash
 pi install npm:spi-agent-gui
 spi
 ```
 
-这会安装 npm 上已发布的对应版本，不一定是最新的 GitHub 桌面版。0.3.2 请使用上面的 GitHub 安装方式；本次不要求、也不声称已发布 npm 0.3.2。
+npm 继续作为受支持的首次安装入口。后续正式版本会在 GitHub 验收通过后提供同版本的轻量 npm 包；后继 GUI／命令行更新主要走 GitHub，不依赖 npm。0.3.2 初次发行时只发布了 GitHub，尚未实际验收其 npm 可用性前，请使用上面的 GitHub 安装方式。[发布渠道规则](docs/releasing.md)。
 
 可验证的个人安装会下载与 npm 包版本匹配的桌面运行包，并尽量把 `spi` 放到 PATH 中 Pi 启动器旁边。扩展加载时不会启动 GUI。可手动运行 `/spi` 打开当前项目，或 `/spi-install` 安装；不会接管正在运行的 TUI 会话。
 

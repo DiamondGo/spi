@@ -8,7 +8,8 @@ const os = require('node:os')
 const path = require('node:path')
 
 const repo = path.resolve(__dirname, '..')
-const artifacts = fs.mkdtempSync(path.join(os.tmpdir(), 'spi-smoke-'))
+// Keep expected paths canonical on macOS, where /var aliases /private/var.
+const artifacts = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'spi-smoke-')))
 const profile = path.join(artifacts, 'profile')
 const workspace = process.argv.includes('--workspace-ui') ? path.join(artifacts, 'home/source/sPi') : path.join(artifacts, 'workspace')
 fs.mkdirSync(profile)

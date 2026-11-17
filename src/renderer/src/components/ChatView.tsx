@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { answerDialog, type Item, type SessionUI } from '../store'
+import { answerDialog, setPendingPanelCollapsed, type Item, type SessionUI } from '../store'
 import { renderAnsi } from '../ansi'
 import { DiffView } from './DiffView'
+import { PendingMessages } from './PendingMessages'
 import { useT } from '../preferences'
 import { useRemoteReadOnly } from '../remote'
 import { userMessageScrollTop, userMessageTargets } from '../userMessageNavigation'
@@ -12,11 +13,13 @@ interface Props {
 
 export function ChatView({ session }: Props) {
   const t = useT()
+  const readOnly = useRemoteReadOnly()
   const scrollRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
   const autoScroll = useRef(true)
   const frame = useRef<number | null>(null)
   const [showJump, setShowJump] = useState(false)
+  const [shortViewport, setShortViewport] = useState(false)
   const [directions, setDirections] = useState({ above: false, below: false })
 
   const geometry = useCallback(() => {
@@ -37,6 +40,7 @@ export function ChatView({ session }: Props) {
       const next = { above: data.targets.above !== null, below: data.targets.below !== null }
       setDirections(old => old.above === next.above && old.below === next.below ? old : next)
       setShowJump(data.el.scrollHeight - data.el.scrollTop - data.el.clientHeight >= 60)
+      setShortViewport(data.el.clientHeight < 180)
     })
   }, [geometry])
 
@@ -74,7 +78,7 @@ export function ChatView({ session }: Props) {
     scheduleMeasure()
   }
 
-  return <div className="chat-view">
+  return <div className="chat-view" data-short-viewport={shortViewport}>
     <div className="chat-messages" ref={scrollRef} onScroll={e => {
       const el = e.currentTarget
       autoScroll.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60
@@ -93,12 +97,14 @@ export function ChatView({ session }: Props) {
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
       </button>
     </nav>
-    {showJump && <button className="jump-bottom" onClick={() => {
+    {showJump && <button className="jump-bottom" aria-label={t('↓ 回到最新')} title={t('↓ 回到最新')} onClick={() => {
       autoScroll.current = true
       const el = scrollRef.current
       if (el) el.scrollTop = el.scrollHeight
       scheduleMeasure()
     }}>{t('↓ 回到最新')}</button>}
+    {!readOnly && !!session.pendingQueue?.items.length && <PendingMessages key={session.id} snapshot={session.pendingQueue}
+      collapsed={session.pendingPanelCollapsed ?? false} onCollapsedChange={collapsed => setPendingPanelCollapsed(session.id, collapsed)} />}
   </div>
 }
 

@@ -6,7 +6,6 @@ import { useAutoHeightTextarea } from '../useAutoHeightTextarea'
 import { Icon, IconControl, IconSelect } from './IconControl'
 import { useT } from '../preferences'
 import { toggleSessionTerminal, useTerminals } from '../terminals'
-import { PendingMessages } from './PendingMessages'
 import { usePathFormatter } from '../homePath'
 
 interface Props {
@@ -169,7 +168,6 @@ export function InputBar({ session }: Props) {
 
   return (
     <div className="input-bar-wrap" data-session-id={session.id}>
-      <PendingMessages key={session.id} snapshot={session.pendingQueue} />
       {completion && completion.matches.length > 0 && (
         <div className="completion-popup">
           {completion.matches.map((m, i) => (

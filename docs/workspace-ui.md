@@ -1,6 +1,6 @@
 # Sidebar and editable outbox / 侧栏与待执行消息
 
-**Included in Linux desktop Release v0.1.2.** Current Linux desktop/npm 0.1.4 are public and have passed clean version-pinned/latest Pi installs with actual editable-buffer interaction and the [slow-download percentage/timeout fix](downloads.md). Public v0.1.1 and macOS build-8 artifacts are unchanged.
+The core editable outbox first shipped in Linux desktop v0.1.2; the current stable desktop is [0.3.2](releases/0.3.2.md). **The minimization change below is an unreleased source fix, not a replacement of the immutable 0.3.2 packages.**
 
 ## Sidebar
 
@@ -18,12 +18,22 @@ App-owned path labels/tooltips abbreviate the exact home prefix: `/home/demo/sou
 
 `npm run test:question-navigation` 验证目标选择、像素容差及滚动边界；`npm run test:question-navigation-smoke` 使用真实 Electron/Pi 和确定性本地模型，覆盖上下跳转、浮动位置、长输出、流式跟随、展开/缩放、会话切换及暗色/亮色/高对比主题。
 
+## 待发布：可最小化的待执行消息浮层
+
+- 展开面板右上角的 `−` 可以最小化；入口缩到聊天可视区左下角、Delivery mode／Open terminal 上方，显示数量及编辑／暂停／交付未确认状态。点击入口或键盘激活可重新展开，已有编辑器恢复焦点。
+- 内容仅隐藏、不卸载：同一次最小化／展开保留未保存的文字、图片移除及编辑占用，不自动保存、取消、暂停或继续队列。折叠选择按窗口内的会话独立保留，新增消息不会强制重新展开；队列清空后入口消失，不增加跨重启持久化。
+- 浮层改为锚定聊天可视区而不是输入框；打开终端后仍位于聊天底部。展开时为用户提问上下箭头及 Return to latest 预留独立区域，最小化入口不侵占中间／右侧导航；窄聊天列对 Return to latest 使用独立垂直位置；聊天区被终端／输入框压得很矮时，展开面板改为与导航横向分区，Return to latest 暂显示为带完整可访问名称的箭头，避免向上盖住会话标签。
+- 只读远程窗口不渲染任何待执行队列的修改控件，原服务端权限和发送流程不变。
+- 本机 Linux 隔离验证：类型检查、23 项 workspace/outbox 单测、23 项 health 单测、17 项 settings 单测及其他既有单测通过。真实 workspace GUI 测试覆盖鼠标命中上下箭头／Return to latest、键盘展开、6 组主题／语言、900／580 宽度（实测聊天列 260px）、打开终端及矮视口（实测聊天区 146px）、未保存文字／附件保留、切换会话、最小化期间自动发送且清空入口。原 question-navigation、remote、context-usage GUI 回归也通过；没有将本机结果当作 Mac 原生验收。
+- GUI 日志 `/tmp/spi-pending-gui-scoped.log`，截图目录 `/tmp/spi-smoke-ZXUrx9`，其中 `pending-panel-dark-zh.png` 同时展示最小化入口、上下箭头与 Return to latest，`pending-panel-short-viewport.png` 展示矮聊天区的边界处理。测试模型、工作目录、profile、显示器及进程均隔离，没有改动正式安装或当前窗口。
+- 独立只读复核未发现阻塞；随后补测了实际 260px 聊天列和 146px 矮视口，并修正矮视口向上溢出的边界。范围仍是最小化／展开：不新增行内未保存编辑的跨会话／重启持久化；最小化时行内操作错误在重新展开后查看，摘要会显示已有的编辑、队列暂停和交付未确认状态。
+
 ## Editable outbox
 
 The composer keeps both **Send** and **Stop** available during work. Sending from the GUI uses a main-process-owned outbox, not a native Pi follow-up queue:
 
 - Idle: the next message is handed to Pi automatically.
-- Busy/compacting: new text/images stay in the outbox, separately for each session. The floating panel is anchored immediately above the composer, outside chat scrolling, with its own bounded scroll area.
+- Busy/compacting: new text/images stay in the outbox, separately for each session. The floating panel is anchored to the chat viewport, outside chat scrolling, with its own bounded scroll area and reserved navigation space.
 - Pending messages can be edited or cancelled. Opening an editor acquires an editing state so a message cannot execute its old content if the current task finishes while typing. Save releases that state; discard retains the original queued content. Removing an image during editing does not affect other attachments/drafts.
 - **Follow up** appends to the end of the buffer (FIFO) and remains editable/cancellable before handoff. **Steer** inserts at the very front of the unexecuted buffer; each new steer goes above earlier steers too. A message already being handed to Pi is never displaced or rolled back. Normal send behaves like follow up while busy. The UI and buffered rows explicitly name both modes instead of calling them one generic priority queue. GUI buffered messages are not pre-submitted into uneditable native Pi queues; current in-flight work retains its ownership until it settles.
 - At the atomic handoff to Pi the row becomes non-editable, then disappears after acceptance. Already handed-off content cannot be individually retracted; stop the active session instead. An extension may consume a slash command without starting an agent run, which does not stall subsequent items.

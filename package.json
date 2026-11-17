@@ -1,6 +1,6 @@
 {
   "name": "spi",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "sPi - Simple Pi Agent GUI",
   "private": true,
   "license": "UNLICENSED",
@@ -24,6 +24,8 @@
     "dist:manifest": "node scripts/distribution.cjs manifest",
     "dist:appimage": "electron-vite build && electron-builder --linux AppImage",
     "check:privacy": "node scripts/privacy.cjs",
+    "test:security": "node scripts/security-policy.test.cjs",
+    "security:audit": "node scripts/security-policy.cjs",
     "test:installer": "node scripts/download.test.cjs && node scripts/installer.test.cjs",
     "test:distribution": "node scripts/with-display.cjs scripts/distribution.test.cjs",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",

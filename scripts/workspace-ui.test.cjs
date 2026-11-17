@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),os=require('node:os'),ts=require('typescript'),Module=require('node:module')
 const root=path.resolve(__dirname,'..'),tmp=fs.mkdtempSync(path.join(os.tmpdir(),'spi-workspace-unit-'))
-function load(relative,mocks={}){const file=path.join(tmp,path.basename(relative,'.ts')+'.cjs'),m=new Module(file,module);m.paths=module.paths;m.require=n=>n in mocks?mocks[n]:n==='../../shared/sessionHealth'?load('src/shared/sessionHealth.ts'):require(n);m._compile(ts.transpileModule(fs.readFileSync(path.join(root,relative),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,file);return m.exports}
+function load(relative,mocks={}){const file=path.join(tmp,path.basename(relative,'.ts')+'.cjs'),m=new Module(file,module);m.paths=module.paths;m.require=n=>n in mocks?mocks[n]:n==='../../shared/sessionHealth'?load('src/shared/sessionHealth.ts'):require(n);m._compile(ts.transpileModule(fs.readFileSync(path.join(root,relative),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText,file);return m.exports}
 const {MessageQueue}=load('src/main/pi/messageQueue.ts'),tick=()=>new Promise(r=>setImmediate(r));let count=0
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b});return{promise,resolve,reject}}
 async function check(name,fn){await fn();count++;console.log('PASS',name)}
@@ -29,6 +29,31 @@ const submit=(q,id,text,client=text,priority=false,images=[])=>q.submit(id,{text
  await check('typing back the same text during a submit is still newer input and is not cleared',async()=>{const gate=deferred();window.spi.submitMessage=()=>gate.promise;store.setDraft('s','same');const sending=store.submitDraft('s','image');store.setDraft('s','different');store.setDraft('s','same');gate.resolve({id:'new'});await sending;assert.equal(store.getStore().sessions.s.draft,'same')})
  await check('failed submits preserve input and reuse a nonce rather than creating duplicate messages',async()=>{const calls=[];window.spi.submitMessage=async(_id,value)=>{calls.push(value);throw Error('fixture')};store.setDraft('s','retry');await assert.rejects(store.submitDraft('s','image'));await assert.rejects(store.submitDraft('s','image'));assert.equal(calls[0].clientId,calls[1].clientId);assert.equal(store.getStore().sessions.s.draft,'retry')})
  await check('older queue snapshots cannot overwrite a newer state',()=>{store.updatePendingMessages({sessionId:'s',version:4,paused:true,items:[]});store.updatePendingMessages({sessionId:'s',version:2,paused:false,items:[]});assert.equal(store.getStore().sessions.s.pendingQueue.paused,true)})
+ await check('outbox collapse is session-local display state and never changes queue/draft/attachments or revisions',()=>{
+  const before=store.getStore().sessions.s
+  store.setPendingPanelCollapsed('s',true)
+  const collapsed=store.getStore().sessions.s
+  assert.equal(collapsed.pendingPanelCollapsed,true);assert.strictEqual(collapsed.pendingQueue,before.pendingQueue)
+  assert.equal(collapsed.draft,before.draft);assert.strictEqual(collapsed.pendingImages,before.pendingImages)
+  store.addSession('peer','/peer',{isStreaming:false});assert.equal(store.getStore().sessions.peer.pendingPanelCollapsed??false,false)
+  store.setActive('peer');store.setActive('s');assert.equal(store.getStore().sessions.s.pendingPanelCollapsed,true)
+  store.updatePendingMessages({sessionId:'s',version:5,paused:true,items:[]});assert.equal(store.getStore().sessions.s.pendingPanelCollapsed,true)
+  store.setPendingPanelCollapsed('s',false);assert.equal(store.getStore().sessions.s.pendingPanelCollapsed,false)
+  store.setPendingPanelCollapsed('missing',true);assert.equal(store.getStore().sessions.missing,undefined)
+ })
+ await check('collapsed outbox keeps editing rows mounted and the read-only chat never exposes queue controls',()=>{
+  const React=require('react'),{renderToStaticMarkup}=require('react-dom/server'),preferences={useT:()=>text=>text}
+  const {PendingMessages}=load('src/renderer/src/components/PendingMessages.tsx',{'../preferences':preferences,'./IconControl':{Icon:()=>null}})
+  const snapshot={sessionId:'s',version:8,paused:false,items:[{id:'edit',revision:2,text:'retain unsaved editor',images:[{mimeType:'image/png',data:'AQID'}],priority:false,status:'editing'}]}
+  const html=renderToStaticMarkup(React.createElement(PendingMessages,{snapshot,collapsed:true,onCollapsedChange(){throw Error('SSR must not toggle')}}))
+  assert.ok(html.includes('data-collapsed="true"'));assert.ok(html.includes('retain unsaved editor'));assert.ok(html.includes('data:image/png;base64,AQID'))
+  assert.match(html,/class="pending-message-list" hidden=""/);assert.ok(html.includes('aria-expanded="false"'))
+  let readOnly=true
+  const {ChatView}=load('src/renderer/src/components/ChatView.tsx',{'../store':store,'../preferences':preferences,'../ansi':{renderAnsi:text=>text},'../remote':{useRemoteReadOnly:()=>readOnly},'../userMessageNavigation':load('src/renderer/src/userMessageNavigation.ts'),'./DiffView':{DiffView:()=>null},'./PendingMessages':{PendingMessages}})
+  const session={...store.getStore().sessions.s,items:[],pendingQueue:snapshot,pendingPanelCollapsed:true}
+  assert.ok(!renderToStaticMarkup(React.createElement(ChatView,{session})).includes('pending-messages'))
+  readOnly=false;assert.ok(renderToStaticMarkup(React.createElement(ChatView,{session})).includes('pending-messages'))
+ })
  const{sessionRows,sameSession}=load('src/renderer/src/sessionRows.ts')
  await check('live rows include unwritten sessions and identify active files/IDs without changing real paths',()=>{const s=store.getStore().sessions.s;s.state={isStreaming:false,sessionFile:'/actual/session.jsonl',sessionId:'native'};const meta={path:'/actual/session.jsonl',id:'native',cwd:s.cwd,mtime:1,createdAt:''};assert.equal(sameSession(s,meta),true);assert.equal(sameSession(s,{...meta,path:'/copied/session.jsonl'}),false);const rows=sessionRows([meta],{s},s.cwd);assert.equal(rows.length,1);assert.equal(rows[0].liveId,'s');assert.equal(rows[0].path,meta.path);assert.equal(sessionRows([],{s},s.cwd)[0].path,'/actual/session.jsonl')})
  console.log('RESULT PASS',count,'workspace/outbox checks')

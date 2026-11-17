@@ -2,6 +2,7 @@ const fs=require('node:fs'), path=require('node:path'), os=require('node:os'), c
 const {execFileSync}=require('node:child_process')
 const {build}=require('esbuild'), tar=require('tar'), asar=require('@electron/asar')
 const root=path.resolve(__dirname,'..'), pkg=require('../package.json')
+const security=require('./security-policy.cjs')
 // Platforms covered by the canonical GitHub Release. Windows has never been supported/published.
 const RELEASE_TARGETS=['linux-x64','linux-arm64','darwin-arm64','darwin-x64']
 const KNOWN_TARGETS=[...RELEASE_TARGETS,'win32-x64']
@@ -18,6 +19,7 @@ async function prepare(){
   const cfg=config(), out=path.join(root,'dist','npm-package')
   fs.rmSync(out,{recursive:true,force:true});fs.mkdirSync(path.join(out,'dist'),{recursive:true})
   const result=await build({entryPoints:[path.join(root,'packages/pi-spi/lib/installer.cjs')],outfile:path.join(out,'dist/spi.cjs'),bundle:true,platform:'node',format:'cjs',target:'node22',sourcemap:false,legalComments:'eof',metafile:true,define:{__SPI_RELEASE__:JSON.stringify(cfg)}})
+  security.checkInputs(result.metafile.inputs)
   const notice=[];const seen=new Set()
   for(const input of Object.keys(result.metafile.inputs)){
     let dir=path.dirname(path.resolve(root,input))
@@ -146,6 +148,8 @@ async function archive(){
     const bundledInstaller=path.join(resources,'spi-installer.cjs'), preparedInstaller=path.join(release,'spi-installer.cjs')
     if(!fs.existsSync(bundledInstaller)||!fs.existsSync(preparedInstaller)||!fs.readFileSync(bundledInstaller).equals(fs.readFileSync(preparedInstaller)))throw Error('Runtime is missing the prepared standalone installer')
     if(!fs.existsSync(path.join(resources,'spi-installer-NOTICES.txt')))throw Error('Runtime is missing standalone installer notices')
+    // Inventory the signed/extracted payload without modifying it; build-only exceptions never ship.
+    const securityInventory=security.scanRuntime(resources,cfg.version)
     // Abort instead of publishing local build paths or user data hidden inside the ASAR.
     require('./privacy.cjs').scanTree(stage,{binary:true})
     const file='spi-'+cfg.version+'-'+t+(t.startsWith('linux')?'.tar.gz':'.zip'), dest=path.join(release,file)
@@ -155,6 +159,7 @@ async function archive(){
     else execFileSync('powershell',['-NoProfile','-NonInteractive','-Command','$ErrorActionPreference="Stop"; Compress-Archive -LiteralPath $env:SPI_ZIP_SOURCE -DestinationPath $env:SPI_ZIP_DEST'],{env:{...process.env,SPI_ZIP_SOURCE:appDir,SPI_ZIP_DEST:dest}})
     const item={file,size:fs.statSync(dest).size,sha256:crypto.createHash('sha256').update(fs.readFileSync(dest)).digest('hex'),entry,permissionExtension:path.posix.join(path.posix.dirname(entry),t.startsWith('darwin')?'../Resources/spi-permission-extension.mjs':'resources/spi-permission-extension.mjs')}
     item.installerSha256=crypto.createHash('sha256').update(fs.readFileSync(path.join(resources,'spi-installer.cjs'))).digest('hex')
+    item.securityInventory=securityInventory
     if(t.startsWith('linux'))item.minGlibc=process.report.getReport().header.glibcVersionRuntime
     // Manifest paths must be normalized and contained in app/.
     item.permissionExtension=path.posix.normalize(item.permissionExtension)
@@ -180,6 +185,7 @@ function manifest(options={}){
     const archive=path.join(release,rest.file)
     if(!fs.existsSync(archive)||!fs.lstatSync(archive).isFile()||fs.statSync(archive).size!==rest.size||sha256(archive)!==rest.sha256)throw Error('Archive does not match its descriptor: '+target)
     if(options.release&&rest.installerSha256!==sha256(path.join(release,'spi-installer.cjs')))throw Error('Bundled installer differs from the published installer: '+target)
+    if(options.release)security.validateInventory(rest.securityInventory,cfg.version,rest.installerSha256)
     if(options.release&&target.startsWith('darwin')){
       const report=JSON.parse(fs.readFileSync(path.join(release,'macos-build-'+target+'.txt'),'utf8'))
       if(report.target!==target||report.version!==cfg.version||report.sourceCommit!==options.sourceSha)throw Error('Native Mac report does not match this release/source: '+target)

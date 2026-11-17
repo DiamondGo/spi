@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.3
+
+- Minimize the pending-message overlay into a lower-left counter above the composer controls; click or use the keyboard to restore editing without discarding unsaved text/images or changing delivery.
+- Keep user-question Up/Down and Return to latest unobstructed in expanded/minimized states, narrow chat columns and short viewports with an open terminal. Preserve the collapsed preference independently per session; hide the dock when the queue drains. Read-only viewers never gain queue controls.
+- Maintain GitHub as the primary update channel and a matching lightweight npm installer as a supported `pi install` first-install entry. Public availability is verified separately for both channels.
+- Record a user-approved, 0.3.3-only exception for the unfixed picomatch build advisory GHSA-fc5q-39xc-vjpf. Other high/critical findings remain blocked; each native runtime and installer bundle must pass build-only dependency absence checks. This does not claim the upstream issue is fixed.
+
 ## 0.3.2
 
 - Fix GitHub latest-release HTTP 415 by distinguishing JSON and binary Accept headers.

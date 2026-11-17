@@ -12,7 +12,7 @@ function fixture(targets=RELEASE_TARGETS){
     const mac=target.startsWith('darwin'),file='spi-'+version+'-'+target+(target.startsWith('linux')?'.tar.gz':'.zip'),bytes=Buffer.from('archive-'+target)
     fs.writeFileSync(path.join(dir,file),bytes)
     const entry=mac?'app/sPi.app/Contents/MacOS/sPi':'app/spi'
-    fs.writeFileSync(path.join(dir,target+'.json'),JSON.stringify({version,target,file,size:bytes.length,sha256:sha256(bytes),installerSha256:sha256('fixture spi-installer.cjs'),entry,permissionExtension:mac?'app/sPi.app/Contents/Resources/spi-permission-extension.mjs':'app/resources/spi-permission-extension.mjs'}))
+    fs.writeFileSync(path.join(dir,target+'.json'),JSON.stringify({version,target,file,size:bytes.length,sha256:sha256(bytes),installerSha256:sha256('fixture spi-installer.cjs'),securityInventory:{schemaVersion:1,version,policy:version==='0.3.3'?require('./security-policy.cjs').ADVISORY:'no-build-dependencies',scriptsScanned:1,forbiddenModulesAbsent:true,asarSha256:'f'.repeat(64),installerSha256:sha256('fixture spi-installer.cjs')},entry,permissionExtension:mac?'app/sPi.app/Contents/Resources/spi-permission-extension.mjs':'app/resources/spi-permission-extension.mjs'}))
     if(mac)fs.writeFileSync(path.join(dir,'macos-build-'+target+'.txt'),JSON.stringify({target,version,minimumOS:'13.0',signature:'ad-hoc',notarized:false,sourceCommit:sha}))
   }
   for(const name of ['spi-installer.cjs','install.sh','INSTALLER-NOTICES.txt'])fs.writeFileSync(path.join(dir,name),'fixture '+name)
@@ -103,7 +103,8 @@ function patch(dir,name,change){const file=path.join(dir,name),value=JSON.parse(
       assert.ok(!/npm publish|id-token|registry-url|NODE_AUTH_TOKEN|NPM_TOKEN|npm_token|secrets\./i.test(yml),'no npm publication or credentials')
       assert.ok(!/win32|windows-/i.test(yml),'Windows stays deferred')
       assert.ok(!/xattr|spctl|disable.*gatekeeper|--no-sandbox/i.test(yml),'no Gatekeeper/sandbox bypass')
-      assert.ok(yml.includes('npm audit --audit-level=high')&&yml.includes('apparmor')&&!/APPARMOR_RESTRICT.*=\s*0/.test(yml))
+      assert.equal((yml.match(/run: node scripts\/security-policy\.cjs/g)||[]).length,2,'both native and publication jobs enforce the scoped audit policy')
+      assert.ok(yml.includes('apparmor')&&!/APPARMOR_RESTRICT.*=\s*0/.test(yml))
       assert.ok(yml.includes('test -z')||yml.includes('-eq 4'),'exactly four runtime assets are uploaded')
     })
     await check('installer is packaged into the app resources for the in-app updater',()=>{
@@ -118,6 +119,18 @@ function patch(dir,name,change){const file=path.join(dir,name),value=JSON.parse(
       assert.ok(read('.github/spi-ci.apparmor').includes('/tmp/spi-update-restart-*/{old-root,new-root}/releases/*/*/app/spi'))
       assert.ok(!read('scripts/update-restart-native.cjs').includes('--no-sandbox'))
       assert.ok(read('.github/workflows/release.yml').includes('SPI_ASSERT_APP_UPDATES'))
+    })
+    await check('pending-panel navigation/draft tests gate source builds and extracted Mac runtimes',()=>{
+      const workflow=read('.github/workflows/release.yml'),installed=read('scripts/install-native-smoke.cjs')
+      assert.ok(workflow.includes('npm run test:workspace-ui-smoke'))
+      assert.ok(workflow.includes("SPI_ASSERT_PENDING_PANEL: '1'"))
+      assert.ok(installed.includes("process.env.SPI_ASSERT_PENDING_PANEL==='1'"))
+      assert.ok(installed.includes("process.env.SPI_ASSERT_WORKSPACE_UI!=='1'"),'avoid duplicating Linux workspace suite')
+      assert.ok(read('scripts/smoke.cjs').includes('fs.realpathSync(fs.mkdtempSync'),'Mac fixtures must use canonical paths')
+    })
+    await check('publication requires each native runtime dependency inventory even when an audit exception is approved',()=>{
+      const dir=fixture();patch(dir,'darwin-arm64.json',value=>{delete value.securityInventory});assert.throws(()=>release(dir),/inventory/)
+      const bad=fixture();patch(bad,'linux-x64.json',value=>{value.securityInventory.forbiddenModulesAbsent=false});assert.throws(()=>release(bad),/inventory/)
     })
     await check('PR checks run the plumbing test',()=>{assert.ok(read('.github/workflows/check.yml').includes('release-plumbing.test.cjs'))})
     console.log('RESULT PASS',checks,'release plumbing checks')

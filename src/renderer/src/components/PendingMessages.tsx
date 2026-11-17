@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useId, useRef, useState } from 'react'
+import { Icon } from './IconControl'
 import type { PendingMessage, PendingMessagesSnapshot } from '../../../shared/types'
 import { useT } from '../preferences'
 
@@ -24,12 +25,44 @@ function Row({ item, sessionId }: { item: PendingMessage; sessionId: string }) {
     {error && <div role="alert" className="pending-message-error">{error}</div>}
   </div>
 }
-export function PendingMessages({ snapshot }: { snapshot: PendingMessagesSnapshot }) {
+export function PendingMessages({ snapshot, collapsed, onCollapsedChange }: {
+  snapshot: PendingMessagesSnapshot
+  collapsed: boolean
+  onCollapsedChange: (collapsed: boolean) => void
+}) {
   const t = useT(), [error, setError] = useState('')
+  const contentId = useId(), contentRef = useRef<HTMLDivElement>(null)
+  const summaryRef = useRef<HTMLButtonElement>(null), minimizeRef = useRef<HTMLButtonElement>(null)
+  function toggle(next: boolean): void {
+    onCollapsedChange(next)
+    requestAnimationFrame(() => {
+      if (next) summaryRef.current?.focus()
+      else (contentRef.current?.querySelector<HTMLTextAreaElement>('.pending-editor textarea')
+        ?? contentRef.current?.querySelector<HTMLButtonElement>('button:not(:disabled)') ?? minimizeRef.current)?.focus()
+    })
+  }
   if (!snapshot.items.length) return null
-  return <section className="pending-messages" aria-label={t('待执行消息')} data-paused={snapshot.paused}>
-    <div className="pending-messages-header"><strong>{t('待执行消息')} · {snapshot.items.length}</strong>{snapshot.paused && <span>{t('已暂停')} <button type="button" onClick={() => { setError(''); void window.spi.resumePendingMessages(snapshot.sessionId).catch(e => setError(String(e))) }}>{t('继续队列')}</button></span>}</div>
-    {error && <div role="alert" className="pending-message-error">{error}</div>}
-    <div className="pending-message-list">{snapshot.items.map(item => <Row key={item.id} item={item} sessionId={snapshot.sessionId} />)}</div>
+  const editing = snapshot.items.some(item => item.status === 'editing')
+  const failed = snapshot.items.some(item => item.status === 'failed')
+  const summary = t(editing ? '正在编辑' : failed ? '交付未确认' : snapshot.paused ? '已暂停' : '待执行消息')
+  const expandLabel = t('展开待执行消息（{count}）', { count: snapshot.items.length })
+  return <section className="pending-messages" aria-label={t('待执行消息')} data-paused={snapshot.paused} data-collapsed={collapsed}>
+    <button ref={summaryRef} type="button" className="pending-messages-summary" data-action="pending-expand" hidden={!collapsed}
+      aria-label={expandLabel} title={`${expandLabel} · ${summary}`} aria-expanded={!collapsed} aria-controls={contentId} onClick={() => toggle(false)}>
+      <Icon name="queue" /><span className="pending-summary-label">{summary}</span><strong>{snapshot.items.length}</strong>
+    </button>
+    <div className="pending-messages-header" hidden={collapsed}>
+      <strong>{t('待执行消息')} · {snapshot.items.length}</strong>
+      <div className="pending-message-actions">
+        {snapshot.paused && <span>{t('已暂停')} <button type="button" onClick={() => { setError(''); void window.spi.resumePendingMessages(snapshot.sessionId).catch(e => setError(String(e))) }}>{t('继续队列')}</button></span>}
+        <button ref={minimizeRef} type="button" data-action="pending-minimize" aria-label={t('最小化待执行消息')} title={t('最小化待执行消息')}
+          aria-expanded={!collapsed} aria-controls={contentId} onClick={() => toggle(true)}>−</button>
+      </div>
+    </div>
+    {/* Hide instead of unmounting: unsaved row text/images and the editing lease must survive. */}
+    <div ref={contentRef} id={contentId} className="pending-message-list" hidden={collapsed}>
+      {error && <div role="alert" className="pending-message-error">{error}</div>}
+      {snapshot.items.map(item => <Row key={item.id} item={item} sessionId={snapshot.sessionId} />)}
+    </div>
   </section>
 }

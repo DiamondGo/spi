@@ -52,6 +52,7 @@ export interface SessionUI {
   streaming: boolean
   openedAt: number
   pendingQueue: PendingMessagesSnapshot
+  pendingPanelCollapsed?: boolean
   submitting: boolean
   draft: string
   draftRevision: number
@@ -87,6 +88,11 @@ export function subscribe(l: () => void): () => void {
 
 export function getStore(): Store {
   return store
+}
+
+/** Per-window/session display preference only; never changes delivery or the editing lease. */
+export function setPendingPanelCollapsed(id: string, collapsed: boolean): void {
+  patchSession(id, session => ({ ...session, pendingPanelCollapsed: collapsed }))
 }
 
 export function useStore(): Store {

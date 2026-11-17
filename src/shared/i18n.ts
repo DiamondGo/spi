@@ -70,6 +70,7 @@ const english: Record<string, string> = {
   '关闭会话将丢弃 {count} 条待执行消息，确定关闭？': 'Closing this session discards {count} pending messages. Close it?',
   '另有 {count} 条未交付消息仅缓存在内存中，退出将丢失。': '{count} undelivered messages are cached only in memory and will be lost on quit.',
   '调整目录与会话列表高度': 'Resize directory and session panes',
+  '最小化待执行消息': 'Minimize pending messages', '展开待执行消息（{count}）': 'Open pending messages ({count})', '正在编辑': 'Editing',
   '编辑待发送消息': 'Edit queued message', '正在交付 Pi…': 'Handing off to Pi…', '交付未确认': 'Delivery unconfirmed',
   '待执行': 'Pending', '优先': 'Priority', '修改': 'Edit', '待发送消息内容': 'Queued message text',
   '移除图片 {index}': 'Remove image {index}', '保存修改': 'Save changes', '放弃修改': 'Discard changes',

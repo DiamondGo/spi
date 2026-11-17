@@ -2,6 +2,7 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs'), path = require('node:path')
 module.exports = async function({app, waitFor, pass, fill, artifacts, hashes, before}) {
   const evaluate = expression => app.eval(expression)
+  const nextVersion = require('../package.json').version.replace(/\d+$/, patch => String(Number(patch) + 1))
   const click = selector => evaluate(`document.querySelector(${JSON.stringify(selector)}).click()`)
   const phase = expected => waitFor(() => evaluate(`document.querySelector('[data-update-phase]')?.dataset.updatePhase === ${JSON.stringify(expected)}`), 'update phase ' + expected, 45000)
   const capture = async name => { const shot = await app.send('Page.captureScreenshot', {format:'png'}); fs.writeFileSync(path.join(artifacts, name+'.png'), Buffer.from(shot.data,'base64')) }
@@ -42,7 +43,7 @@ module.exports = async function({app, waitFor, pass, fill, artifacts, hashes, be
   assert.ok(geometry.right <= geometry.left); assert.ok(geometry.left-geometry.right < 40)
   await capture('updates-notice')
   await click('.app-update-notice'); await phase('available')
-  assert.ok(await evaluate(`document.querySelector('.app-update-details').innerText.includes('0.3.3')`))
+  assert.ok(await evaluate(`document.querySelector('.app-update-details').innerText.includes(${JSON.stringify(nextVersion)})`))
   pass('offline retry recovers; accessible clickable ! sits next to gear and opens new-version details')
 
   changeMode('unsupported'); await click('[data-update-action="check"]'); await phase('available')

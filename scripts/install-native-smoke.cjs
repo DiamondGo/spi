@@ -10,12 +10,16 @@ const api=require('../dist/npm-package/dist/spi.cjs')
   if(process.platform==='darwin')require('./macos-verify.cjs').verifyMac(installed.entryPath)
   execFileSync(process.execPath,[path.join(__dirname,'portable-smoke.cjs'),installed.entryPath],{stdio:'inherit',timeout:120000})
   if(process.env.SPI_ASSERT_WORKSPACE_UI==='1'){
-    execFileSync(process.execPath,[path.join(__dirname,'with-display.cjs'),path.join(__dirname,'smoke.cjs'),'--workspace-ui'],{stdio:'inherit',timeout:240000,env:{...process.env,SPI_SMOKE_EXECUTABLE:installed.entryPath}})
+    execFileSync(process.execPath,[path.join(__dirname,'with-display.cjs'),path.join(__dirname,'smoke.cjs'),'--workspace-ui'],{stdio:'inherit',timeout:330000,env:{...process.env,SPI_SMOKE_EXECUTABLE:installed.entryPath}})
     console.log('PASS extracted-runtime editable queue and workspace interaction',target)
     if(process.platform!=='win32'){
       execFileSync(process.execPath,[path.join(__dirname,'with-display.cjs'),path.join(__dirname,'smoke.cjs'),'--runtime-env'],{stdio:'inherit',timeout:180000,env:{...process.env,SPI_SMOKE_EXECUTABLE:installed.entryPath}})
       console.log('PASS extracted-runtime sparse desktop PATH, new/history sessions and manual Node settings',target)
     }
+  }
+  if(process.env.SPI_ASSERT_PENDING_PANEL==='1'&&process.env.SPI_ASSERT_WORKSPACE_UI!=='1'){
+    execFileSync(process.execPath,[path.join(__dirname,'with-display.cjs'),path.join(__dirname,'smoke.cjs'),'--workspace-ui'],{stdio:'inherit',timeout:330000,env:{...process.env,SPI_SMOKE_EXECUTABLE:installed.entryPath}})
+    console.log('PASS extracted-runtime outbox minimization, navigation and draft retention',target)
   }
   for (const [flag, suite] of [['SPI_ASSERT_APP_UPDATES','app-updates'],['SPI_ASSERT_SESSION_ACTIONS','session-actions'],['SPI_ASSERT_SESSION_HEALTH','session-health'],['SPI_ASSERT_TERMINAL_UI','terminal'],['SPI_ASSERT_QUESTION_NAVIGATION','question-navigation'],['SPI_ASSERT_CONTEXT_USAGE','context-usage']]) {
     if (process.env[flag] !== '1') continue

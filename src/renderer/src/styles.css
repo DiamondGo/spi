@@ -514,6 +514,7 @@ body,
   flex: 1;
   min-height: 0;
   min-width: 0;
+  container: chat-viewport / inline-size;
 }
 
 .chat-message-items { display: flow-root; }
@@ -870,9 +871,26 @@ body,
   min-width: 0;
 }
 
-/* Client-owned outbox, anchored to the composer rather than the chat scroll. */
-.pending-messages { position: absolute; bottom: calc(100% + 6px); left: 12px; right: 12px; z-index: 8; max-height: min(32vh, 240px); display: flex; flex-direction: column; background: var(--panel, #23252a); color: var(--fg, #ddd); border: 1px solid var(--border, #515767); border-radius: 8px; box-shadow: 0 5px 22px #0005; font-size: 12px; }
+/* Anchor to the chat viewport (also with an open terminal), reserving the bottom navigation strip. */
+.pending-messages { position: absolute; bottom: 104px; left: 12px; right: 12px; z-index: 8; max-height: max(44px, min(32vh, 240px, calc(100% - 116px))); display: flex; flex-direction: column; background: var(--panel, #23252a); color: var(--fg, #ddd); border: 1px solid var(--border, #515767); border-radius: 8px; box-shadow: 0 5px 22px #0005; font-size: 12px; }
 .pending-messages-header { padding: 7px 10px; display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-shrink: 0; border-bottom: 1px solid var(--subtle, #333); }
+.pending-messages-header > strong { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.pending-messages-header > .pending-message-actions { flex-shrink: 0; white-space: nowrap; }
+.pending-messages[data-collapsed="true"] { bottom: 6px; right: auto; width: max-content; max-width: max(60px, min(220px, calc(50% - 100px))); border: 0; box-shadow: none; background: transparent; }
+.pending-messages .pending-messages-summary { display: flex; align-items: center; gap: 6px; width: 100%; min-height: 32px; padding: 5px 8px; border-radius: 8px; box-shadow: 0 2px 8px #0003; }
+.pending-messages-summary .control-icon, .pending-messages-summary strong { flex-shrink: 0; }
+.pending-summary-label { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.pending-messages > [hidden] { display: none; }
+@container chat-viewport (max-width: 280px) {
+  .jump-bottom { bottom: 100px; }
+  .pending-messages:not([data-collapsed="true"]) { bottom: 140px; max-height: max(44px, min(32vh, 240px, calc(100% - 152px))); }
+}
+/* A tall terminal/composer can leave too little height to stack an editor above navigation. */
+.chat-view[data-short-viewport="true"] .pending-messages:not([data-collapsed="true"]) { bottom: 6px; right: 100px; max-height: max(44px, calc(100% - 12px)); }
+.chat-view[data-short-viewport="true"]:has(.pending-messages) .jump-bottom { left: auto; right: 56px; bottom: 16px; transform: none; width: 34px; height: 34px; padding: 0; font-size: 0; }
+.chat-view[data-short-viewport="true"]:has(.pending-messages) .jump-bottom::after { content: '↓'; font-size: 18px; }
+.chat-view[data-short-viewport="true"] .pending-messages-header > .pending-message-actions { min-width: 0; flex-shrink: 1; flex-wrap: wrap; justify-content: flex-end; }
+.chat-view[data-short-viewport="true"] .pending-messages-header .pending-message-actions > span { min-width: 0; display: flex; flex-wrap: wrap; gap: 4px; }
 .pending-message-list { min-height: 0; overflow-y: auto; }
 .pending-message { padding: 8px 10px; border-bottom: 1px solid var(--subtle, #333); }
 .pending-message:last-child { border-bottom: 0; }

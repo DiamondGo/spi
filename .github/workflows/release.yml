@@ -76,7 +76,7 @@ jobs:
       - name: Install locked dependencies
         run: ${{ matrix.install }}
       - run: node scripts/distribution.cjs prepare --production
-      - run: npm audit --audit-level=high
+      - run: node scripts/security-policy.cjs
       - name: Install Pi for isolated native integration
         shell: bash
         run: |
@@ -85,7 +85,7 @@ jobs:
             if [ "$attempt" -lt 3 ]; then sleep 20; fi
           done
           exit 1
-      - run: npm run typecheck && npm run test:launch && npm run test:icons && npm run test:native-build && npm run check:privacy && npm run test:yolo && npm run test:extension-ui && npm run test:workspace-ui && npm run test:sessions && npm run test:settings && npm run test:app-updates && npm run test:terminal && npm run test:session-health && npm run test:workspace-actions && npm run test:remote && npm run test:question-navigation && npm run test:context-usage && node scripts/release-plumbing.test.cjs
+      - run: npm run typecheck && npm run test:launch && npm run test:icons && npm run test:native-build && npm run check:privacy && npm run test:yolo && npm run test:extension-ui && npm run test:workspace-ui && npm run test:sessions && npm run test:settings && npm run test:app-updates && npm run test:terminal && npm run test:session-health && npm run test:workspace-actions && npm run test:remote && npm run test:question-navigation && npm run test:context-usage && node scripts/release-plumbing.test.cjs && node scripts/security-policy.test.cjs
       - name: Three-instance remote access and single-controller GUI smoke (loopback relay, no Dev Tunnels account)
         if: runner.os == 'Linux'
         run: npm run test:remote-smoke
@@ -107,6 +107,8 @@ jobs:
       - name: Context usage and compaction GUI regression (macOS)
         if: runner.os == 'macOS'
         run: npm run test:context-usage-smoke
+      - name: Pending outbox minimization, navigation hit-testing and draft retention GUI regression
+        run: npm run test:workspace-ui-smoke
       - name: GitHub update notification, install/retry and bilingual GUI regression
         run: npm run test:app-updates-smoke
       - name: Verify native binaries, bundle icon and ad-hoc signatures (macOS; not notarized)
@@ -129,6 +131,7 @@ jobs:
       - name: Install ZIP and test native PTY, GUI, Pi RPC, updater and single instance (macOS)
         if: runner.os == 'macOS'
         env:
+          SPI_ASSERT_PENDING_PANEL: '1'
           SPI_ASSERT_APP_ICON: '1'
           SPI_ASSERT_QUESTION_NAVIGATION: '1'
           SPI_ASSERT_CONTEXT_USAGE: '1'
@@ -187,8 +190,8 @@ jobs:
       - run: npm ci --ignore-scripts
       - name: Require this workflow and all four successful native jobs for the immutable tag
         run: node scripts/release-provenance.cjs "$RUNNER_TEMP/source-run.json" "$RUNNER_TEMP/source-workflow.json" "$RUNNER_TEMP/source-jobs.json" '${{ steps.provenance.outputs.sha }}'
-      - name: Block publication on high/critical dependency advisories
-        run: npm audit --audit-level=high
+      - name: Block unapproved high/critical advisories (0.3.3 scoped build-only exception)
+        run: node scripts/security-policy.cjs
       - uses: actions/download-artifact@v4
         with:
           pattern: native-*

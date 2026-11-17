@@ -19,7 +19,7 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y xvfb
       - run: npm ci
       - run: npm run typecheck
-      - run: npm run test:icons && npm run test:native-build
+      - run: npm run test:icons && npm run test:native-build && npm run test:security
       - run: npm run check:privacy
       - run: npm run test:sessions && npm run test:launch && npm run test:settings && npm run test:app-updates && npm run test:yolo && npm run test:extension-ui && npm run test:workspace-ui && npm run test:terminal && npm run test:session-health && npm run test:workspace-actions && npm run test:remote && npm run test:question-navigation && npm run test:context-usage && node scripts/macos-public-assets.test.cjs && node scripts/release-plumbing.test.cjs
       - run: npm run test:installer && npm run test:distribution

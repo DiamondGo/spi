@@ -61,14 +61,14 @@ bash /tmp/spi-install-0.3.2.sh --version 0.3.2
 
 Save drafts and quit the old window, then use the launch command printed by the installer (normally `spi`). This also replaces the old 0.3.1 HTTP-415 launcher without npm. Later use GUI updates or `spi update`.
 
-### Optional legacy Pi package integration
+### Pi first-install entry (npm)
 
 ```bash
 pi install npm:spi-agent-gui
 spi
 ```
 
-This installs the version published on npm, not necessarily the newest GitHub desktop. Use the GitHub installer above for 0.3.2; no npm 0.3.2 publication is required or claimed.
+npm remains a supported first-install entry. Future stable releases should publish a matching lightweight npm package after GitHub verification; subsequent GUI/CLI updates primarily use GitHub and do not depend on npm. The initial 0.3.2 delivery was GitHub-only, so use the installer above for that version until its npm availability is actually verified. [Release-channel policy](docs/releasing.md).
 
 A verified personal install downloads the desktop release matching the npm package version and creates `spi` next to the Pi launcher when writable. Loading the extension never starts a GUI. Use `/spi` to open the current project, or `/spi-install` for explicit installation. No active TUI session is transferred to the GUI.
 

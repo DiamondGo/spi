@@ -22,7 +22,7 @@
 
 **Linux 桌面/npm 0.2.0 已发布：** 可选的[端到端加密远程访问](docs/remote-access.md)。在一台电脑上打开窗口操作另一台电脑上的 sPi，两边都在 NAT 或防火墙后面也可以；流量经 Microsoft Dev Tunnels 中继，由 sPi 自己加密。**两台电脑都要安装 GitHub CLI（`gh`）并登录同一个 GitHub 账号**；本地使用不需要 `gh`，也不会连接 GitHub 或 Dev Tunnels。已配对的设备拥有 host 上 sPi 的全部权限，包括终端和 YOLO。已在 Linux 上验证（含真实 Dev Tunnels 服务）；macOS 和 Windows 未验证。另修复了推理模型上的 AI 命名，以及过期的会话健康提示。
 
-**[桌面版 0.3.3 已公开](https://github.com/DiamondGo/spi/releases/tag/v0.3.3)：** 待发送浮层可缩到聊天区左下角，重新展开保留未保存的文字／图片修改，不遮挡上下箭头和“回到最新”。四平台原生运行包、GUI／重启及依赖 inventory 门槛全部通过。**npm 0.3.3 尚待维护者完成发布验证，GitHub 下载已可用。** 本版仅接受一条用户批准的构建期审计例外，其他高危门槛保持，详见[发布说明](docs/releases/0.3.3.md)和[验收记录](docs/verification.md)。
+**[桌面版 0.3.3 已公开](https://github.com/DiamondGo/spi/releases/tag/v0.3.3)：** 待发送浮层可缩到聊天区左下角，重新展开保留未保存的文字／图片修改，不遮挡上下箭头和“回到最新”。四平台原生运行包、GUI／重启及依赖 inventory 门槛全部通过。**npm `spi-agent-gui@0.3.3` 已公开，latest 为 0.3.3。** 公开包与审核包一致；固定版本/latest 隔离 Pi 安装及下载后运行时检查均通过。 本版仅接受一条用户批准的构建期审计例外，其他高危门槛保持，详见[发布说明](docs/releases/0.3.3.md)和[验收记录](docs/verification.md)。
 
 **[历史桌面版 0.3.2 的发布记录](https://github.com/DiamondGo/spi/releases/tag/v0.3.2)：** [GitHub 新版本检测、齿轮旁可点击的 `!`、按当前架构下载安装及确认后重启](docs/releases/0.3.2.md)。Linux x64／ARM64 和 macOS Apple Silicon／Intel 共用完整的默认更新清单，不依赖 npm 发布。旧 0.3.1 启动器查询最新版会遇到 HTTP 415，请先用[一次性的 0.3.2 GitHub 安装脚本](docs/releases/0.3.2.md)升级，再使用 GUI 或修复后的 `spi update`。Mac 仍为 ad-hoc 签名、未公证。[更新行为与限制](docs/app-updates.md)。[四平台原生构建、真实跨目录重启、全部附件的匿名校验及 GitHub 独立安装均已通过](docs/verification.md)。
 
@@ -42,7 +42,7 @@
 
 **前一版桌面/npm 0.1.4 的干净安装验收：** 两个 Linux 原生架构均通过安装后验收；两个全新非 root x64 容器分别从公开 registry 安装固定版本和 latest，约 7 分钟完成，并通过新增的 9 项缺失桌面 Node/手动设置会话检查、8 项工作区/消息缓冲区检查，以及 GUI/PTY/Pi RPC、图标/桌面入口归属、单实例和启用中的 renderer sandbox 验证。[百分比、慢速下载和续传修复](docs/downloads.md) 仍保留。没有挂载主机凭据、配置或应用二进制；旧版本资源未覆盖。
 
-当前 0.3.3 可使用版本绑定的 [GitHub 安装脚本](docs/releases/0.3.3.md)，已有 0.3.2 用户可直接通过 GUI 或 `spi update` 更新；npm 0.3.3 尚待验证。从 0.3.2 起可在设置中检查更新、点击 `!` 下载，或使用 `spi update`。重新安装旧 npm 包仍会选择旧桌面版本，不会获得 0.3.2。安装不会热更新已有窗口，请先另存未发送文字，再确认“重启生效”；已保存的 Pi 历史、认证及 sPi 偏好设置保留。
+当前 0.3.3 可使用 `pi install npm:spi-agent-gui@0.3.3` 或版本绑定的 [GitHub 安装脚本](docs/releases/0.3.3.md)，已有 0.3.2 用户可直接通过 GUI 或 `spi update` 更新。从 0.3.2 起可在设置中检查更新、点击 `!` 下载，或使用 `spi update`。重新安装旧 npm 包仍会选择旧桌面版本，不会获得 0.3.2。安装不会热更新已有窗口，请先另存未发送文字，再确认“重启生效”；已保存的 Pi 历史、认证及 sPi 偏好设置保留。
 
 发布准备已升级到 Electron 45.2.3 和 electron-builder 26.18.0，high/critical 审计告警已清除；仍有八条 moderate 审计条目，涉及 minimatch 构建工具链及 Dev Tunnels SDK 的 uuid 依赖。发布流水线继续拦截 high/critical 问题。
 
@@ -71,7 +71,7 @@ pi install npm:spi-agent-gui
 spi
 ```
 
-npm 继续作为受支持的首次安装入口。后续正式版本会在 GitHub 验收通过后提供同版本的轻量 npm 包；后继 GUI／命令行更新主要走 GitHub，不依赖 npm。GitHub 0.3.3 已公开，其同版本 npm 上传仍需维护者完成验证；在公开 npm latest 确认为 0.3.3 前，请使用上面的 GitHub 安装方式。[发布渠道规则](docs/releasing.md)。
+npm 继续作为受支持的首次安装入口。后续正式版本会在 GitHub 验收通过后提供同版本的轻量 npm 包；后继 GUI／命令行更新主要走 GitHub，不依赖 npm。GitHub 与 npm 0.3.3 均已公开，npm latest 为 0.3.3；固定版本/latest 公开 Pi 安装及下载后运行时测试均通过，固定版本还通过待发送浮层最小化、编辑保留与导航 GUI 测试。[发布渠道规则](docs/releasing.md)。
 
 可验证的个人安装会下载与 npm 包版本匹配的桌面运行包，并尽量把 `spi` 放到 PATH 中 Pi 启动器旁边。扩展加载时不会启动 GUI。可手动运行 `/spi` 打开当前项目，或 `/spi-install` 安装；不会接管正在运行的 TUI 会话。
 

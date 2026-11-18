@@ -1,6 +1,6 @@
 # Sidebar and editable outbox / 侧栏与待执行消息
 
-The core editable outbox first shipped in Linux desktop v0.1.2. Minimization is public in [GitHub desktop 0.3.3](releases/0.3.3.md); matching npm publication is pending verification. Immutable 0.3.2 packages are unchanged.
+The core editable outbox first shipped in Linux desktop v0.1.2. Minimization is public in [GitHub desktop 0.3.3](releases/0.3.3.md); matching npm 0.3.3 is public and latest, with public pinned/latest Pi installation checks and the pinned npm-installed pending-panel GUI suite verified. Immutable 0.3.2 packages are unchanged.
 
 ## Sidebar
 

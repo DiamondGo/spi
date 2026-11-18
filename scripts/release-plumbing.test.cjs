@@ -12,7 +12,7 @@ function fixture(targets=RELEASE_TARGETS){
     const mac=target.startsWith('darwin'),file='spi-'+version+'-'+target+(target.startsWith('linux')?'.tar.gz':'.zip'),bytes=Buffer.from('archive-'+target)
     fs.writeFileSync(path.join(dir,file),bytes)
     const entry=mac?'app/sPi.app/Contents/MacOS/sPi':'app/spi'
-    fs.writeFileSync(path.join(dir,target+'.json'),JSON.stringify({version,target,file,size:bytes.length,sha256:sha256(bytes),installerSha256:sha256('fixture spi-installer.cjs'),securityInventory:{schemaVersion:1,version,policy:version==='0.3.3'?require('./security-policy.cjs').ADVISORY:'no-build-dependencies',scriptsScanned:1,forbiddenModulesAbsent:true,asarSha256:'f'.repeat(64),installerSha256:sha256('fixture spi-installer.cjs')},entry,permissionExtension:mac?'app/sPi.app/Contents/Resources/spi-permission-extension.mjs':'app/resources/spi-permission-extension.mjs'}))
+    fs.writeFileSync(path.join(dir,target+'.json'),JSON.stringify({version,target,file,size:bytes.length,sha256:sha256(bytes),installerSha256:sha256('fixture spi-installer.cjs'),securityInventory:{schemaVersion:1,version,policy:require('./security-policy.cjs').VERSIONS.has(version)?require('./security-policy.cjs').ADVISORY:'no-build-dependencies',scriptsScanned:1,forbiddenModulesAbsent:true,asarSha256:'f'.repeat(64),installerSha256:sha256('fixture spi-installer.cjs')},entry,permissionExtension:mac?'app/sPi.app/Contents/Resources/spi-permission-extension.mjs':'app/resources/spi-permission-extension.mjs'}))
     if(mac)fs.writeFileSync(path.join(dir,'macos-build-'+target+'.txt'),JSON.stringify({target,version,minimumOS:'13.0',signature:'ad-hoc',notarized:false,sourceCommit:sha}))
   }
   for(const name of ['spi-installer.cjs','install.sh','INSTALLER-NOTICES.txt'])fs.writeFileSync(path.join(dir,name),'fixture '+name)
@@ -131,6 +131,14 @@ function patch(dir,name,change){const file=path.join(dir,name),value=JSON.parse(
     await check('publication requires each native runtime dependency inventory even when an audit exception is approved',()=>{
       const dir=fixture();patch(dir,'darwin-arm64.json',value=>{delete value.securityInventory});assert.throws(()=>release(dir),/inventory/)
       const bad=fixture();patch(bad,'linux-x64.json',value=>{value.securityInventory.forbiddenModulesAbsent=false});assert.throws(()=>release(bad),/inventory/)
+    })
+    await check('real recovery confirmation gates source and extracted runtime tests on Linux and Mac',()=>{
+      const workflow=read('.github/workflows/release.yml')
+      assert.ok(workflow.includes('npm run test:session-recovery-smoke'))
+      assert.equal((workflow.match(/SPI_ASSERT_SESSION_RECOVERY: '1'/g)||[]).length,2)
+      assert.ok(read('scripts/install-native-smoke.cjs').includes("['SPI_ASSERT_SESSION_RECOVERY','session-recovery']"))
+      assert.ok(!read('scripts/session-recovery-smoke.cjs').includes('window.confirm='))
+      assert.ok(!read('scripts/session-health-smoke.cjs').includes('window.confirm='))
     })
     await check('PR checks run the plumbing test',()=>{assert.ok(read('.github/workflows/check.yml').includes('release-plumbing.test.cjs'))})
     console.log('RESULT PASS',checks,'release plumbing checks')

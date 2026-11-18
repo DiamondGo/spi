@@ -1,6 +1,6 @@
 {
   "name": "spi",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "sPi - Simple Pi Agent GUI",
   "private": true,
   "license": "UNLICENSED",
@@ -36,6 +36,7 @@
     "test:ai-naming": "node scripts/ai-naming.test.cjs",
     "test:session-actions-smoke": "electron-vite build && node scripts/with-display.cjs scripts/smoke.cjs --session-actions",
     "test:session-health-smoke": "electron-vite build && node scripts/with-display.cjs scripts/smoke.cjs --session-health",
+    "test:session-recovery-smoke": "electron-vite build && node scripts/with-display.cjs scripts/smoke.cjs --session-recovery",
     "test:terminal": "node scripts/terminal.test.cjs",
     "test:remote": "node scripts/remote.test.cjs",
     "test:remote-smoke": "electron-vite build && node scripts/with-display.cjs scripts/smoke.cjs --remote",

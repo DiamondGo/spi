@@ -1,6 +1,15 @@
 # Session health and recovery / 会话健康检查与恢复
 
-**Included in published Linux desktop/npm 0.1.5.** npm latest is 0.1.5. Existing v0.1.4 archives do not contain this feature. [Release notes](releases/0.1.5.md).
+**Initially shipped in Linux desktop/npm 0.1.5; later releases retain recovery.** Existing v0.1.4 archives do not contain this feature. [Original release notes](releases/0.1.5.md).
+
+## 0.3.4 发布准备：窗口内恢复确认与状态同步
+
+- 顶部横幅与会话右键菜单的 Recover session 使用同一个应用内 modal，不再依赖阻塞渲染器的原生 `window.confirm`。对话框显示在所属窗口中，默认聚焦取消；取消或 Escape 不发送恢复请求、不改队列、不终止 Pi。
+- 明确点击“确定恢复”才执行原有单次恢复流程；显示恢复中，失败保留对话框及错误并允许重试。只读端不能确认恢复，原有 host 权限和草稿／暂停队列保护不变。
+- GUI 回归必须使用真实指针打开并确认／取消对话框，不能再用 `window.confirm = () => true` 绕过确认。覆盖六种主题／语言组合、窄／短窗口、横幅和菜单入口、故障可见性与重试。
+- 健康快照增加主进程单调递增 revision；恢复 RPC 返回与成功事件同一份健康／历史快照。界面会使用返回结果补齐漏掉的成功事件，忽略相同或更旧版本，避免迟到的恢复回复覆盖新任务或新的退出状态。“检查连接”也校准返回结果，不再只依靠事件送达。
+- 新任务开始及已有 `get_state` 成功时，存活且输入管道可写的当前 owner 重发健康快照，即使自己已记录为 healthy，也能纠正界面残留的旧告警。这不新增 RPC、后台轮询、模型请求或自动继续队列；旧／退出进程的输出仍不能复活会话。
+- **0.3.4 发布准备中，不会热更新当前已安装的 0.3.3。** [发布状态](releases/0.3.4.md)。 单测复现并覆盖健康事件缺失和快照迟到的情况；不把 Running 标签或普通输出本身当作健康证明，不会为清除提示而再次恢复用户窗口。
 
 ## 0.2.0 提示清理修复 / Alert cleanup in 0.2.0
 

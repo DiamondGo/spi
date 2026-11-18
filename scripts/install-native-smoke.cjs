@@ -21,7 +21,7 @@ const api=require('../dist/npm-package/dist/spi.cjs')
     execFileSync(process.execPath,[path.join(__dirname,'with-display.cjs'),path.join(__dirname,'smoke.cjs'),'--workspace-ui'],{stdio:'inherit',timeout:330000,env:{...process.env,SPI_SMOKE_EXECUTABLE:installed.entryPath}})
     console.log('PASS extracted-runtime outbox minimization, navigation and draft retention',target)
   }
-  for (const [flag, suite] of [['SPI_ASSERT_APP_UPDATES','app-updates'],['SPI_ASSERT_SESSION_ACTIONS','session-actions'],['SPI_ASSERT_SESSION_HEALTH','session-health'],['SPI_ASSERT_TERMINAL_UI','terminal'],['SPI_ASSERT_QUESTION_NAVIGATION','question-navigation'],['SPI_ASSERT_CONTEXT_USAGE','context-usage']]) {
+  for (const [flag, suite] of [['SPI_ASSERT_APP_UPDATES','app-updates'],['SPI_ASSERT_SESSION_ACTIONS','session-actions'],['SPI_ASSERT_SESSION_HEALTH','session-health'],['SPI_ASSERT_SESSION_RECOVERY','session-recovery'],['SPI_ASSERT_TERMINAL_UI','terminal'],['SPI_ASSERT_QUESTION_NAVIGATION','question-navigation'],['SPI_ASSERT_CONTEXT_USAGE','context-usage']]) {
     if (process.env[flag] !== '1') continue
     execFileSync(process.execPath,[path.join(__dirname,'with-display.cjs'),path.join(__dirname,'smoke.cjs'),'--'+suite],{stdio:'inherit',timeout:240000,env:{...process.env,SPI_SMOKE_EXECUTABLE:installed.entryPath}})
     console.log('PASS extracted-runtime '+suite,target)

@@ -51,6 +51,24 @@ async function check(name, fn) { await fn(); count++; console.log('PASS',name) }
     gate.resolve({...pi.state}); assert.equal((await a).status,'healthy')
     assert.equal(pi.commands.filter(x=>x==='get_state').length,2); assert.ok(!pi.commands.includes('prompt')); assert.ok(!pi.commands.includes('get_messages'))
   })
+  await check('task starts replay ordered owner health without probing or accepting retired/dead writers',async()=>{
+    const {manager,id,pi,events}=await setup(),commands=pi.commands.length
+    pi.onEvent({type:'agent_start'})
+    const first=events.filter(e=>e.event.type==='spi_session_health').at(-1).event.health
+    assert.equal(first.status,'healthy');assert.ok(Number.isSafeInteger(first.revision));assert.equal(pi.commands.length,commands)
+    pi.onEvent({type:'message_update',assistantMessageEvent:{type:'text_delta',delta:'working'}})
+    assert.equal(events.filter(e=>e.event.type==='spi_session_health').length,1)
+    pi.onEvent({type:'agent_start'})
+    const second=events.filter(e=>e.event.type==='spi_session_health').at(-1).event.health
+    assert.ok(second.revision>first.revision);assert.equal(pi.commands.length,commands)
+    await manager.getState(id)
+    assert.equal(pi.commands.length,commands+1)
+    assert.ok(events.filter(e=>e.event.type==='spi_session_health').at(-1).event.health.revision>second.revision)
+    pi.exit();const n=events.length;pi.onEvent({type:'agent_start'});assert.equal(events.length,n)
+    const result=await manager.recoverSession(id),snapshot=events.filter(e=>e.event.type==='spi_session_health').at(-1).event.health
+    assert.deepEqual(result.health,snapshot);assert.equal(snapshot.status,'healthy');assert.ok(snapshot.revision>second.revision)
+    const after=events.length;pi.onEvent({type:'agent_start'});assert.equal(events.length,after)
+  })
   await check('opening/idle/running sessions schedule no health timers or unsolicited probes',async()=>{
     const set=global.setTimeout, clear=global.clearTimeout, timers=new Set()
     global.setTimeout=(...args)=>{const timer=set(...args);timers.add(timer);return timer}
@@ -67,7 +85,7 @@ async function check(name, fn) { await fn(); count++; console.log('PASS',name) }
     pi.state.isStreaming=false // No agent_settled event reached sPi.
     manager.submitMessage(id,{clientId:'waiting',text:'next'}); await tick()
     assert.equal(pi.commands.filter(x=>x==='prompt').length,1)
-    const calibrated=events.find(e=>e.event.type==='spi_session_health')
+    const calibrated=events.find(e=>e.event.type==='spi_session_health'&&e.event.state)
     assert.equal(calibrated.event.state.isStreaming,false); assert.equal(calibrated.event.messages[0].content,'saved history')
   })
   await check('timeout pauses outbox, alerts, and a successful probe never auto-resumes it',async()=>{
@@ -189,6 +207,44 @@ async function check(name, fn) { await fn(); count++; console.log('PASS',name) }
     try { assert.equal((await manager.checkSession(id)).stalled,true); assert.equal(pi.hasExited,false); assert.ok(!pi.commands.includes('abort')) } finally {Date.now=now}
   })
   const store=load('src/renderer/src/store.ts',{react:{useSyncExternalStore(){}}})
+  await check('recovery reply repairs a missed healthy event without overwriting newer work or a newer exit',async()=>{
+    const previous=global.window;let gate=deferred();global.window={spi:{recoverSession:()=>gate.promise}}
+    try{
+      const id='missed-recovery';store.addSession(id,tmp,{sessionFile:file,isStreaming:false});store.setDraft(id,'keep draft');store.setPendingImages(id,[{data:'YQ==',mimeType:'image/png'}])
+      store.updatePendingMessages({sessionId:id,version:1,paused:true,items:[]})
+      store.applyEvent(id,{type:'spi_session_health',health:{status:'exited',checkedAt:1,revision:40}})
+      let pending=store.recoverSession(id)
+      store.applyEvent(id,{type:'spi_session_health',health:{status:'recovering',checkedAt:2,revision:41}})
+      gate.resolve({health:{status:'healthy',checkedAt:3,revision:42},state:{sessionFile:file,isStreaming:false},messages:[{role:'user',content:'saved recovery history'}]});await pending
+      let s=store.getStore().sessions[id];assert.equal(s.health.status,'healthy');assert.equal(s.items[0].text,'saved recovery history');assert.equal(s.draft,'keep draft');assert.equal(s.pendingImages.length,1);assert.equal(s.pendingQueue.paused,true)
+      store.applyEvent(id,{type:'agent_start'});store.applyEvent(id,{type:'message_start',message:{role:'user',content:'after snapshot'}})
+      store.applyEvent(id,{type:'spi_session_health',health:{status:'healthy',checkedAt:3,revision:42},state:{isStreaming:false},messages:[]})
+      assert.equal(store.getStore().sessions[id].streaming,true);assert.equal(store.getStore().sessions[id].items.at(-1).text,'after snapshot')
+      gate=deferred();pending=store.recoverSession(id)
+      store.applyEvent(id,{type:'spi_session_health',health:{status:'healthy',checkedAt:4,revision:43}})
+      store.applyEvent(id,{type:'agent_start'});store.applyEvent(id,{type:'message_start',message:{role:'user',content:'new work'}})
+      gate.resolve({health:{status:'healthy',checkedAt:3,revision:42},state:{sessionFile:file,isStreaming:false},messages:[{role:'user',content:'old reply must not rewind'}]});await pending
+      s=store.getStore().sessions[id];assert.equal(s.streaming,true);assert.equal(s.items.at(-1).text,'new work');assert.equal(s.health.revision,43)
+      gate=deferred();pending=store.recoverSession(id)
+      store.applyEvent(id,{type:'spi_session_health',health:{status:'exited',checkedAt:5,revision:44}})
+      gate.resolve({health:{status:'healthy',checkedAt:4,revision:43},state:{isStreaming:false},messages:[]});await pending
+      assert.equal(store.getStore().sessions[id].health.status,'exited')
+    }finally{global.window=previous}
+  })
+  await check('check reply clears a missed healthy event, but never supersedes newer health',async()=>{
+    const previous=global.window;let gate=deferred();global.window={spi:{checkSession:()=>gate.promise}}
+    try{
+      const id='missed-check';store.addSession(id,tmp,{isStreaming:true});store.setDraft(id,'keep')
+      store.applyEvent(id,{type:'spi_session_health',health:{status:'exited',checkedAt:1,revision:50}})
+      let pending=store.checkSession(id);gate.resolve({status:'healthy',checkedAt:2,revision:51});await pending
+      assert.equal(store.getStore().sessions[id].health.status,'healthy');assert.equal(store.getStore().sessions[id].draft,'keep')
+      gate=deferred();pending=store.checkSession(id);store.applyEvent(id,{type:'spi_session_health',health:{status:'exited',checkedAt:3,revision:53}})
+      gate.resolve({status:'healthy',checkedAt:2,revision:52});await pending;assert.equal(store.getStore().sessions[id].health.status,'exited')
+      // Old hosts without ordering are still supported, but their reply cannot beat a newer event.
+      gate=deferred();pending=store.checkSession(id);store.applyEvent(id,{type:'spi_session_health',health:{status:'exited',checkedAt:4}})
+      gate.resolve({status:'healthy',checkedAt:3});await pending;assert.equal(store.getStore().sessions[id].health.status,'exited')
+    }finally{global.window=previous}
+  })
   await check('renderer calibration and recovery keep draft, images and queue while replacing saved history',async()=>{
     store.addSession('ui',tmp,{sessionFile:file,isStreaming:true}); store.setDraft('ui','draft'); store.setPendingImages('ui',[{data:'YQ==',mimeType:'image/png'}])
     store.loadHistory('ui',[{kind:'assistant',done:false,blocks:[{kind:'text',text:'partial',done:false}]}])
@@ -228,7 +284,29 @@ async function check(name, fn) { await fn(); count++; console.log('PASS',name) }
     assert.equal(store.getStore().sessions.model.error,undefined)
   })
   const React=require('react'),{renderToStaticMarkup}=require('react-dom/server'),preferences={useT:()=>text=>text}
-  const {SessionHealthBanner}=load('src/renderer/src/components/SessionHealthBanner.tsx',{'../store':store,'../preferences':preferences})
+  const {SessionHealthBanner}=load('src/renderer/src/components/SessionHealthBanner.tsx',{'../store':store,'../preferences':preferences,'../remote':{useRemoteReadOnly:()=>false},'./SessionRecoveryDialog':{SessionRecoveryDialog:()=>null}})
+  await check('recovery dialog is passive until confirmation, single-flight, retryable and read-only safe',async()=>{
+    const previous=global.document;global.document={body:{}}
+    try {
+      let calls=0,closed=0,readOnly=false,gate=deferred(),values=[]
+      const {SessionRecoveryDialog}=load('src/renderer/src/components/SessionRecoveryDialog.tsx',{
+        react:{...React,useId:()=> 'recovery-test',useRef:value=>({current:value}),useEffect(){},useState:value=>[value,next=>values.push(next)]},
+        'react-dom':{createPortal:element=>element},'../preferences':preferences,
+        '../remote':{useRemoteReadOnly:()=>readOnly,remoteErrorText:String},
+        '../store':{recoverSession:id=>{assert.equal(id,'recovery-ui');calls++;return gate.promise}}
+      })
+      const make=(disabled=false)=>SessionRecoveryDialog({sessionId:'recovery-ui',disabled,onClose:()=>closed++})
+      const submit=dialog=>dialog.props.children.props.onSubmit({preventDefault(){}})
+      const cancel=dialog=>dialog.props.children.props.children.at(-1).props.children[0].props.onClick()
+      let dialog=make();assert.equal(calls,0);cancel(dialog);assert.equal(closed,1);assert.equal(calls,0)
+      dialog=make();dialog.props.onCancel({preventDefault(){}});assert.equal(closed,2);assert.equal(calls,0)
+      submit(make(true));readOnly=true;submit(make());readOnly=false;assert.equal(calls,0)
+      dialog=make();submit(dialog);submit(dialog);assert.equal(calls,1)
+      gate.reject(new Error('RECOVERY_FAILED_VISIBLE'));await tick();assert.ok(values.includes('Error: RECOVERY_FAILED_VISIBLE'));assert.equal(closed,2)
+      gate=deferred();submit(dialog);assert.equal(calls,2);gate.resolve();await tick();assert.equal(closed,3)
+      for(const file of ['SessionHealthBanner','SessionActions'])assert.ok(!fs.readFileSync(path.join(root,'src/renderer/src/components',file+'.tsx'),'utf8').includes('window.confirm'))
+    } finally {global.document=previous}
+  })
   const {ChatView}=load('src/renderer/src/components/ChatView.tsx',{'../store':store,'../preferences':preferences,'../ansi':{renderAnsi:text=>text},'../remote':{useRemoteReadOnly:()=>false},'../userMessageNavigation':load('src/renderer/src/userMessageNavigation.ts'),'./DiffView':{DiffView:()=>null},'./PendingMessages':{PendingMessages:()=>null}})
   const base={id:'render',cwd:tmp,items:[],streaming:false,submitting:false}
   const banner=patch=>renderToStaticMarkup(React.createElement(SessionHealthBanner,{session:{...base,...patch}}))

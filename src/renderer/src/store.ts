@@ -286,13 +286,26 @@ export function setPendingImages(id: string, update: ImageRef[] | ((images: Imag
   patchSession(id, (s) => ({ ...s, pendingImages: typeof update === 'function' ? update(s.pendingImages) : update }))
 }
 
+/** Apply the checked owner reply too: event delivery alone must not strand a warning. */
+export async function checkSession(id: string): Promise<void> {
+  const before = store.sessions[id]?.health
+  setSessionHealthError(id, undefined)
+  try {
+    const health = await window.spi.checkSession(id)
+    // Older hosts do not order snapshots; never let their late reply replace a newer event.
+    if (health.revision !== undefined || store.sessions[id]?.health === before) applyEvent(id, { type: 'spi_session_health', health })
+  } catch (error) { setSessionHealthError(id, String(error)); throw error }
+}
+
 const recoveries = new Map<string, Promise<void>>()
 export function recoverSession(id: string): Promise<void> {
   const pending = recoveries.get(id)
   if (pending) return pending
   setSessionHealthError(id, undefined)
-  const request = window.spi.recoverSession(id).then(() => {
-    // The backend publishes history + state in one ordered event; do not overwrite newer events with an IPC reply.
+  const request = window.spi.recoverSession(id).then(result => {
+    // Reconcile a missed recovery event using the same ordered owner snapshot.
+    // Equal/older revisions are ignored, preserving later streaming/history/failures.
+    if (result.health?.revision !== undefined) applyEvent(id, { type: 'spi_session_health', health: result.health, state: result.state, messages: result.messages })
     nonces.delete(id)
     setSessionError(id, undefined)
   }).catch(error => { setSessionHealthError(id, String(error)); throw error }).finally(() => { recoveries.delete(id) })
@@ -419,17 +432,19 @@ export function applyEvent(id: string, event: Record<string, unknown>): void {
     const heal = current.health?.stalled
     const clearModelError = current.errorKind === 'model' && modelResponded
     if (heal || current.healthError || clearModelError) patchSession(id, s => ({
-      ...s, health: heal ? { status: 'healthy', checkedAt: Date.now() } : s.health, healthError: undefined,
+      ...s, health: heal ? { ...s.health!, status: 'healthy', checkedAt: Date.now(), stalled: undefined } : s.health, healthError: undefined,
       ...(clearModelError ? { error: undefined, errorKind: undefined } : {})
     }))
   }
 
   if (t === 'spi_session_health') {
     const health = event.health as SessionHealth
+    const revision = health.revision, previousRevision = store.sessions[id]?.health?.revision
+    if (revision !== undefined && previousRevision !== undefined && revision <= previousRevision) return
     const state = event.state as PiState | undefined
     const messages = event.messages as unknown[] | undefined
     patchSession(id, s => {
-      const resync = !!messages && (s.streaming || (s.health && s.health.status !== 'healthy'))
+      const resync = !!messages && (revision !== undefined || s.streaming || (s.health && s.health.status !== 'healthy'))
       const items = resync ? messagesToItems(messages!) : s.items
       return {
         ...s, health, healthError: health.status === 'healthy' ? undefined : s.healthError, state: state ?? s.state,

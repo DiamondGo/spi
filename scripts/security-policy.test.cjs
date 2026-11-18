@@ -10,9 +10,10 @@ async function runtime(files={},pkg={version:'0.3.3'},helper='// installer'){
  await asar.createPackage(source,path.join(resources,'app.asar'));fs.writeFileSync(path.join(resources,'spi-installer.cjs'),helper);return resources
 }
 ;(async()=>{try{
- await test('only the exact user-approved 0.3.3 build advisory and inherited dev-only findings are allowed',()=>{
+ await test('only explicitly approved 0.3.3/0.3.4 build advisory and inherited dev-only findings are allowed',()=>{
   const {audit,lock}=fixture(),report=evaluateAudit(audit,lock,'0.3.3');assert.equal(report.exceptionUsed,true);assert.deepEqual(report.acceptedAdvisories,[ADVISORY]);assert.equal(report.reportedCounts.high,2)
-  for(const version of ['0.3.2','0.3.4','1.0.0'])assert.throws(()=>evaluateAudit(audit,lock,version),/Unapproved/)
+  assert.equal(evaluateAudit(audit,lock,'0.3.4').exceptionUsed,true)
+  for(const version of ['0.3.2','0.3.5','1.0.0'])assert.throws(()=>evaluateAudit(audit,lock,version),/Unapproved/)
  })
  await test('a production dependency, different advisory/range/severity or critical finding always blocks',()=>{
   for(const change of [x=>{x.lock.packages['node_modules/picomatch'].dev=false},x=>{delete x.lock.packages['node_modules/vite']},x=>{x.audit.vulnerabilities.picomatch.via[0].url='https://github.com/advisories/GHSA-other'},x=>{x.audit.vulnerabilities.picomatch.via[0].range='*'},x=>{x.audit.vulnerabilities.picomatch.via[0].severity='critical'},x=>{x.audit.metadata.vulnerabilities.critical=1}]){const x=fixture();change(x);assert.throws(()=>evaluateAudit(x.audit,x.lock,'0.3.3'))}
@@ -33,6 +34,11 @@ async function runtime(files={},pkg={version:'0.3.3'},helper='// installer'){
  await test('real ASAR and standalone installer inventory binds version and both content hashes',async()=>{
   const resources=await runtime(),report=scanRuntime(resources,'0.3.3');assert.equal(report.forbiddenModulesAbsent,true);assert.equal(report.scriptsScanned,2);validateInventory(report,'0.3.3',report.installerSha256)
   for(const patch of [{version:'0.3.2'},{policy:'any'},{forbiddenModulesAbsent:false},{scriptsScanned:0},{asarSha256:'invalid'},{installerSha256:'0'.repeat(64)}])assert.throws(()=>validateInventory({...report,...patch},'0.3.3',report.installerSha256))
+ })
+ await test('0.3.4 runtime inventory uses the same strict policy and rejects cross-version metadata',async()=>{
+  const report=scanRuntime(await runtime({},{version:'0.3.4'}),'0.3.4')
+  assert.equal(report.policy,ADVISORY);validateInventory(report,'0.3.4',report.installerSha256)
+  assert.throws(()=>validateInventory(report,'0.3.3',report.installerSha256));assert.throws(()=>validateInventory(report,'0.3.5',report.installerSha256))
  })
  await test('actual forbidden modules or bundled picomatch code fail the runtime inventory',async()=>{
   for(const files of [{'node_modules/picomatch/index.js':'safe'},{'node_modules/fdir/package.json':'{}'},{'out/index.js':'function analyzeRepeatedExtglob() {}'},{'out/index.js':'require("picomatch")'}]){const resources=await runtime(files);assert.throws(()=>scanRuntime(resources,'0.3.3'),/Build-only|Picomatch/)}

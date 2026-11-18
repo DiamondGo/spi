@@ -30,7 +30,16 @@ export interface PiState {
 export interface SessionHealth {
   status: 'healthy' | 'unresponsive' | 'exited' | 'recovering'
   checkedAt: number
+  /** Monotonic owner-issued ordering; optional for older remote hosts. */
+  revision?: number
   stalled?: boolean
+}
+
+export interface SessionRecoveryResult {
+  state: PiState
+  messages: unknown[]
+  /** Replayable owner snapshot if the one-way recovery event was missed. */
+  health?: SessionHealth
 }
 
 export type SessionNameErrorCode = 'not_ready' | 'no_model' | 'unsupported' | 'busy' | 'empty_history'
@@ -202,7 +211,7 @@ export interface IpcApi {
   openSession(opts: { cwd: string; sessionPath?: string }): Promise<{ sessionId: string; state: PiState }>
   closeSession(sessionId: string): Promise<void>
   checkSession(sessionId: string): Promise<SessionHealth>
-  recoverSession(sessionId: string): Promise<{ state: PiState; messages: unknown[] }>
+  recoverSession(sessionId: string): Promise<SessionRecoveryResult>
   sendPrompt(sessionId: string, text: string, mode: 'normal' | 'steer' | 'followUp', images?: ImageRef[]): Promise<void>
   submitMessage(sessionId: string, message: MessageSubmission): Promise<{ id: string }>
   getPendingMessages(sessionId: string): Promise<PendingMessagesSnapshot>

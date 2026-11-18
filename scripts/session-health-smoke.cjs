@@ -8,9 +8,23 @@ module.exports=async function({app,waitFor,pass,fill,workspace,artifacts,descend
   const capture=async name=>{const image=await app.send('Page.captureScreenshot',{format:'png'});fs.writeFileSync(path.join(artifacts,name+'.png'),Buffer.from(image.data,'base64'))}
   const prompt=JSON.stringify({tool:'read',input:{path:path.join(workspace,'smoke.txt')}})
   const ownedPi=()=>descendants(app.child.pid).filter(pid=>{try{return fs.readlinkSync(`/proc/${pid}/cwd`)===workspace && (/^(?:pi\x00|.*--mode\x00rpc)/.test(fs.readFileSync(`/proc/${pid}/cmdline`,'utf8')))}catch{return false}})
-  const recover=async()=>{
-    await app.eval(`window.confirm=()=>true;[...document.querySelectorAll('.session-health button')].find(b=>b.textContent==='恢复会话').click()`)
-    await waitFor(()=>app.eval(`document.querySelectorAll('.session-health').length===0`),'recovered health banner removed',30000)
+  const click=async(selector,text)=>{
+    const point=await app.eval(`(()=>{const e=[...document.querySelectorAll(${JSON.stringify(selector)})].find(e=>e.textContent===${JSON.stringify(text)});if(!e||e.disabled)throw Error('Missing/enabled recovery control');const r=e.getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`)
+    await app.send('Input.dispatchMouseEvent',{type:'mousePressed',...point,button:'left',clickCount:1})
+    await app.send('Input.dispatchMouseEvent',{type:'mouseReleased',...point,button:'left',clickCount:1})
+  }
+  const openRecovery=async(menu=false)=>{
+    if(menu){
+      await app.eval(`(()=>{const e=document.querySelector('.session-tab.active'),r=e.getBoundingClientRect();e.dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true,clientX:r.x+10,clientY:r.y+10}))})()`)
+      await waitFor(()=>app.eval(`!!document.querySelector('.context-menu')`),'session recovery menu')
+      await click('.context-menu button','恢复会话')
+    }else await click('.session-health button','恢复会话')
+    await waitFor(()=>app.eval(`!!document.querySelector('.session-recovery-dialog[open]')`),'visible in-window recovery confirmation')
+  }
+  const recover=async(menu=false)=>{
+    await openRecovery(menu)
+    await click('.session-recovery-dialog button','确定恢复')
+    await waitFor(()=>app.eval(`!document.querySelector('.session-health')&&!document.querySelector('.session-recovery-dialog')`),'recovered health banner and dialog removed',30000)
   }
   const manualCheck=async()=>{
     await app.eval(`(()=>{const e=document.querySelector('.session-tab.active'),r=e.getBoundingClientRect();e.dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true,clientX:r.x+10,clientY:r.y+10}))})()`)
@@ -73,7 +87,35 @@ module.exports=async function({app,waitFor,pass,fill,workspace,artifacts,descend
   await manualCheck()
   await waitFor(()=>app.eval(`document.querySelector('.session-health')?.textContent.includes('Pi RPC 未响应')`),'manual context-menu check detects a new failure',15000)
   assert.equal(await app.eval(`document.querySelectorAll('.session-health').length`),1)
+  const recoveryEvents=()=>app.eval(`window.__smokeEvents.filter(e=>e.event.type==='spi_session_health'&&e.event.health.status==='recovering').length`)
+  const recoveriesBefore=await recoveryEvents(),queueBefore=await queue()
+  await openRecovery()
+  assert.equal(await app.eval(`document.activeElement.textContent`),'取消')
+  for(const theme of ['dark','light','high-contrast'])for(const language of ['zh','en']){
+    await app.eval(`window.spi.updateAppSettings(${JSON.stringify({theme,language})})`)
+    await waitFor(()=>app.eval(`document.documentElement.dataset.theme===${JSON.stringify(theme)}&&document.documentElement.lang===${JSON.stringify(language==='zh'?'zh-CN':'en')}`),'recovery dialog theme/language')
+    assert.ok(await app.eval(`document.querySelector('.session-recovery-dialog').textContent.includes(${JSON.stringify(language==='zh'?'外部工具可能仍在运行':'External tools may still be running')})`))
+    await capture('recovery-dialog-'+theme+'-'+language)
+  }
+  for(const [width,height] of [[900,640],[640,360]]){
+    await app.send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false})
+    const layout=await app.eval(`(()=>{const d=document.querySelector('.session-recovery-dialog'),b=d.querySelector('button[type="submit"]');b.scrollIntoView({block:'nearest'});const r=d.getBoundingClientRect(),p=b.getBoundingClientRect();return{fits:r.x>=0&&r.y>=0&&r.right<=innerWidth&&r.bottom<=innerHeight,confirmVisible:p.top>=r.top&&p.bottom<=r.bottom}})()`)
+    assert.ok(layout.fits&&layout.confirmVisible,JSON.stringify(layout));await capture('recovery-dialog-'+width+'x'+height)
+  }
+  await app.send('Emulation.clearDeviceMetricsOverride')
+  await app.eval(`window.spi.updateAppSettings({theme:'dark',language:'zh'})`)
+  await waitFor(()=>app.eval(`document.documentElement.lang==='zh-CN'`),'recovery Chinese restored')
+  await click('.session-recovery-dialog button','取消')
+  await waitFor(()=>app.eval(`!document.querySelector('.session-recovery-dialog')`),'recovery Cancel closes confirmation')
+  assert.equal(await recoveryEvents(),recoveriesBefore);assert.deepEqual(await queue(),queueBefore);assert.deepEqual(ownedPi(),[old])
+  await openRecovery()
+  await app.send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27})
+  await app.send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27})
+  await waitFor(()=>app.eval(`!document.querySelector('.session-recovery-dialog')`),'recovery Escape closes confirmation')
+  assert.equal(await recoveryEvents(),recoveriesBefore);assert.deepEqual(ownedPi(),[old])
+  pass('real recovery clicks open an in-window confirmation in six theme/language combinations; Cancel/Escape never restart Pi or mutate the queue')
   await recover()
+  assert.equal(await recoveryEvents(),recoveriesBefore+1)
   assert.equal(await app.eval(`document.querySelector('.session-tab.active').dataset.sessionId`),id)
   assert.equal((await state()).sessionFile,file)
   assert.equal(await app.eval(`document.querySelector('.input-bar textarea').value`),'SPI_UNSENT_DRAFT')
@@ -89,8 +131,20 @@ module.exports=async function({app,waitFor,pass,fill,workspace,artifacts,descend
   const next=ownedPi()[0];process.kill(next,'SIGKILL')
   await waitFor(()=>app.eval(`document.querySelector('.session-health')?.textContent.includes('Pi 进程已退出')`),'unexpected exit retained tab')
   assert.equal(await app.eval(`document.querySelectorAll('.session-tab').length`),1)
-  await recover();assert.equal((await state()).sessionFile,file)
+  await recover(true);assert.equal((await state()).sessionFile,file)
   assert.equal(await app.eval(`document.querySelectorAll('.session-health').length`),0)
+  pass('context-menu recovery uses the same real confirmation and restores an unexpectedly exited session')
+  process.kill(ownedPi()[0],'SIGKILL')
+  await waitFor(()=>app.eval(`document.querySelector('.session-health')?.textContent.includes('Pi 进程已退出')`),'retry fixture exited')
+  const backup=file+'.recovery-fixture';fs.renameSync(file,backup)
+  try{
+    await openRecovery();await click('.session-recovery-dialog button','确定恢复')
+    await waitFor(()=>app.eval(`document.querySelector('.session-recovery-dialog [role="alert"]')?.textContent.includes('会话文件尚未保存或已丢失')`),'visible recovery failure without closing dialog')
+    assert.ok(await app.eval(`!document.querySelector('.session-recovery-dialog button[type="submit"]').disabled`))
+  }finally{fs.renameSync(backup,file)}
+  await click('.session-recovery-dialog button','确定恢复')
+  await waitFor(()=>app.eval(`!document.querySelector('.session-recovery-dialog')&&!document.querySelector('.session-health')`),'recovery retry succeeds after fixture file restored',30000)
+  assert.equal((await state()).sessionFile,file)
   assert.equal(app.errors.length,0,JSON.stringify(app.errors))
-  pass('recovered session sends again; unexpected process death retains tab and can be recovered again')
+  pass('recovery failure stays visible in the dialog, remains retryable and clears only after successful recovery')
 }

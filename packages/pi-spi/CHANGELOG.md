@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.4
+
+- Reconcile recovery/check RPC replies as well as health events, with monotonic owner revisions so missed recovery events cannot strand an exited banner and late replies cannot overwrite newer work or failure. Replay verified owner health on task start/existing state reads without extra probing, polling, model requests or queue resume.
+- Replace native `window.confirm` on session-recovery banner/menu actions with one visible in-window confirmation. Cancel/Escape stay passive; only explicit confirmation restarts Pi. Show recover-in-progress and retryable errors, retain read-only enforcement and existing draft/outbox protections. Exercise the actual confirmation in GUI tests rather than overriding `window.confirm`.
+
+- Explicitly extend the user-approved picomatch build-only advisory exception to 0.3.4 pending an official dependency fix; keep full audit reporting, all other high/critical gates and mandatory artifact absence inventories. No automatic approval for future versions.
+
 ## 0.3.3
 
 - Minimize the pending-message overlay into a lower-left counter above the composer controls; click or use the keyboard to restore editing without discarding unsaved text/images or changing delivery.

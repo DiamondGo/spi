@@ -13,9 +13,9 @@ Source hosting, Git commits/pushes and desktop/npm publication are separate oper
 
 GitHub is the primary desktop update channel; npm remains a maintained first-install path for Pi users. Future stable releases should offer a matching lightweight npm installer after the GitHub artifacts are verified. Keep publication/authentication separate so npm approval cannot block desktop updates, and report npm as pending until its public payload and fresh Pi install are verified.
 
-## 0.3.3 临时构建期审计例外
+## 0.3.3 / 0.3.4 临时构建期审计例外
 
-用户明确授权先发布 0.3.3，仅临时接受 `GHSA-fc5q-39xc-vjpf`（picomatch `<=4.0.7`）这一条高危构建依赖通告及其继承告警，不是关闭所有审计。`node scripts/security-policy.cjs` 仍读取完整 npm audit：其他 high/critical、生产依赖、未知／不完整结果均失败；例外只适用于版本 0.3.3。原始 7 high / 7 moderate 计数照常报告，不能声称零高危或已修复。
+用户明确授权 0.3.3，并在准备 0.3.4 时再次授权沿用这一临时构建期例外，等待官方 picomatch 修复后升级依赖并移除例外。仅临时接受 `GHSA-fc5q-39xc-vjpf`（picomatch `<=4.0.7`）这一条高危构建依赖通告及其继承告警，不是关闭所有审计。`node scripts/security-policy.cjs` 仍读取完整 npm audit：其他 high/critical、生产依赖、未知／不完整结果均失败；代码白名单仅包含已明确批准的 0.3.3、0.3.4，不自动批准后续版本。原始 7 high / 7 moderate 计数照常报告，不能声称零高危或已修复。
 
 各平台归档必须扫描最终 ASAR、独立安装器和可执行脚本，拒绝携带 picomatch 及其相关构建模块，并把带版本／内容哈希的 inventory 绑定到目标描述符；发布合并清单时再验证四份 inventory。生成 npm 安装器时也检查 bundler 输入。升级到后续版本不会自动继承例外；有官方补丁后优先升级并移除例外。详见 `docs/releases/0.3.3.md`。
 
@@ -30,7 +30,7 @@ Older 0.3.1 launchers have the HTTP 415 bug and cannot acquire their own fix thr
 1. Review `.gitignore`, run privacy checks and manually inspect the candidate/staged source. Choose a project license; metadata remains `UNLICENSED` until a license is explicitly selected.
 2. The public defaults in `release.config.json` are `DiamondGo/spi` and `spi-agent-gui`. Verify npm publishing rights for that name; version 0.1.0 is now published under the maintainer's account. Forks can override the defaults using local configuration or environment. Public Release assets are required for this bootstrap; the repository is now public, but draft/private assets are not anonymously installable.
 3. Configure a protected GitHub environment named `release`, review workflow permissions and require approval as appropriate. `SPI_NPM_PACKAGE` controls the maintained lightweight first-install package name. The canonical workflow does not publish npm and needs no npm token/OIDC setup; npm Trusted Publishing would require a separately authorized workflow.
-4. Run the **full** `npm audit`, not only `--omit=dev` (the explicit 0.3.3-only exception above is enforced by `scripts/security-policy.cjs`, not by suppressing audit output). Release preparation upgraded the runtime/build toolchain and cleared high/critical advisories; eight moderate audit entries remain across the minimatch build chain and the Dev Tunnels SDK's uuid dependency; observed SDK calls use v4, while the uuid advisory concerns v3/v5/v6 with a supplied buffer. The publish job still blocks high/critical issues, and runtime Electron must not be dismissed as "dev-only". Future major dependency upgrades require a compatibility pass.
+4. Run the **full** `npm audit`, not only `--omit=dev` (the explicit 0.3.3/0.3.4-only exception above is enforced by `scripts/security-policy.cjs`, not by suppressing audit output). Release preparation upgraded the runtime/build toolchain and cleared high/critical advisories; eight moderate audit entries remain across the minimatch build chain and the Dev Tunnels SDK's uuid dependency; observed SDK calls use v4, while the uuid advisory concerns v3/v5/v6 with a supplied buffer. The publish job still blocks high/critical issues, and runtime Electron must not be dismissed as "dev-only". Future major dependency upgrades require a compatibility pass.
 5. Update root `package.json`/lockfile version. A `v<version>` tag must match it. The generated npm package binds to that exact desktop version.
 
 配置真实仓库/包名、受保护的 release environment 和 npm OIDC。先选择明确的代码授权。公开下载不能依赖发布者的私有 token；版本以根 package.json 为准，npm 包和 Release 一一对应。

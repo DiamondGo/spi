@@ -1,8 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { SessionTarget } from '../../../shared/types'
-import { getStore, openSession, recoverSession, refreshSessionCatalog, setSessionHealthError } from '../store'
+import { checkSession, getStore, openSession, refreshSessionCatalog } from '../store'
 import { usePreferences, useT } from '../preferences'
 import { ContextMenu, menuPosition, type MenuPosition } from './ContextMenu'
+import { SessionRecoveryDialog } from './SessionRecoveryDialog'
+import { useRemoteReadOnly } from '../remote'
 
 export interface SessionActionTarget extends SessionTarget { cwd: string; label: string }
 interface Actions {
@@ -12,7 +14,9 @@ interface Actions {
 const Context = createContext<Actions>({ rename() {}, menu() {} })
 export function useSessionActions(): Actions { return useContext(Context) }
 export function SessionActionsProvider({ children }: { children: ReactNode }) {
-  const t = useT()
+  const t = useT(), readOnly = useRemoteReadOnly()
+  const [recovery, setRecovery] = useState<string | null>(null)
+  const recoveringSession = recovery ? getStore().sessions[recovery] : undefined
   const [menu, setMenu] = useState<{ position: MenuPosition; target: SessionActionTarget } | null>(null)
   const [dialog, setDialog] = useState<{ mode: 'rename' | 'delete'; target: SessionActionTarget; ai?: boolean; key: number } | null>(null)
   const next = useRef(0)
@@ -21,13 +25,8 @@ export function SessionActionsProvider({ children }: { children: ReactNode }) {
   const liveId = menu?.target.sessionId
   const live = liveId ? getStore().sessions[liveId] : undefined
   async function checkConnection(id: string): Promise<void> {
-    setSessionHealthError(id, undefined)
-    try { await window.spi.checkSession(id) }
-    catch (error) { setSessionHealthError(id, String(error)) }
-  }
-  async function recoverConnection(id: string): Promise<void> {
-    if (!window.confirm(t('恢复将终止当前 Pi 进程并重新加载已保存的会话。草稿和待发送消息会保留，队列保持暂停，不会自动重发。外部工具可能仍在运行，请先检查。继续？'))) return
-    try { await recoverSession(id) } catch {}
+    try { await checkSession(id) }
+    catch {}
   }
   return <Context.Provider value={{ rename, menu: (event, target) => { event.preventDefault(); event.stopPropagation(); setMenu({ position: menuPosition(event), target }) } }}>
     {children}
@@ -37,9 +36,10 @@ export function SessionActionsProvider({ children }: { children: ReactNode }) {
       { label: t('删除会话'), danger: true, disabled: !menu.target.path || menu.target.path.startsWith('open:'), action: () => setDialog({ mode: 'delete', target: menu.target, key: ++next.current }) },
       ...(liveId ? [
         { label: t('检查连接'), disabled: live?.health?.status === 'recovering', action: () => { void checkConnection(liveId) } },
-        { label: t('恢复会话'), danger: true, disabled: live?.health?.status === 'recovering' || live?.submitting, action: () => { void recoverConnection(liveId) } }
+        { label: t('恢复会话'), danger: true, disabled: readOnly || live?.health?.status === 'recovering' || live?.submitting, action: () => setRecovery(liveId) }
       ] : [])
     ]} />}
+    {recovery && <SessionRecoveryDialog key={recovery} sessionId={recovery} disabled={!recoveringSession || !!recoveringSession.submitting || recoveringSession.health?.status === 'recovering'} onClose={() => setRecovery(null)} />}
     {dialog && <SessionActionDialog key={dialog.key} mode={dialog.mode} target={dialog.target} autoGenerate={dialog.ai} onClose={() => setDialog(null)} />}
   </Context.Provider>
 }

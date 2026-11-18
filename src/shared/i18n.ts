@@ -8,7 +8,7 @@ const english: Record<string, string> = {
   'AI 命名使用该会话当前模型和对话摘要，产生一次模型请求，不执行工具、不写入聊天；生成后可修改再保存。历史会话会先打开。': 'AI naming uses this session’s current model and a bounded conversation excerpt. It makes one model request without tools or chat entries. Edit the suggestion before saving. Closed sessions will first be opened.',
   '确定删除会话“{name}”？': 'Delete session “{name}”?',
   '会话历史将移入系统回收站；正在运行的 Pi 和终端会关闭，草稿及待发送消息将丢弃。项目文件不会删除。': 'History will be moved to the system trash. Its Pi process and terminal will close; drafts and pending messages will be discarded. Project files are not deleted.',
-  '检查连接': 'Check connection', '检查中…': 'Checking…', '恢复会话': 'Recover session',
+  '检查连接': 'Check connection', '检查中…': 'Checking…', '恢复会话': 'Recover session', '确定恢复': 'Confirm recovery',
   '正在恢复会话…': 'Recovering session…', 'Pi RPC 正常（按需检查）': 'Pi RPC healthy (checked on demand)',
   'Pi 进程已退出，可恢复原会话。': 'Pi has exited. You can recover this session.',
   'Pi RPC 未响应，待发送队列已暂停。请检查或恢复会话。': 'Pi RPC is unresponsive. The outbox is paused. Check or recover the session.',

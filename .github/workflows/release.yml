@@ -107,6 +107,8 @@ jobs:
       - name: Context usage and compaction GUI regression (macOS)
         if: runner.os == 'macOS'
         run: npm run test:context-usage-smoke
+      - name: In-window recovery confirmation, retry and health-state cleanup (all native platforms)
+        run: npm run test:session-recovery-smoke
       - name: Pending outbox minimization, navigation hit-testing and draft retention GUI regression
         run: npm run test:workspace-ui-smoke
       - name: GitHub update notification, install/retry and bilingual GUI regression
@@ -122,6 +124,7 @@ jobs:
           SPI_ASSERT_WORKSPACE_UI: '1'
           SPI_ASSERT_SESSION_ACTIONS: '1'
           SPI_ASSERT_SESSION_HEALTH: '1'
+          SPI_ASSERT_SESSION_RECOVERY: '1'
           SPI_ASSERT_TERMINAL_UI: '1'
           SPI_ASSERT_REMOTE_ACCESS: '1'
           SPI_ASSERT_QUESTION_NAVIGATION: '1'
@@ -132,6 +135,7 @@ jobs:
         if: runner.os == 'macOS'
         env:
           SPI_ASSERT_PENDING_PANEL: '1'
+          SPI_ASSERT_SESSION_RECOVERY: '1'
           SPI_ASSERT_APP_ICON: '1'
           SPI_ASSERT_QUESTION_NAVIGATION: '1'
           SPI_ASSERT_CONTEXT_USAGE: '1'

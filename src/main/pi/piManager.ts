@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto'
 import { existsSync, realpathSync } from 'fs'
 import { resolve } from 'path'
-import type { ImageRef, MessageSubmission, PiEventPayload, PiQueue, PiRecord, PiState, SessionHealth, SessionNameErrorCode } from '../../shared/types'
+import type { ImageRef, MessageSubmission, PiEventPayload, PiQueue, PiRecord, PiState, SessionHealth, SessionRecoveryResult, SessionNameErrorCode } from '../../shared/types'
 import { PiSession } from './piSession'
 import { YoloPolicy } from './yolo'
 import { ExtensionUi } from './extensionUi'
@@ -42,9 +42,10 @@ export class PiManager {
   private extensionUi: ExtensionUi
   private messages: MessageQueue
   private health = new Map<string, SessionHealth>()
+  private healthRevision = 0
   private activity = new Map<string, { at: number; revision: number; progress: number }>()
   private checking = new Map<string, Promise<SessionHealth>>()
-  private recovering = new Map<string, Promise<{ state: PiState; messages: unknown[] }>>()
+  private recovering = new Map<string, Promise<SessionRecoveryResult>>()
   private shuttingDown = false
   private compactions = new Map<string, Promise<void>>()
   private compactOptions = new Map<string, string | undefined>()
@@ -136,7 +137,7 @@ export class PiManager {
       const prior = this.activity.get(id)
       const progress = isSessionProgressEvent(e)
       this.activity.set(id, { at: Date.now(), revision: (prior?.revision ?? 0) + 1, progress: (prior?.progress ?? 0) + (progress ? 1 : 0) })
-      if (progress) this.markResponsive(id, s, true)
+      if (progress) this.markResponsive(id, s, true, e.type === 'agent_start')
       if (e.type === 'extension_ui_request') {
         if (e.method === 'notify' && typeof e.message === 'string' && e.message.startsWith('spi-title-result:' + token + ':')) {
           try {
@@ -215,7 +216,7 @@ export class PiManager {
       if (file) this.sessionFiles.set(id, sessionFileKey(cwd, file))
       started = true
       this.activity.set(id, { at: Date.now(), revision: 0, progress: 0 })
-      if (!reuseId) this.health.set(id, { status: 'healthy', checkedAt: Date.now() })
+      if (!reuseId) this.health.set(id, { status: 'healthy', checkedAt: Date.now(), revision: ++this.healthRevision })
       return { sessionId: id, state }
     } catch (error) {
       retired = true
@@ -238,9 +239,10 @@ export class PiManager {
   }
 
   private publishHealth(id: string, health: SessionHealth, state?: PiState, messages?: unknown[]): SessionHealth {
-    this.health.set(id, health)
-    this.emitEvent({ sessionId: id, event: { type: 'spi_session_health', health, state, messages } })
-    return health
+    const snapshot = { ...health, revision: ++this.healthRevision }
+    this.health.set(id, snapshot)
+    this.emitEvent({ sessionId: id, event: { type: 'spi_session_health', health: snapshot, state, messages } })
+    return snapshot
   }
 
   private rpcWritable(session: PiSession): boolean {
@@ -248,11 +250,12 @@ export class PiManager {
     return !!input && !input.destroyed && !input.writableEnded && input.writable !== false
   }
 
-  private markResponsive(id: string, session: PiSession, progressed = false): SessionHealth | undefined {
+  private markResponsive(id: string, session: PiSession, progressed = false, replayHealthy = false): SessionHealth | undefined {
     if (this.sessions.get(id) !== session || session.hasExited || !this.rpcWritable(session) || this.closing.has(id) || this.recovering.has(id) || this.deleting.has(id) || this.shuttingDown) return
     const health = this.health.get(id)
-    if (health?.status === 'unresponsive' || (health?.status === 'healthy' && health.stalled && progressed)) {
-      // This only clears stale transport warnings. Never replay work, resume the outbox or release Stop/approval holds.
+    if (health?.status === 'unresponsive' || (health?.status === 'healthy' && (replayHealthy || (health.stalled && progressed)))) {
+      // Task starts and already-requested state replies replay the live owner's status
+      // so a missed healthy event cannot strand the renderer. No extra RPC, queue resume or hold release.
       return this.publishHealth(id, { status: 'healthy', checkedAt: Date.now() })
     }
   }
@@ -303,7 +306,7 @@ export class PiManager {
   }
 
   /** Explicit, destructive restart. No prompt or tool is replayed automatically. */
-  recoverSession(id: string): Promise<{ state: PiState; messages: unknown[] }> {
+  recoverSession(id: string): Promise<SessionRecoveryResult> {
     const pending = this.recovering.get(id)
     if (pending) return pending
     const old = this.sessions.get(id)
@@ -323,8 +326,8 @@ export class PiManager {
         const { state } = await this.startSession(old.cwd, file, id)
         this.running.delete(id)
         const messages = await this.getMessages(id)
-        this.publishHealth(id, { status: 'healthy', checkedAt: Date.now() }, state, messages)
-        return { state, messages }
+        const health = this.publishHealth(id, { status: 'healthy', checkedAt: Date.now() }, state, messages)
+        return { state, messages, health }
       } catch (error) {
         // A failed replacement stays tracked and can be terminated on the next attempt.
         if (!this.sessions.has(id)) this.sessions.set(id, old)
@@ -500,7 +503,7 @@ export class PiManager {
     const state = (await s.sendCommand('get_state')) as PiState
     if (this.sessions.get(sessionId) !== s || this.closing.has(sessionId)) throw new Error('session is closing')
     if (state.sessionFile) this.sessionFiles.set(sessionId, sessionFileKey(s.cwd, state.sessionFile))
-    this.markResponsive(sessionId, s)
+    this.markResponsive(sessionId, s, false, true)
     return state
   }
 

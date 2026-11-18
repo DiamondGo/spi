@@ -22,6 +22,8 @@
 
 **Linux 桌面/npm 0.2.0 已发布：** 可选的[端到端加密远程访问](docs/remote-access.md)。在一台电脑上打开窗口操作另一台电脑上的 sPi，两边都在 NAT 或防火墙后面也可以；流量经 Microsoft Dev Tunnels 中继，由 sPi 自己加密。**两台电脑都要安装 GitHub CLI（`gh`）并登录同一个 GitHub 账号**；本地使用不需要 `gh`，也不会连接 GitHub 或 Dev Tunnels。已配对的设备拥有 host 上 sPi 的全部权限，包括终端和 YOLO。已在 Linux 上验证（含真实 Dev Tunnels 服务）；macOS 和 Windows 未验证。另修复了推理模型上的 AI 命名，以及过期的会话健康提示。
 
+**0.3.4 发布准备中：** [窗口内恢复确认框与健康快照排序，修复恢复成功后退出横幅残留](docs/releases/0.3.4.md)。四平台候选与公开发布尚未完成，当前公开版仍为 0.3.3。发布后已有安装可直接在 sPi 内通过 GitHub 更新，不需要 npm；用户已明确批准本次构建期漏洞例外，产物扫描及其他高危门槛保持。
+
 **[桌面版 0.3.3 已公开](https://github.com/DiamondGo/spi/releases/tag/v0.3.3)：** 待发送浮层可缩到聊天区左下角，重新展开保留未保存的文字／图片修改，不遮挡上下箭头和“回到最新”。四平台原生运行包、GUI／重启及依赖 inventory 门槛全部通过。**npm `spi-agent-gui@0.3.3` 已公开，latest 为 0.3.3。** 公开包与审核包一致；固定版本/latest 隔离 Pi 安装及下载后运行时检查均通过。 本版仅接受一条用户批准的构建期审计例外，其他高危门槛保持，详见[发布说明](docs/releases/0.3.3.md)和[验收记录](docs/verification.md)。
 
 **[历史桌面版 0.3.2 的发布记录](https://github.com/DiamondGo/spi/releases/tag/v0.3.2)：** [GitHub 新版本检测、齿轮旁可点击的 `!`、按当前架构下载安装及确认后重启](docs/releases/0.3.2.md)。Linux x64／ARM64 和 macOS Apple Silicon／Intel 共用完整的默认更新清单，不依赖 npm 发布。旧 0.3.1 启动器查询最新版会遇到 HTTP 415，请先用[一次性的 0.3.2 GitHub 安装脚本](docs/releases/0.3.2.md)升级，再使用 GUI 或修复后的 `spi update`。Mac 仍为 ad-hoc 签名、未公证。[更新行为与限制](docs/app-updates.md)。[四平台原生构建、真实跨目录重启、全部附件的匿名校验及 GitHub 独立安装均已通过](docs/verification.md)。

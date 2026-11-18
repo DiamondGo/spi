@@ -190,7 +190,25 @@ function latestURL() {
 }
 // GitHub's "latest" is never a draft/prerelease, but the metadata is still validated rather than trusted.
 async function latestRelease(policy) {
-  const release=await fetchJSON(latestURL(),{accept:ACCEPT.githubJSON,policy})
+  const apiURL=latestURL()
+  let release
+  try{release=await fetchJSON(apiURL,{accept:ACCEPT.githubJSON,policy})}
+  catch(error){
+    // Public GitHub API quotas are shared on hosted runners/networks. The official
+    // latest asset redirect is independent of that quota; never use arbitrary mirrors.
+    if(![403,429].includes(error.status))throw error
+    const assetURL=process.env.SPI_RELEASE_API_URL
+      ?new URL('/latest/download/release-manifest.json',apiURL).href
+      :'https://github.com/'+repository()+'/releases/latest/download/release-manifest.json'
+    const manifest=await fetchJSON(assetURL,{policy})
+    const parsed=parseSemver(manifest?.version)
+    if(!parsed||parsed.pre.length||manifest.schemaVersion!==1||!manifest.targets||typeof manifest.targets!=='object'||Array.isArray(manifest.targets)||!Object.keys(manifest.targets).length)fail('Latest release metadata is invalid')
+    for(const t of Object.keys(manifest.targets)){
+      if(!TARGETS.includes(t))fail('Latest release metadata is invalid')
+      validateDescriptor(manifest,manifest.version,t)
+    }
+    return {version:manifest.version,releaseUrl:'https://github.com/'+repository()+'/releases/tag/v'+manifest.version}
+  }
   const m=release&&typeof release==='object'&&!Array.isArray(release)&&release.draft===false&&release.prerelease===false&&typeof release.tag_name==='string'?/^v((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))$/.exec(release.tag_name):null
   if(!m||!parseSemver(m[1]))fail('Latest release metadata is invalid')
   return {version:m[1],releaseUrl:'https://github.com/'+repository()+'/releases/tag/v'+m[1]}

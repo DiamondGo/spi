@@ -2,6 +2,7 @@
 
 ## 0.3.4
 
+- Fall back from GitHub REST API 403/429 to the same repository's official latest release manifest, retaining strict stable-version, exact-tag descriptor and checksum checks without credentials or mirrors.
 - Reconcile recovery/check RPC replies as well as health events, with monotonic owner revisions so missed recovery events cannot strand an exited banner and late replies cannot overwrite newer work or failure. Replay verified owner health on task start/existing state reads without extra probing, polling, model requests or queue resume.
 - Replace native `window.confirm` on session-recovery banner/menu actions with one visible in-window confirmation. Cancel/Escape stay passive; only explicit confirmation restarts Pi. Show recover-in-progress and retryable errors, retain read-only enforcement and existing draft/outbox protections. Exercise the actual confirmation in GUI tests rather than overriding `window.confirm`.
 

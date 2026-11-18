@@ -91,7 +91,7 @@ async function download(url, file, max, options = {}) {
             if (!location) throw error('Missing download redirect location', true)
             current = trustedURL(new URL(location, current))
           }
-          if (response.status !== 200 && response.status !== 206) throw error('Download failed: HTTP ' + response.status, ![408, 429].includes(response.status) && response.status < 500)
+          if (response.status !== 200 && response.status !== 206) throw Object.assign(error('Download failed: HTTP ' + response.status, ![408, 429].includes(response.status) && response.status < 500), { status: response.status })
           const encoding = response.headers.get('content-encoding')
           if (encoding && encoding !== 'identity') throw error('Encoded download responses cannot be safely resumed', true)
           if (response.status === 206) {

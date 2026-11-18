@@ -331,6 +331,26 @@ const server=http.createServer((req,res)=>{requests.push({url:req.url,accept:req
     assert.deepEqual(JSON.parse(r.stdout),{currentVersion:'0.3.1',version:'9.1.0',available:true,target:platform,supported:true,releaseUrl:url+'9.1.0',file:item.file,size:item.size})
     assert.deepEqual(requests.map(x=>[x.url,x.accept]),[['/api/latest','application/vnd.github+json'],['/v9.1.0/release-manifest.json','application/octet-stream']])
   })
+  await check('API 403/429 uses only the official latest manifest fallback and still validates the pinned target',async()=>{
+    const fallback='/latest/download/release-manifest.json',v='9.1.1',manifest=manifestOf(v,all4(v))
+    routes.set(fallback,Buffer.from(JSON.stringify(manifest)));publish(v,manifest)
+    try{
+      for(const code of [403,429]){
+        setLatest('v9.1.1',{},code);requests.length=0
+        const r=await run(['check-update','--current-version','0.3.3','--json']);assert.equal(r.code,0,r.stderr)
+        assert.equal(JSON.parse(r.stdout).version,v);assert.equal(JSON.parse(r.stdout).file,desc(v,platform).file)
+        assert.equal(requests.filter(x=>x.url===fallback).length,1)
+        assert.ok(requests.some(x=>x.url==='/v'+v+'/release-manifest.json'))
+        assert.ok(requests.filter(x=>x.url!=='/api/latest').every(x=>x.accept==='application/octet-stream'))
+      }
+      setLatest('v9.1.1',{},403)
+      for(const bad of [{...manifest,schemaVersion:2},{...manifest,version:'9.1.1-rc.1'},{...manifest,version:'v9.1.1'},{...manifest,targets:{}},{...manifest,targets:{unexpected:desc(v,platform)}},{...manifest,targets:{[platform]:desc(v,platform,{sha256:'bad'})}}]){
+        routes.set(fallback,Buffer.from(JSON.stringify(bad)));const r=await run(['check-update','--current-version','0.3.3','--json']);assert.notEqual(r.code,0);assert.equal(r.stdout,'')
+      }
+      routes.set(fallback,Buffer.from(JSON.stringify(manifest)));publish(v,manifestOf('9.1.0',all4('9.1.0')))
+      const wrong=await run(['check-update','--current-version','0.3.3','--json']);assert.notEqual(wrong.code,0);assert.match(wrong.stderr,/Invalid release manifest/)
+    }finally{routes.delete(fallback)}
+  })
   await check('only a strictly newer stable release is available: equal, older (downgrade) and pre-release current versions',async()=>{
     publish('9.1.0',manifestOf('9.1.0',all4('9.1.0')));setLatest('v9.1.0')
     for(const [current,available] of [['9.1.0',false],['9.2.0',false],['10.0.0',false],['9.1.0-rc.1',true],['9.0.99',true],['0.3.2',true]]){

@@ -1,6 +1,12 @@
 # macOS downloads / macOS 下载包
 
-## Current GitHub desktop 0.3.3 / 当前公开桌面版
+## Current GitHub desktop 0.3.4 / 当前公开桌面版
+
+[Apple Silicon ZIP](https://github.com/DiamondGo/spi/releases/download/v0.3.4/spi-0.3.4-darwin-arm64.zip) · [Intel ZIP](https://github.com/DiamondGo/spi/releases/download/v0.3.4/spi-0.3.4-darwin-x64.zip) · [Checksums](https://github.com/DiamondGo/spi/releases/download/v0.3.4/SHA256SUMS).
+
+Both native Mac targets and extracted ZIPs passed real in-window recovery confirmation/Cancel/Escape/error/retry and cleared health-banner tests, plus the existing PTY/GUI/Pi RPC, signatures/ASAR/icon, remote/navigation/context/pending panel and updater/real relaunch gates in [native run 44345578474](https://github.com/DiamondGo/spi/actions/runs/44345578474). Exact immutable source: `98093478ac135bdda8c5d659ad9242c6c4628a2f`. [Publication/all 11 anonymous asset hashes](https://github.com/DiamondGo/spi/actions/runs/44348326498) passed; all four bound inventories reject affected build modules/code under the explicitly approved 0.3.4 audit exception. GitHub in-app updates are available; npm 0.3.4 awaits maintainer authentication. Signing remains ad-hoc, **not Developer ID/notarized**; no OS protection bypass is supplied. [Release/channel status](releases/0.3.4.md).
+
+## Previous GitHub desktop 0.3.3 / 历史 0.3.3
 
 [Apple Silicon ZIP](https://github.com/DiamondGo/spi/releases/download/v0.3.3/spi-0.3.3-darwin-arm64.zip) · [Intel ZIP](https://github.com/DiamondGo/spi/releases/download/v0.3.3/spi-0.3.3-darwin-x64.zip) · [Checksums](https://github.com/DiamondGo/spi/releases/download/v0.3.3/SHA256SUMS).
 

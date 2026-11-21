@@ -30,18 +30,19 @@ export function SessionActionsProvider({ children }: { children: ReactNode }) {
     catch {}
   }
   // 多选时右键只给删除：重命名/AI 命名/检查连接/恢复都不适用于多个目标。
+  // 菜单未打开时不构建 items：disabled 表达式会立即求值，menu 为 null 时不能碰 menu.target。
   const multiTargets = menu?.targets && menu.targets.length > 1 ? menu.targets : null
-  const menuItems = multiTargets ? [
+  const menuItems = menu ? (multiTargets ? [
     { label: t('删除 {count} 个会话', { count: multiTargets.length }), danger: true, disabled: multiTargets.some(x => !x.path || x.path.startsWith('open:')), action: () => setDialog({ mode: 'delete', targets: multiTargets, key: ++next.current }) }
   ] : [
-    { label: t('重命名会话'), action: () => rename(menu!.target) },
-    { label: t('AI 生成名称'), action: () => setDialog({ mode: 'rename', targets: [menu!.target], ai: true, key: ++next.current }) },
-    { label: t('删除会话'), danger: true, disabled: !menu!.target.path || menu!.target.path.startsWith('open:'), action: () => setDialog({ mode: 'delete', targets: [menu!.target], key: ++next.current }) },
+    { label: t('重命名会话'), action: () => rename(menu.target) },
+    { label: t('AI 生成名称'), action: () => setDialog({ mode: 'rename', targets: [menu.target], ai: true, key: ++next.current }) },
+    { label: t('删除会话'), danger: true, disabled: !menu.target.path || menu.target.path.startsWith('open:'), action: () => setDialog({ mode: 'delete', targets: [menu.target], key: ++next.current }) },
     ...(liveId ? [
       { label: t('检查连接'), disabled: live?.health?.status === 'recovering', action: () => { void checkConnection(liveId) } },
       { label: t('恢复会话'), danger: true, disabled: readOnly || live?.health?.status === 'recovering' || live?.submitting, action: () => setRecovery(liveId) }
     ] : [])
-  ]
+  ]) : []
   return <Context.Provider value={{ rename, menu: (event, target) => { event.preventDefault(); event.stopPropagation(); setMenu({ position: menuPosition(event), target }) }, menuMulti: (event, targets) => { event.preventDefault(); event.stopPropagation(); setMenu({ position: menuPosition(event), target: targets[0], targets }) } }}>
     {children}
     {menu && <ContextMenu position={menu.position} onClose={closeMenu} items={menuItems} />}

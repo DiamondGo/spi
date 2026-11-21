@@ -63,7 +63,7 @@ const english: Record<string, string> = {
   '(无标题)': '(Untitled)', '置顶会话': 'Pin session', '取消置顶': 'Unpin session', '近期会话': 'Recent sessions',
   '没有近期会话': 'No recent sessions', '展开 {name}': 'Expand {name}', '收起 {name}': 'Collapse {name}',
   '正在加载 {name}': 'Loading {name}', '正在加载主目录': 'Loading home directory', '展开主目录': 'Expand home directory', '收起主目录': 'Collapse home directory',
-  '关闭提示': 'Dismiss', '无法恢复 {cwd}：{error}': 'Cannot restore {cwd}: {error}',
+  '关闭提示': 'Dismiss', '无法打开目录：{path}': 'Cannot open directory: {path}', '点击输入目录跳转': 'Click to type a directory to jump to', '无法恢复 {cwd}：{error}': 'Cannot restore {cwd}: {error}',
   '未找到 pi。请手动指定路径：': 'Pi was not found. Enter its executable path:', '保存': 'Save',
   '从左侧选择一个目录或近期会话，或新建会话。': 'Select a directory or recent session from the sidebar, or create a session.',
   '新会话 · {dir}': 'New session · {dir}', '会话：{name}\n工作目录：{cwd}': 'Session: {name}\nWorking directory: {cwd}',

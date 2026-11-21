@@ -19,6 +19,7 @@ import { HomeDirectory } from './homePath'
 import { sidebarSplit } from './pathFormat'
 import { SidebarSplit } from './components/SidebarSplit'
 import { SessionActionsProvider } from './components/SessionActions'
+import { ContextMenu, menuPosition, type MenuPosition } from './components/ContextMenu'
 
 type ViewMode = 'dir' | 'recent'
 
@@ -35,7 +36,17 @@ export default function App() {
   const [manualPath, setManualPath] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [openError, setOpenError] = useState('')
+  const [copyMenu, setCopyMenu] = useState<{ position: MenuPosition; text: string } | null>(null)
   const [restored, setRestored] = useState(false)
+
+  // 主窗口内鼠标选中文字后右键：弹出仅含“复制”的菜单；终端有自己的菜单，不受影响。
+  function onMainContextMenu(event: React.MouseEvent<HTMLElement>): void {
+    if (event.target instanceof Element && event.target.closest('.terminal-body')) return
+    const selection = document.getSelection()?.toString()
+    if (!selection) return
+    event.preventDefault()
+    setCopyMenu({ position: menuPosition(event), text: selection })
+  }
 
   // 持久化当前布局（视图模式 + 选中目录 + 打开的会话）
   function persist(): void {
@@ -225,7 +236,7 @@ export default function App() {
               />
             </div>
             <div className="sidebar-section session-pane">
-              <SessionList dir={selectedDir} onOpen={openSessionMeta} />
+              <SessionList dir={selectedDir} onOpen={openSessionMeta} onSelectDir={handleSelectDir} />
             </div>
           </SidebarSplit>
         ) : (
@@ -235,7 +246,7 @@ export default function App() {
         )}
       </aside>
       )}
-      <main className="chat">
+      <main className="chat" onContextMenu={onMainContextMenu}>
         {piPath === null ? (
           <div className="pi-missing">
             <div>{t('未找到 pi。请手动指定路径：')}</div>
@@ -277,6 +288,7 @@ export default function App() {
           </>
         )}
       </main>
+      {copyMenu && <ContextMenu position={copyMenu.position} onClose={() => setCopyMenu(null)} items={[{ label: t('复制'), action: () => { navigator.clipboard.writeText(copyMenu.text).catch(() => {}) } }]} />}
       </div>
     </div></SessionActionsProvider></HomeDirectory.Provider>
   )

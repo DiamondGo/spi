@@ -23,6 +23,10 @@ The failure was reproduced against the locally selected reasoning-model configur
 
 Directory/recent session rows and open tabs support a right-click menu with Rename, Suggest name with AI and Delete. Double-click a row's title or a tab's label to edit its name directly. Names appear consistently in the session list, tab and existing title bar.
 
+**The directory session list's path title is editable.** Click it to turn it into an input pre-filled with the current absolute path, type a directory and press Enter to jump there (`~` and `~/…` are expanded against the home directory). If the directory does not exist or is not a directory, an error notice is shown and the list stays on the current directory; Escape or blur cancels without jumping.
+
+**Right-clicking selected text in the main window** (chat area) opens a menu with a single **Copy** item that copies the exact selection to the clipboard; without a selection the native behavior is unchanged. The terminal keeps its own right-click menu (Copy/Paste/Select all/…).
+
 **Ctrl/Cmd+click multi-selects rows** in both the directory session list and the recent list (a plain click clears the selection and opens the session as before). With more than one row selected, the right-click menu offers only **Delete N sessions** — rename, AI naming, connection check and recovery do not apply to multiple targets. The confirmation dialog lists the selected sessions (first five, then a total) and deletes them one by one: a single failure does not stop the rest, and failures are reported in the dialog while the successful deletions stay applied.
 
 - Manual names are limited to 1–120 characters on one line. Live sessions use native Pi `set_session_name`; closed sessions append a standard `session_info` entry without launching an agent. History scanning uses the latest name, including repeated renames and metadata after large tool outputs. Pi may defer persistence of metadata for an empty session until its first conversation message.

@@ -327,6 +327,23 @@ body,
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: text;
+  border-radius: 4px;
+  min-width: 0;
+}
+.session-list-title:hover { color: #ddd; background: #2a2a2a; }
+
+.session-list-path-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  font-family: var(--mono, monospace);
+  color: #ddd;
+  background: #111;
+  border: 1px solid var(--accent, #3b82f6);
+  border-radius: 4px;
+  padding: 2px 6px;
+  outline: none;
 }
 
 .btn-new {

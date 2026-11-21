@@ -22,6 +22,8 @@
 
 **Linux 桌面/npm 0.2.0 已发布：** 可选的[端到端加密远程访问](docs/remote-access.md)。在一台电脑上打开窗口操作另一台电脑上的 sPi，两边都在 NAT 或防火墙后面也可以；流量经 Microsoft Dev Tunnels 中继，由 sPi 自己加密。**两台电脑都要安装 GitHub CLI（`gh`）并登录同一个 GitHub 账号**；本地使用不需要 `gh`，也不会连接 GitHub 或 Dev Tunnels。已配对的设备拥有 host 上 sPi 的全部权限，包括终端和 YOLO。已在 Linux 上验证（含真实 Dev Tunnels 服务）；macOS 和 Windows 未验证。另修复了推理模型上的 AI 命名，以及过期的会话健康提示。
 
+**0.3.5 发布准备中：** [插队（steer）直接注入 Pi 原生 steering 队列、`/` 命令补全保留前导斜杠、上游撤回 picomatch 通告后移除构建期审计例外](docs/releases/0.3.5.md)。四平台候选与公开发布尚未完成，当前公开版仍为 0.3.4。发布后已有安装可直接在 sPi 内通过 GitHub 更新，不需要 npm；任何高危／严重审计发现现在对所有版本都阻断，构建期模块缺失清单门槛保持。
+
 **[桌面版 0.3.4 已公开](https://github.com/DiamondGo/spi/releases/tag/v0.3.4)：** [窗口内恢复确认、健康快照排序修复退出横幅残留，以及 GitHub API 403/429 的官方 latest 清单后备路径](docs/releases/0.3.4.md)。四平台原生／安装包恢复和更新／重启验收均通过。已有 0.3.3 可直接在 sPi 内通过 GitHub 更新，不需要 npm。**npm `spi-agent-gui@0.3.4` 已公开，latest 为 0.3.4。** 公开包与审核包一致，固定版本/latest 隔离 Pi 安装及下载后运行时检查通过。 用户已明确批准本次构建期漏洞例外，产物扫描及其他高危门槛保持。
 
 **[桌面版 0.3.3 已公开](https://github.com/DiamondGo/spi/releases/tag/v0.3.3)：** 待发送浮层可缩到聊天区左下角，重新展开保留未保存的文字／图片修改，不遮挡上下箭头和“回到最新”。四平台原生运行包、GUI／重启及依赖 inventory 门槛全部通过。**此前 npm `spi-agent-gui@0.3.3` 发布已验收。** 公开包与审核包一致；固定版本/latest 隔离 Pi 安装及下载后运行时检查均通过。 本版仅接受一条用户批准的构建期审计例外，其他高危门槛保持，详见[发布说明](docs/releases/0.3.3.md)和[验收记录](docs/verification.md)。

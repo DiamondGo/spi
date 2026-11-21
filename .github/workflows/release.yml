@@ -194,7 +194,7 @@ jobs:
       - run: npm ci --ignore-scripts
       - name: Require this workflow and all four successful native jobs for the immutable tag
         run: node scripts/release-provenance.cjs "$RUNNER_TEMP/source-run.json" "$RUNNER_TEMP/source-workflow.json" "$RUNNER_TEMP/source-jobs.json" '${{ steps.provenance.outputs.sha }}'
-      - name: Block unapproved high/critical advisories (0.3.3 scoped build-only exception)
+      - name: Block unapproved high/critical advisories (no exceptions; withdrawn picomatch advisory retired)
         run: node scripts/security-policy.cjs
       - uses: actions/download-artifact@v4
         with:

@@ -12,7 +12,7 @@ function fixture(targets=RELEASE_TARGETS){
     const mac=target.startsWith('darwin'),file='spi-'+version+'-'+target+(target.startsWith('linux')?'.tar.gz':'.zip'),bytes=Buffer.from('archive-'+target)
     fs.writeFileSync(path.join(dir,file),bytes)
     const entry=mac?'app/sPi.app/Contents/MacOS/sPi':'app/spi'
-    fs.writeFileSync(path.join(dir,target+'.json'),JSON.stringify({version,target,file,size:bytes.length,sha256:sha256(bytes),installerSha256:sha256('fixture spi-installer.cjs'),securityInventory:{schemaVersion:1,version,policy:require('./security-policy.cjs').VERSIONS.has(version)?require('./security-policy.cjs').ADVISORY:'no-build-dependencies',scriptsScanned:1,forbiddenModulesAbsent:true,asarSha256:'f'.repeat(64),installerSha256:sha256('fixture spi-installer.cjs')},entry,permissionExtension:mac?'app/sPi.app/Contents/Resources/spi-permission-extension.mjs':'app/resources/spi-permission-extension.mjs'}))
+    fs.writeFileSync(path.join(dir,target+'.json'),JSON.stringify({version,target,file,size:bytes.length,sha256:sha256(bytes),installerSha256:sha256('fixture spi-installer.cjs'),securityInventory:{schemaVersion:1,version,policy:'no-build-dependencies',scriptsScanned:1,forbiddenModulesAbsent:true,asarSha256:'f'.repeat(64),installerSha256:sha256('fixture spi-installer.cjs')},entry,permissionExtension:mac?'app/sPi.app/Contents/Resources/spi-permission-extension.mjs':'app/resources/spi-permission-extension.mjs'}))
     if(mac)fs.writeFileSync(path.join(dir,'macos-build-'+target+'.txt'),JSON.stringify({target,version,minimumOS:'13.0',signature:'ad-hoc',notarized:false,sourceCommit:sha}))
   }
   for(const name of ['spi-installer.cjs','install.sh','INSTALLER-NOTICES.txt'])fs.writeFileSync(path.join(dir,name),'fixture '+name)

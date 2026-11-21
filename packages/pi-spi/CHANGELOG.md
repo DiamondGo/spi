@@ -1,9 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.3.5
 
 - Fix slash-command completion dropping the leading '/': selecting a command from the '/' popup now keeps the slash-prefixed invocation in the draft, so sending it executes the Pi command instead of submitting it as plain text. File '@' completion keeps inserting the bare path.
 - Steer now cuts in line: while a run is live it injects the message into Pi's native steering queue (delivered after the current turn's tool calls, before the next model call), and when idle it starts a run immediately — instead of waiting in the outbox for the session to become idle. Normal/follow-up sends keep the editable outbox. While an outbox handoff is in flight or outbox work is held, a steer keeps the outbox order at the front instead of racing the in-flight handoff. Stopping the run returns undelivered steering text to the draft.
+- Retire the 0.3.3/0.3.4 picomatch build-only audit exception: upstream withdrew GHSA-fc5q-39xc-vjpf (2026-11-19) and the full audit now reports 0 high / 0 critical (8 moderate). Any high/critical finding blocks again for every version; the build-only module absence inventories for installer inputs and final ASAR/unpacked/helper artifacts remain mandatory under the no-build-dependencies policy.
 
 ## 0.3.4
 

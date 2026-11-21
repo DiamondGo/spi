@@ -1,7 +1,7 @@
-// Explicit user-approved BUILD-ONLY exception for 0.3.3/0.3.4, not a global audit downgrade.
-// Remove after adopting an official picomatch fix; no automatic future-version approval.
+// No audit exceptions: the picomatch advisory GHSA-fc5q-39xc-vjpf was withdrawn upstream
+// (2026-11-19), so the user-approved 0.3.3/0.3.4 build-only exception is retired for 0.3.5.
+// Any high/critical finding blocks; build-only modules still must not ship in runtime artifacts.
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),{spawnSync}=require('node:child_process')
-const VERSIONS=new Set(['0.3.3','0.3.4']),ADVISORY='https://github.com/advisories/GHSA-fc5q-39xc-vjpf'
 const FORBIDDEN=['picomatch','fdir','tinyglobby','node-gyp','@electron/rebuild']
 const digest=bytes=>crypto.createHash('sha256').update(bytes).digest('hex')
 function evaluateAudit(audit,lock,version){
@@ -9,29 +9,10 @@ function evaluateAudit(audit,lock,version){
   const counts=audit.metadata.vulnerabilities
   if(!Number.isSafeInteger(counts.high)||counts.high<0||!Number.isSafeInteger(counts.critical)||counts.critical<0)throw Error('Invalid audit severity counts')
   if(counts.critical>0)throw Error('Unapproved critical audit findings')
-  const vulnerabilities=audit.vulnerabilities,exceptions=new Set(),blocked=new Set()
+  const vulnerabilities=audit.vulnerabilities
   if(Object.values(vulnerabilities).filter(v=>v.severity==='high').length!==counts.high)throw Error('Audit severity counts do not match findings')
-  for(const [name,item] of Object.entries(vulnerabilities)){
-    const leaves=[]
-    function visit(key,seen=new Set()){
-      if(seen.has(key))return
-      const entry=vulnerabilities[key]
-      if(!entry||!Array.isArray(entry.via))throw Error('Incomplete advisory dependency graph')
-      const next=new Set(seen);next.add(key)
-      for(const via of entry.via){if(typeof via==='string')visit(via,next);else if(via&&['high','critical'].includes(via.severity))leaves.push(via)}
-    }
-    visit(name)
-    if(!['high','critical'].includes(item.severity)&&!leaves.length)continue
-    if(!leaves.length){blocked.add(name+': high severity without a resolved advisory');continue}
-    const devOnly=Array.isArray(item.nodes)&&item.nodes.length>0&&item.nodes.every(node=>lock?.packages?.[node]?.dev===true)
-    for(const leaf of leaves){
-      if(VERSIONS.has(version)&&devOnly&&item.severity!=='critical'&&leaf.severity==='high'&&leaf.name==='picomatch'&&leaf.dependency==='picomatch'&&leaf.url===ADVISORY&&leaf.range==='<=4.0.7')exceptions.add(ADVISORY)
-      else blocked.add(name+': '+(leaf.url||leaf.title||'unknown advisory'))
-    }
-  }
-  if((counts.high||counts.critical)&&!exceptions.size&&!blocked.size)throw Error('Audit severity counts have no advisory details')
-  if(blocked.size)throw Error('Unapproved high/critical audit findings: '+[...blocked].join('; '))
-  return{version,exceptionUsed:exceptions.size>0,acceptedAdvisories:[...exceptions],reportedCounts:counts}
+  if(counts.high>0)throw Error('Unapproved high audit findings: '+Object.keys(vulnerabilities).filter(name=>vulnerabilities[name].severity==='high').join('; '))
+  return{version,exceptionUsed:false,acceptedAdvisories:[],reportedCounts:counts}
 }
 function checkInputs(inputs){
   for(const file of Object.keys(inputs)){
@@ -69,10 +50,10 @@ function scanRuntime(resources,version){
   if(manifest.version!==version)throw Error('Runtime inventory version mismatch')
   if(manifest.devDependencies)throw Error('Runtime retained development dependency declarations')
   if(!scriptsScanned)throw Error('No executable runtime scripts inspected')
-  return{schemaVersion:1,version,policy:VERSIONS.has(version)?ADVISORY:'no-build-dependencies',scriptsScanned,forbiddenModulesAbsent:true,asarSha256:digest(fs.readFileSync(archive)),installerSha256:digest(helper)}
+  return{schemaVersion:1,version,policy:'no-build-dependencies',scriptsScanned,forbiddenModulesAbsent:true,asarSha256:digest(fs.readFileSync(archive)),installerSha256:digest(helper)}
 }
 function validateInventory(inventory,version,installerHash){
-  if(!inventory||inventory.schemaVersion!==1||inventory.version!==version||inventory.policy!==(VERSIONS.has(version)?ADVISORY:'no-build-dependencies')||inventory.forbiddenModulesAbsent!==true||!Number.isSafeInteger(inventory.scriptsScanned)||inventory.scriptsScanned<=0||!/^[a-f0-9]{64}$/.test(inventory.asarSha256||'')||inventory.installerSha256!==installerHash)throw Error('Missing or invalid build-only dependency inventory')
+  if(!inventory||inventory.schemaVersion!==1||inventory.version!==version||inventory.policy!=='no-build-dependencies'||inventory.forbiddenModulesAbsent!==true||!Number.isSafeInteger(inventory.scriptsScanned)||inventory.scriptsScanned<=0||!/^[a-f0-9]{64}$/.test(inventory.asarSha256||'')||inventory.installerSha256!==installerHash)throw Error('Missing or invalid build-only dependency inventory')
 }
 async function main(){
   const root=path.resolve(__dirname,'..'),lock=JSON.parse(fs.readFileSync(path.join(root,'package-lock.json'))),pkg=require('../package.json')
@@ -81,7 +62,7 @@ async function main(){
   let audit;try{audit=JSON.parse(result.stdout)}catch{throw Error('npm audit returned invalid JSON')}
   const report=evaluateAudit(audit,lock,pkg.version)
   console.log(JSON.stringify(report,null,2))
-  console.log(report.exceptionUsed?`PASS with explicit ${pkg.version} picomatch BUILD exception; runtime inventories remain mandatory`:'PASS: no high/critical audit exception required')
+  console.log('PASS: no high/critical audit findings')
 }
-module.exports={VERSIONS,ADVISORY,FORBIDDEN,evaluateAudit,checkInputs,scanRuntime,validateInventory}
+module.exports={FORBIDDEN,evaluateAudit,checkInputs,scanRuntime,validateInventory}
 if(require.main===module)main().catch(error=>{console.error(error.message);process.exitCode=1})

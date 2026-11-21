@@ -1,10 +1,11 @@
 # Distribution verification / 分发验收
 
-## 0.3.5: GitHub public; npm pending
+## 0.3.5: GitHub and npm public; pinned installation verified
 
 - [GitHub v0.3.5](https://github.com/DiamondGo/spi/releases/tag/v0.3.5) is stable/non-draft from immutable `8870c51`. [Native release run](https://github.com/DiamondGo/spi/actions/runs/44869058948) and [source Checks](https://github.com/DiamondGo/spi/actions/runs/44869044953) passed. All 11 public assets were anonymously downloaded and verified: the 10 hashed assets match `SHA256SUMS` exactly, and the four-target manifest binds version 0.3.5 with `no-build-dependencies` security inventories (forbidden build modules absent, ASAR/installer content hashes bound) on every target.
 - The 0.3.3/0.3.4 picomatch build-only audit exception is retired for 0.3.5: upstream withdrew [GHSA-fc5q-39xc-vjpf](https://github.com/advisories/GHSA-fc5q-39xc-vjpf) on 2026-11-19 and the full `npm audit` reports **0 high / 0 critical, 8 moderate**. `scripts/security-policy.cjs` now blocks any high/critical finding for every version (no allowlist); ten policy checks plus the installer-input and final ASAR/unpacked/helper absence inventories remain enforced. 0.3.4 and earlier assets remain immutable.
-- npm `spi-agent-gui@0.3.5` is **pending**: the matching lightweight package is published separately after this GitHub acceptance, then verified for public version/latest, reviewed tarball identity and a fresh isolated `pi install`.
+- **npm `spi-agent-gui@0.3.5` is public, and latest is 0.3.5.** The anonymously downloaded seven-file tarball is byte-identical to the reviewed 70,984-byte package: SHA-256 `68e27d481e9f30aa45af8bc3b7d94b610b36ccf90cb778066f0e28018a3df313`, SHA-1 `8b2e2b4ed2aa3a9e99e8940c237624be52cb71c2` matching the registry shasum, with the registry SHA-512 integrity matching the reviewed pack output. Contents are exactly bin/dist/extensions/README/CHANGELOG/NOTICES/package.json; no desktop binaries. The installer matches the public standalone helper (SHA-256 `941071107e50093bf38d70af66ae67cae13276400baa36eae38c6a13d83b3b0c`, equal to every target's `installerSha256` in the GitHub manifest).
+- A pinned public Pi install passed in an isolated Linux x64 local profile with private HOME/XDG/agent/bin/runtime and an empty npm auth config, using the existing Pi executable: `pi install npm:spi-agent-gui@0.3.5` selected CLI/runtime 0.3.5, placed the owned `spi` shim, and `spi --version` from the install reported 0.3.5 with `current.json` bound to `releases/0.3.5/linux-x64`. This is a local profile test, not a claim that the user's current window was upgraded; the agent did not restart or change that window.
 
 ## 0.3.4: GitHub and npm public; pinned/latest installation verified
 

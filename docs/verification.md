@@ -1,5 +1,11 @@
 # Distribution verification / 分发验收
 
+## 0.3.5: GitHub public; npm pending
+
+- [GitHub v0.3.5](https://github.com/DiamondGo/spi/releases/tag/v0.3.5) is stable/non-draft from immutable `8870c51`. [Native release run](https://github.com/DiamondGo/spi/actions/runs/44869058948) and [source Checks](https://github.com/DiamondGo/spi/actions/runs/44869044953) passed. All 11 public assets were anonymously downloaded and verified: the 10 hashed assets match `SHA256SUMS` exactly, and the four-target manifest binds version 0.3.5 with `no-build-dependencies` security inventories (forbidden build modules absent, ASAR/installer content hashes bound) on every target.
+- The 0.3.3/0.3.4 picomatch build-only audit exception is retired for 0.3.5: upstream withdrew [GHSA-fc5q-39xc-vjpf](https://github.com/advisories/GHSA-fc5q-39xc-vjpf) on 2026-11-19 and the full `npm audit` reports **0 high / 0 critical, 8 moderate**. `scripts/security-policy.cjs` now blocks any high/critical finding for every version (no allowlist); ten policy checks plus the installer-input and final ASAR/unpacked/helper absence inventories remain enforced. 0.3.4 and earlier assets remain immutable.
+- npm `spi-agent-gui@0.3.5` is **pending**: the matching lightweight package is published separately after this GitHub acceptance, then verified for public version/latest, reviewed tarball identity and a fresh isolated `pi install`.
+
 ## 0.3.4: GitHub and npm public; pinned/latest installation verified
 
 - [GitHub v0.3.4](https://github.com/DiamondGo/spi/releases/tag/v0.3.4) is stable/non-draft from immutable `98093478ac135bdda8c5d659ad9242c6c4628a2f`. [Four native targets](https://github.com/DiamondGo/spi/actions/runs/44345578474), [Checks](https://github.com/DiamondGo/spi/actions/runs/44345580139) and [publication/all 11 anonymous asset hashes](https://github.com/DiamondGo/spi/actions/runs/44348326498) passed. Publication checked workflow/repository/source identity and all four successful native jobs before reusing their artifacts. Redundant tag-triggered native run `44348221591` was cancelled, not used as a gate. 0.3.3 remains immutable.

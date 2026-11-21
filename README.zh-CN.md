@@ -22,6 +22,8 @@
 
 **Linux 桌面/npm 0.2.0 已发布：** 可选的[端到端加密远程访问](docs/remote-access.md)。在一台电脑上打开窗口操作另一台电脑上的 sPi，两边都在 NAT 或防火墙后面也可以；流量经 Microsoft Dev Tunnels 中继，由 sPi 自己加密。**两台电脑都要安装 GitHub CLI（`gh`）并登录同一个 GitHub 账号**；本地使用不需要 `gh`，也不会连接 GitHub 或 Dev Tunnels。已配对的设备拥有 host 上 sPi 的全部权限，包括终端和 YOLO。已在 Linux 上验证（含真实 Dev Tunnels 服务）；macOS 和 Windows 未验证。另修复了推理模型上的 AI 命名，以及过期的会话健康提示。
 
+**0.3.7 发布准备中：** [目录路径标题可直接编辑跳转，主窗口选中文字右键复制](docs/releases/0.3.7.md)。四平台候选与公开发布尚未完成，当前公开版仍为 0.3.6。发布后已有安装可直接在 sPi 内通过 GitHub 更新，不需要 npm。
+
 **[桌面版 0.3.6 已公开](https://github.com/DiamondGo/spi/releases/tag/v0.3.6)：** [目录树重新展开时刷新该层内容，Ctrl/Cmd+click 多选会话一次性删除](docs/releases/0.3.6.md)。全部 11 个公开附件已匿名对 `SHA256SUMS` 校验通过。已有 0.3.5 可直接在 sPi 内通过 GitHub 更新，不需要 npm。**npm `spi-agent-gui@0.3.6` 已公开，latest 为 0.3.6。** 公开包与审核包字节一致，固定版本隔离 Pi 安装通过。
 
 **[桌面版 0.3.5 已公开](https://github.com/DiamondGo/spi/releases/tag/v0.3.5)：** [插队（steer）直接注入 Pi 原生 steering 队列、`/` 命令补全保留前导斜杠、上游撤回 picomatch 通告后移除构建期审计例外](docs/releases/0.3.5.md)。全部 11 个公开附件已匿名对 `SHA256SUMS` 校验通过；任何高危／严重审计发现现在对所有版本都阻断。已有 0.3.4 可直接在 sPi 内通过 GitHub 更新，不需要 npm。**npm `spi-agent-gui@0.3.5` 已公开，latest 为 0.3.5。** 公开包与审核包字节一致，固定版本隔离 Pi 安装通过。

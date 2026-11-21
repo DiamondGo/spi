@@ -241,6 +241,22 @@ export function submitDraft(id: string, imageLabel: string): Promise<void> {
   const session = store.sessions[id]
   if (!session || (!session.draft.trim() && !session.pendingImages.length)) return Promise.resolve()
   if (session.health && session.health.status !== 'healthy') return Promise.reject(new Error('Session unavailable; check or recover it first'))
+  // /compact [instructions] 是 Pi 内建命令：RPC 模式下 prompt 不会解析它（会退化为纯文本发给模型），
+  // 所以直接走 compact RPC——与 Pi TUI 的 /compact 行为一致，绝不当作模型提示。
+  const compact = /^\/compact(?:\s+([\s\S]*))?$/.exec(session.draft.trim())
+  if (compact) {
+    if (session.pendingImages.length) return Promise.reject(new Error('Cannot attach images to /compact'))
+    const instructions = compact[1]?.trim() || undefined
+    const draftRevision = session.draftRevision
+    patchSession(id, s => ({ ...s, submitting: true, error: undefined, errorKind: undefined }))
+    const request = window.spi.compactSession(id, instructions).then(() => {
+      patchSession(id, s => ({ ...s, draft: s.draftRevision === draftRevision ? '' : s.draft, draftRevision: s.draftRevision + 1 }))
+    }).catch(error => { setSessionError(id, String(error)); throw error }).finally(() => {
+      submissions.delete(id); patchSession(id, s => ({ ...s, submitting: false }))
+    })
+    submissions.set(id, request)
+    return request
+  }
   const draftRevision = session.draftRevision
   const text = session.draft, images = session.pendingImages, priority = session.sendMode === 'steer'
   const previous = nonces.get(id)

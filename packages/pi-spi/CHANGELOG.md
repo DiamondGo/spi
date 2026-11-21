@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fix slash-command completion dropping the leading '/': selecting a command from the '/' popup now keeps the slash-prefixed invocation in the draft, so sending it executes the Pi command instead of submitting it as plain text. File '@' completion keeps inserting the bare path.
 - Steer now cuts in line: while a run is live it injects the message into Pi's native steering queue (delivered after the current turn's tool calls, before the next model call), and when idle it starts a run immediately — instead of waiting in the outbox for the session to become idle. Normal/follow-up sends keep the editable outbox. While an outbox handoff is in flight or outbox work is held, a steer keeps the outbox order at the front instead of racing the in-flight handoff. Stopping the run returns undelivered steering text to the draft.
 
 ## 0.3.4

@@ -81,12 +81,16 @@ export function InputBar({ session }: Props) {
     if (!trig) return
     const match = completion.matches[completion.selected]
     if (!match) return
-    const newValue = value.slice(0, trig.start) + match + ' ' + value.slice(pos)
+    // Command names arrive without the leading '/' (Pi invocationName); keep the '/' or the
+    // sent text degrades to plain text instead of a Pi command. File completion keeps
+    // inserting the bare path (no '@'), as asserted by the GUI smoke.
+    const insert = (trig.type === 'command' ? '/' : '') + match
+    const newValue = value.slice(0, trig.start) + insert + ' ' + value.slice(pos)
     setDraft(session.id, newValue)
     setCompletion(null)
     // 恢复光标
     requestAnimationFrame(() => {
-      const p = trig.start + match.length + 1
+      const p = trig.start + insert.length + 1
       ta.focus()
       ta.setSelectionRange(p, p)
     })

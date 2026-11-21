@@ -12,7 +12,7 @@ interface Dependencies {
   failed?(id: string): void
 }
 const MAX_BYTES = 32 * 1024 * 1024
-function content(text: unknown, images: unknown): { text: string; images: ImageRef[] } {
+export function validateMessageContent(text: unknown, images: unknown): { text: string; images: ImageRef[] } {
   if (typeof text !== 'string' || text.length > 1024 * 1024 || !Array.isArray(images) || images.length > 20) throw new Error('无效的待发送消息')
   let bytes = Buffer.byteLength(text)
   const checked = images.map(image => {
@@ -56,7 +56,7 @@ export class MessageQueue {
   submit(id: string, submission: MessageSubmission): { id: string } {
     const s = this.session(id)
     if (!submission || typeof submission.clientId !== 'string' || !/^[a-z0-9_-]{1,160}$/i.test(submission.clientId) || (submission.priority !== undefined && typeof submission.priority !== 'boolean')) throw new Error('无效的消息标识')
-    const value = content(submission.text, submission.images ?? [])
+    const value = validateMessageContent(submission.text, submission.images ?? [])
     const hash = createHash('sha256').update(JSON.stringify([value, !!submission.priority])).digest('hex')
     const prior = s.receipts.get(submission.clientId)
     if (prior) { if (prior.hash !== hash) throw new Error('消息标识已用于其他内容'); return { id: prior.id } }
@@ -81,7 +81,7 @@ export class MessageQueue {
   }
   edit(id: string, messageId: string, revision: number): void { const [, item] = this.mutable(id, messageId, revision); item.status = 'editing'; item.revision++; this.emit(id) }
   update(id: string, messageId: string, revision: number, text: string, images: ImageRef[]): void {
-    const [s, item] = this.mutable(id, messageId, revision), value = content(text, images)
+    const [s, item] = this.mutable(id, messageId, revision), value = validateMessageContent(text, images)
     if (this.size(s.items.filter(x => x !== item)) + this.size([value]) > MAX_BYTES) throw new Error('待发送队列已满')
     Object.assign(item, value, { status: 'pending', error: undefined, revision: item.revision + 1 })
     this.emit(id); void this.drain(id, s)

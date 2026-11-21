@@ -188,7 +188,7 @@ export function InputBar({ session }: Props) {
       )}
       <div className="input-bar">
         <div className="input-options" aria-label={t('当前会话设置')}>
-        <IconSelect label={t('发送方式')} detail={t({ normal: '空闲发送，忙时追加缓冲区', steer: 'Steer：插入未执行缓冲区最前面', followUp: 'Follow up：追加缓冲区末尾，可修改或取消' }[mode])} icon={mode === 'normal' ? 'send' : mode === 'steer' ? 'steer' : 'queue'} value={mode} onChange={(e) => setSendMode(session.id, e.target.value as SendMode)}>
+        <IconSelect label={t('发送方式')} detail={t({ normal: '空闲发送，忙时追加缓冲区', steer: 'Steer：立即注入正在执行的任务；空闲时立即发送', followUp: 'Follow up：追加缓冲区末尾，可修改或取消' }[mode])} icon={mode === 'normal' ? 'send' : mode === 'steer' ? 'steer' : 'queue'} value={mode} onChange={(e) => setSendMode(session.id, e.target.value as SendMode)}>
           <option value="normal">{t('普通发送')}</option>
           <option value="steer">{t('插队（steer）')}</option>
           <option value="followUp">{t('排队（follow up）')}</option>

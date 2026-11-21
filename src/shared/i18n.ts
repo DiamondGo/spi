@@ -77,7 +77,7 @@ const english: Record<string, string> = {
   '{count} 张图片': '{count} images', '待执行消息': 'Pending messages', '已暂停': 'Paused', '继续队列': 'Resume queue',
   '交付未确认，请先检查对话；修改或移除记录不会撤回已交付的内容。': 'Delivery is unconfirmed. Check the conversation first; editing or removing this record cannot retract content already delivered.',
   '空闲发送，忙时追加缓冲区': 'Send when idle; append to the buffer when busy',
-  'Steer：插入未执行缓冲区最前面': 'Steer: insert at the front of the unexecuted buffer',
+  'Steer：立即注入正在执行的任务；空闲时立即发送': 'Steer: inject into the running task now; send immediately when idle',
   'Follow up：追加缓冲区末尾，可修改或取消': 'Follow up: append to the buffer; editable and cancellable',
   '插队（steer）': 'Steer (front of queue)', '排队（follow up）': 'Follow up (end of queue)',
   '空闲发送，忙时排队': 'Send when idle; queue while busy', '优先排队（不打断当前任务）': 'Priority queue (does not interrupt the current task)',

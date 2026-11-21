@@ -25,6 +25,10 @@ export interface PiState {
   sessionName?: string
   messageCount?: number
   pendingMessageCount?: number
+  /** Pi's native in-flight steering queue (messages injected into the live run). */
+  steering?: string[]
+  /** Pi's native follow-up queue. sPi keeps its own editable outbox separately. */
+  followUp?: string[]
 }
 
 export interface SessionHealth {

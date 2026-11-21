@@ -5,7 +5,7 @@ import type { ImageRef, MessageSubmission, PiEventPayload, PiQueue, PiRecord, Pi
 import { PiSession } from './piSession'
 import { YoloPolicy } from './yolo'
 import { ExtensionUi } from './extensionUi'
-import { MessageQueue } from './messageQueue'
+import { MessageQueue, validateMessageContent } from './messageQueue'
 import { isSessionProgressEvent } from '../../shared/sessionHealth'
 import { contextUsageFromStats, compactionInstructions, compactionFailure, type ContextUsage } from '../../shared/contextUsage'
 
@@ -52,6 +52,8 @@ export class PiManager {
   private contextRequests = new Map<string, Promise<ContextUsage | null>>()
   private running = new Set<string>()
   private deleting = new Set<string>()
+  /** Last authoritative native queue per session, from Pi `queue_update` events. */
+  private queues = new Map<string, PiQueue>()
   private naming = new Map<string, Promise<string>>()
   private titleResults = new Map<string, { session: PiSession; resolve: (name: string) => void; reject: (error: Error) => void }>()
 
@@ -176,6 +178,7 @@ export class PiManager {
       }
       if (e.type === 'agent_start') { this.running.add(id); this.yolo.begin(id); this.messages.activity(id, true) }
       if (e.type === 'agent_settled') { this.running.delete(id); this.extensionUi.cancel(id); if (!this.compactions.has(id)) this.messages.activity(id, false) }
+      if (e.type === 'queue_update') this.queues.set(id, { steering: Array.isArray(e.steering) ? [...e.steering] : [], followUp: Array.isArray(e.followUp) ? [...e.followUp] : [] })
       if (['model_changed', 'compaction_start', 'compaction_end'].includes(e.type)) this.contextRequests.delete(id)
       if (e.type === 'compaction_start') this.messages.block(id)
       if (e.type === 'compaction_end' && !this.compactions.has(id)) this.messages.wake(id)
@@ -206,6 +209,7 @@ export class PiManager {
       this.health.delete(id)
       this.activity.delete(id)
       this.running.delete(id)
+      this.queues.delete(id)
       if (started || reuseId) this.emitClosed(id)
     }
     this.sessions.set(id, s)
@@ -228,7 +232,7 @@ export class PiManager {
       // Keep the failed child tracked for recovery; it must exit before another writer starts.
       if (!reuseId) {
         this.sessions.delete(id); this.sessionFiles.delete(id)
-        this.health.delete(id); this.activity.delete(id); this.running.delete(id)
+        this.health.delete(id); this.activity.delete(id); this.running.delete(id); this.queues.delete(id)
       }
       s.kill()
       this.closing.delete(id)
@@ -322,6 +326,7 @@ export class PiManager {
       try {
         await old.terminate()
         if (this.shuttingDown) throw new Error('sPi is shutting down')
+        this.queues.delete(id)
         this.extensionUi.forget(id)
         const { state } = await this.startSession(old.cwd, file, id)
         this.running.delete(id)
@@ -348,7 +353,7 @@ export class PiManager {
     if (s.hasExited) {
       this.sessions.delete(sessionId); this.sessionFiles.delete(sessionId)
       this.messages.close(sessionId); this.yolo.close(sessionId)
-      this.health.delete(sessionId); this.activity.delete(sessionId); this.running.delete(sessionId); this.closing.delete(sessionId)
+      this.health.delete(sessionId); this.activity.delete(sessionId); this.running.delete(sessionId); this.queues.delete(sessionId); this.closing.delete(sessionId)
       this.emitClosed(sessionId)
       return
     }
@@ -407,9 +412,28 @@ export class PiManager {
     }
   }
 
-  submitMessage(id: string, message: MessageSubmission): { id: string } {
+  async submitMessage(id: string, message: MessageSubmission): Promise<{ id: string }> {
     this.getCwd(id)
     if (!this.yolo.isReady(id) || !this.uiAvailable() || this.deleting.has(id) || this.recovering.has(id) || this.health.get(id)?.status === 'unresponsive' || this.health.get(id)?.status === 'exited') throw new Error('会话尚未就绪，请检查或恢复会话')
+    if (message.priority) {
+      // Steer cuts in line: inject into the live Pi run before its next model call,
+      // or start a run when idle — instead of waiting in the outbox for the session
+      // to become idle. While outbox work is held (dispatching/editing/paused), keep
+      // the outbox order at the front instead of racing an in-flight handoff.
+      const session = this.sessions.get(id)
+      if (session && !this.closing.has(id) && !this.compactions.has(id)) {
+        const state = (await session.sendCommand('get_state', {}, 5000)) as PiState
+        if (this.sessions.get(id) !== session || this.closing.has(id)) throw new Error('session is closing')
+        if (state.isStreaming || this.messages.snapshot(id).items.length === 0) {
+          const value = validateMessageContent(message.text, message.images ?? [])
+          const imgField = value.images.length
+            ? { images: value.images.map(image => ({ type: 'image', ...image })) }
+            : {}
+          await session.sendCommand('prompt', { message: value.text, streamingBehavior: 'steer', ...imgField })
+          return { id: message.clientId }
+        }
+      }
+    }
     const calibrate = this.messages.needsCalibration(id)
     const receipt = this.messages.submit(id, message)
     // An actual user send must not disappear into a queue whose settled event was lost.
@@ -504,7 +528,8 @@ export class PiManager {
     if (this.sessions.get(sessionId) !== s || this.closing.has(sessionId)) throw new Error('session is closing')
     if (state.sessionFile) this.sessionFiles.set(sessionId, sessionFileKey(s.cwd, state.sessionFile))
     this.markResponsive(sessionId, s, false, true)
-    return state
+    const queue = this.queues.get(sessionId) ?? { steering: [], followUp: [] }
+    return { ...state, steering: [...queue.steering], followUp: [...queue.followUp] }
   }
 
   getContextUsage(id: string): Promise<ContextUsage | null> {

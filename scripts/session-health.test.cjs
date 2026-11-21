@@ -18,13 +18,13 @@ class FakePi {
     instances.push(this)
     queueMicrotask(() => this.fail === true ? this.exit() : this.onEvent({type:'extension_ui_request',method:'notify',message:'spi-permission-ready:'+token}))
   }
-  sendCommand(type) {
+  sendCommand(type, fields) {
     this.commands.push(type)
     if (this.hasExited) return Promise.reject(new Error('exited'))
     if (type==='get_state' && this.fail==='late') return Promise.reject(new Error('startup failed before late exit'))
     if (type==='get_state') return this.probe ? this.probe() : Promise.resolve({...this.state})
     if (type==='get_messages') return Promise.resolve({messages:[{role:'user',content:'saved history'}]})
-    if (type==='prompt') return this.delivery ? this.delivery.promise : Promise.resolve({})
+    if (type==='prompt') { (this.prompts=this.prompts||[]).push(fields); return this.delivery ? this.delivery.promise : Promise.resolve({}) }
     return Promise.resolve({})
   }
   exit() { if(this.hasExited)return; this.hasExited=true; this.onExit(1) }
@@ -153,6 +153,69 @@ async function check(name, fn) { await fn(); count++; console.log('PASS',name) }
     pi.exit(); assert.equal(manager.size,1); assert.equal(closed.length,0)
     assert.equal(events.at(-1).event.health.status,'exited'); assert.equal(manager.getPendingMessages(id).items[0].text,'unsent')
     await manager.close(id); assert.equal(manager.size,0); assert.deepEqual(closed,[id])
+  })
+  await check('steer injects into the live run instead of waiting in the outbox',async()=>{
+    const {manager,id,pi}=await setup()
+    pi.state.isStreaming=true; pi.onEvent({type:'agent_start'})
+    const receipt=await manager.submitMessage(id,{clientId:'steer-live',text:'cut in',priority:true})
+    assert.equal(receipt.id,'steer-live')
+    assert.deepEqual(pi.prompts.at(-1),{message:'cut in',streamingBehavior:'steer'})
+    assert.equal(manager.getPendingMessages(id).items.length,0)
+  })
+  await check('steer while idle starts a run directly without touching the outbox',async()=>{
+    const {manager,id,pi}=await setup()
+    const receipt=await manager.submitMessage(id,{clientId:'steer-idle',text:'start now',priority:true})
+    assert.equal(receipt.id,'steer-idle')
+    assert.deepEqual(pi.prompts.at(-1),{message:'start now',streamingBehavior:'steer'})
+    assert.equal(manager.getPendingMessages(id).items.length,0)
+  })
+  await check('steer carries images through the native injection',async()=>{
+    const {manager,id,pi}=await setup()
+    pi.state.isStreaming=true; pi.onEvent({type:'agent_start'})
+    await manager.submitMessage(id,{clientId:'steer-img',text:'look',images:[{data:'AQ==',mimeType:'image/png'}],priority:true})
+    assert.deepEqual(pi.prompts.at(-1),{message:'look',streamingBehavior:'steer',images:[{type:'image',data:'AQ==',mimeType:'image/png'}]})
+  })
+  await check('getState reflects the native steering queue from queue_update events',async()=>{
+    const {manager,id,pi}=await setup()
+    assert.deepEqual((await manager.getState(id)).steering,[])
+    pi.onEvent({type:'queue_update',steering:['a','b'],followUp:[]})
+    const s1=await manager.getState(id)
+    assert.deepEqual(s1.steering,['a','b']); assert.deepEqual(s1.followUp,[])
+    pi.onEvent({type:'queue_update',steering:['b'],followUp:['c']})
+    const s2=await manager.getState(id)
+    assert.deepEqual(s2.steering,['b']); assert.deepEqual(s2.followUp,['c'])
+  })
+  await check('steer with an in-flight handoff keeps the outbox order instead of racing the drain',async()=>{
+    const {manager,id,pi}=await setup(); pi.delivery=deferred()
+    manager.submitMessage(id,{clientId:'fu',text:'held'}); await tick()
+    assert.equal(manager.getPendingMessages(id).items[0].status,'dispatching')
+    const receipt=await manager.submitMessage(id,{clientId:'steer-held',text:'cut in',priority:true})
+    const items=manager.getPendingMessages(id).items
+    assert.equal(items[1].id,receipt.id)
+    assert.deepEqual(items.map(x=>x.text),['held','cut in'])
+    assert.equal(items[1].priority,true)
+    assert.ok(!pi.prompts.some(p=>p.streamingBehavior==='steer'))
+    pi.delivery.resolve({disposition:'started'})
+  })
+  await check('steer with held outbox work queues at the front without a direct prompt',async()=>{
+    const {manager,id,pi}=await setup()
+    pi.state.isStreaming=true; pi.onEvent({type:'agent_start'})
+    manager.submitMessage(id,{clientId:'fu',text:'held'}); await tick()
+    const item=manager.getPendingMessages(id).items[0]
+    manager.editPendingMessage(id,item.id,item.revision)
+    pi.state.isStreaming=false // The run settled while the item is held for editing.
+    const receipt=await manager.submitMessage(id,{clientId:'steer-edit',text:'cut in',priority:true})
+    const items=manager.getPendingMessages(id).items
+    assert.equal(items[0].id,receipt.id)
+    assert.deepEqual(items.map(x=>x.text),['cut in','held'])
+    assert.equal(items[0].priority,true)
+    assert.ok(!(pi.prompts||[]).some(p=>p.streamingBehavior==='steer'))
+  })
+  await check('steer fails without queueing when the session is gone',async()=>{
+    const {manager,id,pi}=await setup()
+    pi.exit()
+    await assert.rejects(manager.submitMessage(id,{clientId:'steer-dead',text:'lost',priority:true}))
+    assert.equal(manager.getPendingMessages(id).items.length,0)
   })
   await check('recovery is single-flight, waits for old process exit, retains identity and pauses outbox with YOLO off',async()=>{
     const {manager,id,pi,yolo}=await setup(); yolo.setEnabled(id,true)

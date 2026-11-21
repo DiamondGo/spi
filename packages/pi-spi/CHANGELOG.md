@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- **Directory tree refreshes on re-expand**：折叠后重新展开目录时重新扫描该层内容，新建的子目录/文件会立即出现，不再需要重启应用。
+- **Ctrl/Cmd+click multi-select session deletion**：目录会话列表与最近会话列表支持 Ctrl/Cmd+click 多选（普通点击仍打开会话并清空选择）。多选时右键只提供“删除 N 个会话”；确认对话框列出所选会话，逐个删除，单个失败不阻断其余并在对话框中报告。
+
 ## 0.3.5
 
 - Fix slash-command completion dropping the leading '/': selecting a command from the '/' popup now keeps the slash-prefixed invocation in the draft, so sending it executes the Pi command instead of submitting it as plain text. File '@' completion keeps inserting the bare path.

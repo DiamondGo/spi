@@ -351,6 +351,9 @@ body,
 
 .session-item.active { background: var(--selected, #263552); box-shadow: inset 3px 0 0 var(--accent, #3b82f6); }
 .session-item.active .session-item-title { color: var(--accent-fg, #9bc3ff); }
+.session-item.selected { background: var(--selected, #263552); box-shadow: inset 3px 0 0 var(--accent, #3b82f6); }
+.session-item.selected .session-item-title { color: var(--accent-fg, #9bc3ff); }
+.session-item.active.selected { background: var(--selected-strong, #2f4468); }
 .session-item:focus-visible { outline: 2px solid var(--focus, #6da7ff); outline-offset: -2px; }
 
 .session-item-title {
@@ -362,6 +365,20 @@ body,
 .session-item-meta {
   font-size: 11px;
   color: #777;
+}
+
+.session-delete-list {
+  margin: 8px 0;
+  padding-left: 18px;
+  max-height: 140px;
+  overflow-y: auto;
+  font-size: 12px;
+  color: #ccc;
+}
+.session-delete-list li {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .session-health {

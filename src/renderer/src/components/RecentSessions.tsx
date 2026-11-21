@@ -19,6 +19,7 @@ export function RecentSessions({ onOpen }: Props) {
   const [recent, setRecent] = useState<SessionMeta[]>([])
   const [pinned, setPinned] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
   const generation = useRef(0)
 
   const refresh = useCallback(async () => {
@@ -39,20 +40,38 @@ export function RecentSessions({ onOpen }: Props) {
     return () => { generation.current++ }
   }, [refresh, openKey, catalogRevision])
 
+  // 行消失时剪掉失效的选中项（删除后自动清空）。
+  const allRows = sessionRows(recent, sessions)
+  useEffect(() => {
+    setSelected(prev => {
+      const valid = new Set(allRows.map(r => r.path))
+      const next = new Set([...prev].filter(p => valid.has(p)))
+      return next.size === prev.size ? prev : next
+    })
+  }, [allRows])
+
   async function togglePin(m: SessionMeta): Promise<void> {
     const next = await window.spi.togglePin(m.path)
     setPinned(next)
   }
 
   // pin 的放顶部（保持 recent 的时间顺序），其余按时间
-  const rows = sessionRows(recent, sessions)
+  const rows = allRows
   const pinnedMetas = rows.filter((m) => pinned.includes(m.path))
   const others = rows.filter((m) => !pinned.includes(m.path))
 
   function renderItem(m: SessionRow): React.ReactNode {
     const isPinned = pinned.includes(m.path)
     return (
-      <div key={m.path} className={`session-item${m.liveId === activeId ? ' active' : ''}`} aria-current={m.liveId === activeId ? 'true' : undefined} data-session-path={m.path} onContextMenu={event => actions.menu(event, { sessionId: m.liveId, path: m.path, cwd: m.cwd, label: m.name || m.title || '' })} title={formatPath(m.cwd)} tabIndex={0} onClick={() => m.liveId ? setActive(m.liveId) : onOpen(m)} onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); if (m.liveId) setActive(m.liveId); else onOpen(m) } }}>
+      <div key={m.path} className={`session-item${m.liveId === activeId ? ' active' : ''}${selected.has(m.path) ? ' selected' : ''}`} aria-current={m.liveId === activeId ? 'true' : undefined} aria-selected={selected.has(m.path) || undefined} data-session-path={m.path} onContextMenu={event => selected.size > 0 ? actions.menuMulti(event, rows.filter(r => selected.has(r.path)).map(r => ({ sessionId: r.liveId, path: r.path, cwd: r.cwd, label: r.name || r.title || '' }))) : actions.menu(event, { sessionId: m.liveId, path: m.path, cwd: m.cwd, label: m.name || m.title || '' })} title={formatPath(m.cwd)} tabIndex={0} onClick={event => {
+        if (event.ctrlKey || event.metaKey) {
+          event.preventDefault()
+          setSelected(prev => { const next = new Set(prev); if (next.has(m.path)) next.delete(m.path); else next.add(m.path); return next })
+          return
+        }
+        setSelected(new Set())
+        if (m.liveId) setActive(m.liveId); else onOpen(m)
+      }} onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); if (m.liveId) setActive(m.liveId); else onOpen(m) } }}>
         <div className="session-item-row">
           <IconControl tooltip={t(isPinned ? '取消置顶' : '置顶会话')}>
             <button

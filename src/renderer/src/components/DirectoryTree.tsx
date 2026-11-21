@@ -26,8 +26,8 @@ export function DirectoryTree({ homeDir, selected, onSelect, sessionsByDir }: Pr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [homeDir])
 
-  async function loadChildren(path: string): Promise<void> {
-    if (children[path]) return
+  async function loadChildren(path: string, force = false): Promise<void> {
+    if (!force && children[path]) return
     setLoading((l) => ({ ...l, [path]: true }))
     try {
       const dirs = await window.spi.listDirs(path)
@@ -45,7 +45,8 @@ export function DirectoryTree({ homeDir, selected, onSelect, sessionsByDir }: Pr
       return
     }
     setExpanded((e) => ({ ...e, [path]: true }))
-    await loadChildren(path)
+    // 重新展开时重新拉取该层，新建的子目录才能出现；首次展开与刷新走同一路径。
+    await loadChildren(path, true)
   }
 
   function renderChildren(path: string, depth: number): React.ReactNode {
